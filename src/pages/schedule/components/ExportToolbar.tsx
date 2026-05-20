@@ -24,8 +24,8 @@ const FS_TH  = '12px';   // header kolom
 const FS_TGL = '12px';   // cell kiri (tanggal/jam/PIC)
 const FS_ROW = '12px';   // cell nama/panggilan/lingkungan
 const FS_FTR = '14px';   // footer latihan
-const BORDER = '1.5px solid #111';
-const BORDER_OUTER = '2px solid #111';
+const BORDER = '2px solid #111';
+const BORDER_OUTER = '3px solid #111';
 
 function parseSlotSchedule(draftNote: string | null, fallback: string) {
   if (!draftNote) return [];
@@ -182,7 +182,7 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
   }
 
   return `
-    <div style="font-family:${FONT};width:900px;padding:20px;background:white;">
+    <div style="font-family:${FONT};width:960px;padding:6px;background:white;">
       <table style="width:100%;border-collapse:collapse;border:${BORDER_OUTER};">
         <thead>
           <tr>
@@ -314,7 +314,7 @@ export function ExportToolbar({ ev, picOptions, size = 'sm' }: ExportToolbarProp
     document.body.appendChild(container);
     try {
       const inner = container.firstElementChild as HTMLElement;
-      const png   = await toPng(inner, { pixelRatio: 2, backgroundColor: '#ffffff' });
+      const png   = await toPng(inner, { pixelRatio: 3, backgroundColor: '#ffffff' });
       const a     = document.createElement('a');
       a.href     = png;
       a.download = `jadwal-${(ev.perayaan || ev.id).replace(/\s+/g, '-')}.png`;
