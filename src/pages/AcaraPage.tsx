@@ -94,16 +94,25 @@ export default function AcaraPage() {
   // ── Load peserta ─────────────────────────────────────────────
   const loadPeserta = useCallback(async (acaraId: string) => {
     setLoadingPes(true);
-    const { data, error } = await supabase
+    // Fetch scan_records dulu, lalu join user manual — hindari ambiguitas 2 FK ke users
+    const { data: scans, error } = await supabase
       .from('scan_records')
-      .select(`
-        id, timestamp, scan_type, is_anomaly,
-        users ( nama_panggilan, nama_lengkap, nickname, lingkungan )
-      `)
+      .select('id, timestamp, scan_type, is_anomaly, user_id')
       .eq('acara_id', acaraId)
       .order('timestamp', { ascending: true });
-    if (error) toast.error('Gagal memuat daftar hadir: ' + error.message);
-    setPeserta(data ?? []);
+    if (error) { toast.error('Gagal memuat daftar hadir: ' + error.message); setLoadingPes(false); return; }
+    if (!scans?.length) { setPeserta([]); setLoadingPes(false); return; }
+
+    const userIds = [...new Set(scans.map((s: any) => s.user_id))];
+    const { data: usersData } = await supabase
+      .from('users')
+      .select('id, nama_panggilan, nama_lengkap, nickname, lingkungan')
+      .in('id', userIds);
+
+    const userMap: Record<string, any> = {};
+    (usersData ?? []).forEach((u: any) => { userMap[u.id] = u; });
+
+    setPeserta(scans.map((s: any) => ({ ...s, users: userMap[s.user_id] ?? null })));
     setLoadingPes(false);
   }, []);
 
