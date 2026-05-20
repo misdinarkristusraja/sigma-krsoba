@@ -16,16 +16,17 @@ const PETUGAS_PER_SLOT = 8;
 const MONTHS_UPPER = ['JANUARI','FEBRUARI','MARET','APRIL','MEI','JUNI',
   'JULI','AGUSTUS','SEPTEMBER','OKTOBER','NOVEMBER','DESEMBER'];
 
-// ── Shared style constants (match gambar referensi) ──────────────────────────
-const FONT   = "'Times New Roman', Times, serif";
-const FS_HDR = '28px';   // judul utama
-const FS_SUB = '17px';   // subjudul tanggal
-const FS_TH  = '16px';   // header kolom
-const FS_TGL = '16px';   // cell kiri (tanggal/jam/PIC)
-const FS_ROW = '16px';   // cell nama/panggilan/lingkungan
-const FS_FTR = '19px';   // footer latihan
-const BORDER = '2px solid #111';
-const BORDER_OUTER = '3px solid #111';
+// ── Shared style constants ───────────────────────────────────────────────────
+const FONT         = "'Times New Roman', Times, serif";
+const FS_HDR       = '32px';
+const FS_SUB       = '19px';
+const FS_TH        = '18px';
+const FS_TGL       = '18px';
+const FS_ROW       = '18px';
+const FS_FTR       = '21px';
+const BORDER       = '1.5px solid #555';   // garis dalam antar-baris satu slot
+const BORDER_SLOT  = '3px solid #111';     // garis tebal pemisah antar-slot
+const BORDER_OUTER = '3.5px solid #111';   // garis luar tabel
 
 function parseSlotSchedule(draftNote: string | null, fallback: string) {
   if (!draftNote) return [];
@@ -88,31 +89,39 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
                    : picB         ? `PIC: <b>${picB}</b>` : '';
     const hpLine   = hpA ? `(${hpA})` : '';
 
+    // Baris pertama tiap slot pakai border atas tebal (pemisah antar-slot)
+    const slotTopBorder = `border-top:${BORDER_SLOT};`;
+
     const leftCell = `
       <td rowspan="${rowspan}" style="
-        border:${BORDER};padding:6px 10px;vertical-align:middle;text-align:center;
+        border:${BORDER};${slotTopBorder}border-left:${BORDER_OUTER};
+        padding:6px 10px;vertical-align:middle;text-align:center;
         font-family:${FONT};font-size:${FS_TGL};font-weight:bold;line-height:1.75;
         min-width:200px;max-width:200px;background:#f9f9f9;">
         ${jamLabel}<br>
         ${tglSlot}<br>
         ${jamValue ? jamValue + '<br>' : ''}
         ${picLine}<br>
-        <span style="font-weight:normal;font-size:13px;color:#444;">${hpLine}</span>
+        <span style="font-weight:normal;font-size:14px;color:#444;">${hpLine}</span>
       </td>`;
+
+    const firstRowStyle = `border:${BORDER};${slotTopBorder}padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};`;
+    const normRowStyle  = `border:${BORDER};padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};`;
 
     if (people.length === 0) {
       rows += `<tr>${leftCell}
-        <td style="border:${BORDER};padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};">—</td>
-        <td style="border:${BORDER};padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};">—</td>
-        <td style="border:${BORDER};padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};">—</td>
+        <td style="${firstRowStyle}">—</td>
+        <td style="${firstRowStyle}">—</td>
+        <td style="${firstRowStyle}border-right:${BORDER_OUTER};">—</td>
       </tr>`;
     } else {
       people.forEach((a, i) => {
-        const u = a.users || {};
+        const u   = a.users || {};
+        const cst = i === 0 ? firstRowStyle : normRowStyle;
         rows += `<tr>${i === 0 ? leftCell : ''}
-          <td style="border:${BORDER};padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};">${u.nama_lengkap || '—'}</td>
-          <td style="border:${BORDER};padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};">${u.nama_panggilan || '—'}</td>
-          <td style="border:${BORDER};padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};">${u.lingkungan || '—'}</td>
+          <td style="${cst}">${u.nama_lengkap || '—'}</td>
+          <td style="${cst}">${u.nama_panggilan || '—'}</td>
+          <td style="${cst}border-right:${BORDER_OUTER};">${u.lingkungan || '—'}</td>
         </tr>`;
       });
     }
@@ -138,7 +147,7 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
   const latihanFooter = `
     <tr>
       <td colspan="4" style="
-        border:${BORDER_OUTER};padding:14px 12px;text-align:center;
+        border:${BORDER_OUTER};border-top:${BORDER_SLOT};padding:10px 12px;text-align:center;
         font-family:${FONT};font-size:${FS_FTR};font-weight:bold;
         background:#fff;letter-spacing:0.5px;">
         LATIHAN : ${latihanHari.toUpperCase()}${latihanJam ? ' (' + latihanJam + ')' : ''}
@@ -158,9 +167,9 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
           border:${BORDER};padding:8px 14px;text-align:center;
           font-family:${FONT};font-size:${FS_TGL};
           background:#f0f7ff;width:${Math.floor(100/count)}%;">
-          <div style="font-weight:bold;font-size:15px;">${nama}</div>
-          ${hp ? `<div style="font-size:13px;color:#555;margin-top:3px;">${hp}</div>` : ''}
-          ${latihanJam ? `<div style="font-size:13px;color:#333;margin-top:4px;">Latihan: ${latihanHari} (${latihanJam})</div>` : ''}
+          <div style="font-weight:bold;font-size:18px;">${nama}</div>
+          ${hp ? `<div style="font-size:15px;color:#555;margin-top:3px;">${hp}</div>` : ''}
+          ${latihanJam ? `<div style="font-size:15px;color:#333;margin-top:4px;">Latihan: ${latihanHari} (${latihanJam})</div>` : ''}
         </td>`;
     }).join('');
     const empties = Array(3 - pelatihNicks.length)
@@ -182,22 +191,22 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
   }
 
   return `
-    <div style="font-family:${FONT};width:960px;padding:6px;background:white;">
+    <div style="font-family:${FONT};width:960px;padding:4px;background:white;">
       <table style="width:100%;border-collapse:collapse;border:${BORDER_OUTER};">
         <thead>
           <tr>
             <th colspan="4" style="
-              border:${BORDER_OUTER};padding:16px 14px;text-align:center;
+              border:${BORDER_OUTER};padding:14px 14px;text-align:center;
               font-family:${FONT};font-size:${FS_HDR};font-weight:bold;letter-spacing:1px;">
               ${perayaan}
               ${subtitleTgl ? `<div style="font-size:${FS_SUB};font-weight:normal;color:#555;margin-top:4px;">${subtitleTgl}</div>` : ''}
             </th>
           </tr>
           <tr>
-            <th style="border:${BORDER};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;min-width:200px;text-align:center;">TANGGAL</th>
-            <th style="border:${BORDER};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">NAMA LENGKAP</th>
-            <th style="border:${BORDER};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">PANGGILAN</th>
-            <th style="border:${BORDER};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">LINGKUNGAN</th>
+            <th style="border:${BORDER_SLOT};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;min-width:200px;text-align:center;">TANGGAL</th>
+            <th style="border:${BORDER_SLOT};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">NAMA LENGKAP</th>
+            <th style="border:${BORDER_SLOT};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">PANGGILAN</th>
+            <th style="border:${BORDER_SLOT};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">LINGKUNGAN</th>
           </tr>
         </thead>
         <tbody>

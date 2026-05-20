@@ -43,8 +43,9 @@ export default function ScheduleWeeklyPage() {
   const [picBatch,     setPicBatch]     = useState<Record<string, any>>({});
   const [savingPIC,    setSavingPIC]    = useState(false);
   // Pelatih batch state
-  const [pelatihBatch,  setPelatihBatch]  = useState<Record<string, any>>({});
-  const [savingPelatih, setSavingPelatih] = useState(false);
+  const [pelatihBatch,    setPelatihBatch]    = useState<Record<string, any>>({});
+  const [latihanJamBatch, setLatihanJamBatch] = useState<Record<string, string>>({});
+  const [savingPelatih,   setSavingPelatih]   = useState(false);
 
   const INIT_MISA_FORM = {
     tipe: 'Misa_Khusus', tanggal_tugas: '', tanggal_latihan: '',
@@ -112,19 +113,36 @@ export default function ScheduleWeeklyPage() {
   function setPelatihField(eventId: string, pos: number, nick: string) {
     setPelatihBatch(b => ({ ...b, [eventId]: { ...(b[eventId] || {}), [`p${pos}`]: nick } }));
   }
+  function getLatihanJam(ev: any) {
+    if (latihanJamBatch[ev.id] !== undefined) return latihanJamBatch[ev.id];
+    if (ev.latihan_times?.length) return ev.latihan_times[0];
+    if (ev.latihan_notes) return ev.latihan_notes;
+    return '';
+  }
+
   async function savePelatihBatch() {
     setSavingPelatih(true);
     let saved = 0;
-    for (const [eventId, data] of Object.entries(pelatihBatch)) {
-      const { error } = await supabase.from('events').update({
-        pelatih_slot_1: (data as any).p1 || null,
-        pelatih_slot_2: (data as any).p2 || null,
-        pelatih_slot_3: (data as any).p3 || null,
-      }).eq('id', eventId);
+    // Merge eventIds dari pelatih + jam batch
+    const allIds = new Set([
+      ...Object.keys(pelatihBatch),
+      ...Object.keys(latihanJamBatch),
+    ]);
+    for (const eventId of allIds) {
+      const pelatih = pelatihBatch[eventId] || {};
+      const jam     = latihanJamBatch[eventId];
+      const payload: any = {};
+      if (pelatih.p1 !== undefined) payload.pelatih_slot_1 = pelatih.p1 || null;
+      if (pelatih.p2 !== undefined) payload.pelatih_slot_2 = pelatih.p2 || null;
+      if (pelatih.p3 !== undefined) payload.pelatih_slot_3 = pelatih.p3 || null;
+      if (jam !== undefined) payload.latihan_times = jam ? [jam] : [];
+      if (!Object.keys(payload).length) continue;
+      const { error } = await supabase.from('events').update(payload).eq('id', eventId);
       if (!error) saved++;
     }
     await loadEvents();
     setPelatihBatch({});
+    setLatihanJamBatch({});
     setSavingPelatih(false);
     toast.success(`Pelatih piket disimpan untuk ${saved} jadwal!`);
   }
@@ -356,8 +374,8 @@ export default function ScheduleWeeklyPage() {
               <p className="text-sm text-teal-700 font-semibold">Kelola Pelatih Piket per Event</p>
               <p className="text-xs text-teal-600 mt-0.5">Maks 3 pelatih per minggu. Tampil di kartu jadwal dan PNG export.</p>
             </div>
-            <button onClick={savePelatihBatch} disabled={savingPelatih || Object.keys(pelatihBatch).length === 0} className="btn-primary btn-sm gap-1 whitespace-nowrap">
-              {savingPelatih ? 'Menyimpan...' : `Simpan (${Object.keys(pelatihBatch).length})`}
+            <button onClick={savePelatihBatch} disabled={savingPelatih || (Object.keys(pelatihBatch).length === 0 && Object.keys(latihanJamBatch).length === 0)} className="btn-primary btn-sm gap-1 whitespace-nowrap">
+              {savingPelatih ? 'Menyimpan...' : `Simpan (${new Set([...Object.keys(pelatihBatch),...Object.keys(latihanJamBatch)]).size})`}
             </button>
           </div>
           {events.length === 0
@@ -381,6 +399,16 @@ export default function ScheduleWeeklyPage() {
                       </select>
                     </div>
                   ))}
+                </div>
+                <div className="max-w-xs">
+                  <label className="label text-xs">Jam Latihan (muncul di PNG export)</label>
+                  <input
+                    type="time"
+                    className={`input text-sm ${latihanJamBatch[ev.id] !== undefined ? 'border-teal-400 bg-teal-50' : ''}`}
+                    value={getLatihanJam(ev)}
+                    onChange={e => setLatihanJamBatch(b => ({ ...b, [ev.id]: e.target.value }))}
+                    placeholder="cth. 16:00"
+                  />
                 </div>
                 {(ev.pelatih_slot_1||ev.pelatih_slot_2||ev.pelatih_slot_3) && (
                   <div className="flex gap-2 flex-wrap">

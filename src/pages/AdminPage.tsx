@@ -253,30 +253,15 @@ export default function AdminPage() {
   }, [loadUsers]);
 
   // ────────────────────────────────────────────────────────────────────────────
-  // MASS RESET — via Edge Function (bukan RPC langsung)
-  //
-  // Alasan kembali ke Edge Function:
-  //   1. service_role_key dibutuhkan untuk bypass RLS di auth.users
-  //   2. service_role_key TIDAK boleh ada di frontend (exposed ke browser)
-  //   3. Edge Function menyimpan service_role_key sebagai Supabase Secret
-  //   4. Frontend hanya mengirim anon key + Bearer token user saat ini
-  //   5. Edge Function verifikasi token, cek role Administrator, baru proses
-  //
-  // Alur keamanan:
-  //   Frontend (anon key + Bearer token) →
-  //     Edge Function (verify token → cek Administrator → service_role_key) →
-  //       auth.users (update password)
-  // ────────────────────────────────────────────────────────────────────────────
+  // MASS RESET — via RPC admin_provision_all() (SECURITY DEFINER di DB)
+  // RPC ini cek role Administrator di dalam, update password via crypt(), aman.
   async function massResetAllPasswords() {
-    // Hitung target sebelum konfirmasi
     const targetCount = users.filter(
       (u) => ['Active', 'Pending'].includes(u.status) && u.role !== 'Administrator'
     ).length;
 
     if (targetCount === 0) {
-      toast('Tidak ada anggota aktif/pending yang perlu direset.', {
-        icon: 'ℹ️',
-      });
+      toast('Tidak ada anggota aktif/pending yang perlu direset.', { icon: 'ℹ️' });
       return;
     }
 
@@ -284,128 +269,46 @@ export default function AdminPage() {
       `⚠️ KONFIRMASI MASS RESET PASSWORD\n\n` +
       `Akan mereset password ${targetCount} anggota (Active + Pending).\n` +
       `Administrator tidak termasuk.\n\n` +
-      `Password baru di-generate secara acak oleh server.\n` +
-      `Kamu bisa mengirimkan password baru via WhatsApp setelah proses selesai.\n\n` +
+      `Password baru di-generate secara acak.\n` +
+      `Kamu bisa kirim password baru via WhatsApp setelah proses selesai.\n\n` +
       `Lanjutkan?`
     );
-
     if (!confirmed) return;
 
-    // Reset state UI
     setMassLoading(true);
     setMassResults([]);
     setMassProgress({ status: 'running', total: targetCount });
 
     try {
-      // ── Panggil Edge Function via supabase.functions.invoke() ────────────
-      // invoke() otomatis:
-      //   - Menambahkan header Authorization: Bearer <current_user_token>
-      //   - Menggunakan SUPABASE_URL yang benar
-      //   - Menangani CORS preflight
-      const { data, error } = await supabase.functions.invoke(
-        'admin-reset-password',
-        {
-          body: { mode: 'provision_all' },
-          // timeout 5 menit — cukup untuk reset ratusan user
-          // (Supabase Edge Function default timeout: 150 detik di free plan,
-          //  2 menit di Pro — jika timeout, pertimbangkan batch dari frontend)
-        }
-      );
+      const { data, error } = await supabase.rpc('admin_provision_all');
 
-      // ── Tangani error level network / HTTP ──────────────────────────────
       if (error) {
-        // error dari invoke() bisa berupa:
-        //   - FunctionsHttpError: Edge Function merespons dengan status >= 400
-        //   - FunctionsRelayError: masalah koneksi ke Edge runtime
-        //   - FunctionsFetchError: network error (CORS, DNS, timeout)
-
-        const msg =
-          error.message ||
-          error.context?.message ||
-          'Koneksi ke Edge Function gagal.';
-
-        console.error('[massReset] invoke() error:', error);
-
-        setMassProgress({
-          status: 'error',
-          error: msg,
-          hint: msg.includes('CORS') || msg.includes('fetch')
-            ? 'Pastikan Edge Function sudah di-deploy: supabase functions deploy admin-reset-password'
-            : msg.includes('401') || msg.includes('403')
-            ? 'Token expired atau bukan Administrator. Coba logout lalu login kembali.'
-            : msg.includes('ENV')
-            ? 'ENV vars belum diset di Supabase Secrets. Lihat README deployment.'
-            : undefined,
-        });
-
-        toast.error('Mass reset gagal: ' + msg);
+        setMassProgress({ status: 'error', error: error.message });
+        toast.error('Mass reset gagal: ' + error.message);
         return;
       }
 
-      // ── Tangani respons dari Edge Function ──────────────────────────────
-      if (!data?.ok) {
-        const msg = data?.message || data?.error || 'Respons tidak valid dari server.';
-        const hint = data?.error === 'FORBIDDEN'
-          ? 'Hanya akun Administrator yang dapat melakukan mass reset.'
-          : data?.error === 'INVALID_TOKEN' || data?.error === 'MISSING_TOKEN'
-          ? 'Sesi login kamu sudah kadaluarsa. Silakan login ulang.'
-          : data?.error === 'ENV_MISSING'
-          ? 'SUPABASE_SERVICE_ROLE_KEY belum diset di Supabase Function Secrets.'
-          : undefined;
+      const results  = Array.isArray(data) ? data : (data?.results ?? []);
+      const total    = results.length;
+      const success  = results.filter((r: any) => r.ok).length;
+      const skipped  = results.filter((r: any) => r.skipped).length;
+      const failed   = results.filter((r: any) => !r.ok && !r.skipped).length;
 
-        setMassProgress({ status: 'error', error: msg, hint });
-        toast.error('Mass reset ditolak: ' + msg);
-        return;
-      }
-
-      // ── Sukses (penuh atau sebagian) ────────────────────────────────────
-      const { total, success, skipped, failed, results } = data;
-
-      setMassResults(results ?? []);
-      setMassProgress({
-        status:  'done',
-        total:   total   ?? 0,
-        success: success ?? 0,
-        skipped: skipped ?? 0,
-        failed:  failed  ?? 0,
-      });
-
-      // Simpan ke audit log (fire-and-forget, tidak blokir UI)
-      supabase
-        .from('audit_logs')
-        .insert({
-          action:      'mass_reset_password',
-          performed_by: currentUser?.id,
-          meta: {
-            total, success, skipped, failed,
-            timestamp: new Date().toISOString(),
-          },
-        })
-        .then(({ error: auditErr }: any) => {
-          if (auditErr) console.warn('[massReset] audit log gagal:', auditErr.message);
-        });
+      setMassResults(results);
+      setMassProgress({ status: 'done', total, success, skipped, failed });
 
       if (failed === 0) {
         toast.success(`✅ ${success} password berhasil direset!`, { duration: 5000 });
       } else {
-        toast(
-          `⚠️ Selesai: ${success} sukses, ${skipped} dilewati, ${failed} gagal. Cek tabel di bawah.`,
-          { duration: 8000, icon: '⚠️' }
-        );
+        toast(`⚠️ Selesai: ${success} sukses, ${skipped} dilewati, ${failed} gagal.`,
+          { duration: 8000, icon: '⚠️' });
       }
 
-    } catch (unexpectedErr: any) {
-      // Tangkap exception tak terduga (bug di kode ini sendiri)
-      const msg = unexpectedErr instanceof Error
-        ? unexpectedErr.message
-        : String(unexpectedErr);
-
-      console.error('[massReset] Unexpected error:', unexpectedErr);
+    } catch (err: any) {
+      const msg = err instanceof Error ? err.message : String(err);
       setMassProgress({ status: 'error', error: msg });
-      toast.error('Terjadi kesalahan tidak terduga: ' + msg);
-
+      toast.error('Terjadi kesalahan: ' + msg);
     } finally {
-      // SELALU dijalankan — loading pasti berhenti
       setMassLoading(false);
     }
   }
