@@ -18,12 +18,12 @@ const MONTHS_UPPER = ['JANUARI','FEBRUARI','MARET','APRIL','MEI','JUNI',
 
 // ── Shared style constants (match gambar referensi) ──────────────────────────
 const FONT   = "'Times New Roman', Times, serif";
-const FS_HDR = '26px';   // judul utama
-const FS_SUB = '16px';   // subjudul tanggal
-const FS_TH  = '15px';   // header kolom
-const FS_TGL = '15px';   // cell kiri (tanggal/jam/PIC)
-const FS_ROW = '15px';   // cell nama/panggilan/lingkungan
-const FS_FTR = '18px';   // footer latihan
+const FS_HDR = '28px';   // judul utama
+const FS_SUB = '17px';   // subjudul tanggal
+const FS_TH  = '16px';   // header kolom
+const FS_TGL = '16px';   // cell kiri (tanggal/jam/PIC)
+const FS_ROW = '16px';   // cell nama/panggilan/lingkungan
+const FS_FTR = '19px';   // footer latihan
 const BORDER = '2px solid #111';
 const BORDER_OUTER = '3px solid #111';
 
@@ -90,7 +90,7 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
 
     const leftCell = `
       <td rowspan="${rowspan}" style="
-        border:${BORDER};padding:12px 14px;vertical-align:middle;text-align:center;
+        border:${BORDER};padding:6px 10px;vertical-align:middle;text-align:center;
         font-family:${FONT};font-size:${FS_TGL};font-weight:bold;line-height:1.75;
         min-width:200px;max-width:200px;background:#f9f9f9;">
         ${jamLabel}<br>
@@ -102,17 +102,17 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
 
     if (people.length === 0) {
       rows += `<tr>${leftCell}
-        <td style="border:${BORDER};padding:9px 12px;font-family:${FONT};font-size:${FS_ROW};">—</td>
-        <td style="border:${BORDER};padding:9px 12px;font-family:${FONT};font-size:${FS_ROW};">—</td>
-        <td style="border:${BORDER};padding:9px 12px;font-family:${FONT};font-size:${FS_ROW};">—</td>
+        <td style="border:${BORDER};padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};">—</td>
+        <td style="border:${BORDER};padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};">—</td>
+        <td style="border:${BORDER};padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};">—</td>
       </tr>`;
     } else {
       people.forEach((a, i) => {
         const u = a.users || {};
         rows += `<tr>${i === 0 ? leftCell : ''}
-          <td style="border:${BORDER};padding:9px 12px;font-family:${FONT};font-size:${FS_ROW};">${u.nama_lengkap || '—'}</td>
-          <td style="border:${BORDER};padding:9px 12px;font-family:${FONT};font-size:${FS_ROW};">${u.nama_panggilan || '—'}</td>
-          <td style="border:${BORDER};padding:9px 12px;font-family:${FONT};font-size:${FS_ROW};">${u.lingkungan || '—'}</td>
+          <td style="border:${BORDER};padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};">${u.nama_lengkap || '—'}</td>
+          <td style="border:${BORDER};padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};">${u.nama_panggilan || '—'}</td>
+          <td style="border:${BORDER};padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};">${u.lingkungan || '—'}</td>
         </tr>`;
       });
     }
@@ -194,10 +194,10 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
             </th>
           </tr>
           <tr>
-            <th style="border:${BORDER};padding:10px 12px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;min-width:200px;text-align:center;">TANGGAL</th>
-            <th style="border:${BORDER};padding:10px 12px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">NAMA LENGKAP</th>
-            <th style="border:${BORDER};padding:10px 12px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">PANGGILAN</th>
-            <th style="border:${BORDER};padding:10px 12px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">LINGKUNGAN</th>
+            <th style="border:${BORDER};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;min-width:200px;text-align:center;">TANGGAL</th>
+            <th style="border:${BORDER};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">NAMA LENGKAP</th>
+            <th style="border:${BORDER};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">PANGGILAN</th>
+            <th style="border:${BORDER};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">LINGKUNGAN</th>
           </tr>
         </thead>
         <tbody>
