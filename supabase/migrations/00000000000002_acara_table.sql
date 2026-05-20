@@ -28,45 +28,51 @@ CREATE INDEX IF NOT EXISTS acara_is_active_idx ON acara (is_active);
 -- ── RLS ─────────────────────────────────────────────────────────
 ALTER TABLE acara ENABLE ROW LEVEL SECURITY;
 
--- Semua user login bisa baca
-CREATE POLICY IF NOT EXISTS "acara_select_auth"
-  ON acara FOR SELECT
-  TO authenticated
-  USING (true);
+DO $$ BEGIN
+  CREATE POLICY "acara_select_auth"
+    ON acara FOR SELECT
+    TO authenticated
+    USING (true);
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- Hanya Administrator dan Pengurus yang bisa insert/update/delete
-CREATE POLICY IF NOT EXISTS "acara_insert_peng"
-  ON acara FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE users.id = auth.uid()
-        AND users.role IN ('Administrator','Pengurus')
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "acara_insert_peng"
+    ON acara FOR INSERT
+    TO authenticated
+    WITH CHECK (
+      EXISTS (
+        SELECT 1 FROM users
+        WHERE users.id = auth.uid()
+          AND users.role IN ('Administrator','Pengurus')
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY IF NOT EXISTS "acara_update_peng"
-  ON acara FOR UPDATE
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE users.id = auth.uid()
-        AND users.role IN ('Administrator','Pengurus')
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "acara_update_peng"
+    ON acara FOR UPDATE
+    TO authenticated
+    USING (
+      EXISTS (
+        SELECT 1 FROM users
+        WHERE users.id = auth.uid()
+          AND users.role IN ('Administrator','Pengurus')
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
-CREATE POLICY IF NOT EXISTS "acara_delete_peng"
-  ON acara FOR DELETE
-  TO authenticated
-  USING (
-    EXISTS (
-      SELECT 1 FROM users
-      WHERE users.id = auth.uid()
-        AND users.role IN ('Administrator','Pengurus')
-    )
-  );
+DO $$ BEGIN
+  CREATE POLICY "acara_delete_peng"
+    ON acara FOR DELETE
+    TO authenticated
+    USING (
+      EXISTS (
+        SELECT 1 FROM users
+        WHERE users.id = auth.uid()
+          AND users.role IN ('Administrator','Pengurus')
+      )
+    );
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ── scan_records: foreign key ke acara (opsional) ────────────────
 -- scan_records.acara_id: nullable FK, digunakan jika scan untuk acara
