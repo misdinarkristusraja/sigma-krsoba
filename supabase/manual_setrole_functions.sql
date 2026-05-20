@@ -2,8 +2,9 @@
 -- SIGMA -- Admin Functions that write to auth.*
 -- Run this in: Supabase Dashboard -> SQL Editor
 -- ================================================================
--- These functions need owner = supabase_auth_admin to write auth.*
--- We create them as postgres, then ALTER OWNER.
+-- postgres role already has INSERT/UPDATE on auth.users + auth.identities.
+-- SECURITY DEFINER functions owned by postgres can write auth.* directly.
+-- No SET ROLE or ALTER OWNER needed.
 -- ================================================================
 
 -- ----------------------------------------------------------------
@@ -115,7 +116,6 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
-ALTER FUNCTION public.admin_reset_password(UUID, TEXT) OWNER TO supabase_auth_admin;
 
 -- ----------------------------------------------------------------
 -- admin_provision_all -- mass reset password for all members
@@ -206,7 +206,6 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
-ALTER FUNCTION public.admin_provision_all() OWNER TO supabase_auth_admin;
 
 -- ----------------------------------------------------------------
 -- admin_approve_registration -- approve pending registration
@@ -329,7 +328,6 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
-ALTER FUNCTION public.admin_approve_registration(UUID, VARCHAR, TEXT) OWNER TO supabase_auth_admin;
 
 -- ----------------------------------------------------------------
 -- Grants
