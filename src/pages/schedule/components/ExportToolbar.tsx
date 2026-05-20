@@ -18,12 +18,12 @@ const MONTHS_UPPER = ['JANUARI','FEBRUARI','MARET','APRIL','MEI','JUNI',
 
 // ── Shared style constants (match gambar referensi) ──────────────────────────
 const FONT   = "'Times New Roman', Times, serif";
-const FS_HDR = '18px';   // judul utama
-const FS_SUB = '12px';   // subjudul tanggal
-const FS_TH  = '12px';   // header kolom
-const FS_TGL = '12px';   // cell kiri (tanggal/jam/PIC)
-const FS_ROW = '12px';   // cell nama/panggilan/lingkungan
-const FS_FTR = '14px';   // footer latihan
+const FS_HDR = '26px';   // judul utama
+const FS_SUB = '16px';   // subjudul tanggal
+const FS_TH  = '15px';   // header kolom
+const FS_TGL = '15px';   // cell kiri (tanggal/jam/PIC)
+const FS_ROW = '15px';   // cell nama/panggilan/lingkungan
+const FS_FTR = '18px';   // footer latihan
 const BORDER = '2px solid #111';
 const BORDER_OUTER = '3px solid #111';
 
@@ -90,29 +90,29 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
 
     const leftCell = `
       <td rowspan="${rowspan}" style="
-        border:${BORDER};padding:8px 10px;vertical-align:middle;text-align:center;
-        font-family:${FONT};font-size:${FS_TGL};font-weight:bold;line-height:1.65;
-        min-width:165px;max-width:165px;background:#f9f9f9;">
+        border:${BORDER};padding:12px 14px;vertical-align:middle;text-align:center;
+        font-family:${FONT};font-size:${FS_TGL};font-weight:bold;line-height:1.75;
+        min-width:200px;max-width:200px;background:#f9f9f9;">
         ${jamLabel}<br>
         ${tglSlot}<br>
         ${jamValue ? jamValue + '<br>' : ''}
         ${picLine}<br>
-        <span style="font-weight:normal;font-size:11px;color:#444;">${hpLine}</span>
+        <span style="font-weight:normal;font-size:13px;color:#444;">${hpLine}</span>
       </td>`;
 
     if (people.length === 0) {
       rows += `<tr>${leftCell}
-        <td style="border:${BORDER};padding:5px 10px;font-family:${FONT};font-size:${FS_ROW};">—</td>
-        <td style="border:${BORDER};padding:5px 10px;font-family:${FONT};font-size:${FS_ROW};">—</td>
-        <td style="border:${BORDER};padding:5px 10px;font-family:${FONT};font-size:${FS_ROW};">—</td>
+        <td style="border:${BORDER};padding:9px 12px;font-family:${FONT};font-size:${FS_ROW};">—</td>
+        <td style="border:${BORDER};padding:9px 12px;font-family:${FONT};font-size:${FS_ROW};">—</td>
+        <td style="border:${BORDER};padding:9px 12px;font-family:${FONT};font-size:${FS_ROW};">—</td>
       </tr>`;
     } else {
       people.forEach((a, i) => {
         const u = a.users || {};
         rows += `<tr>${i === 0 ? leftCell : ''}
-          <td style="border:${BORDER};padding:5px 10px;font-family:${FONT};font-size:${FS_ROW};">${u.nama_lengkap || '—'}</td>
-          <td style="border:${BORDER};padding:5px 10px;font-family:${FONT};font-size:${FS_ROW};">${u.nama_panggilan || '—'}</td>
-          <td style="border:${BORDER};padding:5px 10px;font-family:${FONT};font-size:${FS_ROW};">${u.lingkungan || '—'}</td>
+          <td style="border:${BORDER};padding:9px 12px;font-family:${FONT};font-size:${FS_ROW};">${u.nama_lengkap || '—'}</td>
+          <td style="border:${BORDER};padding:9px 12px;font-family:${FONT};font-size:${FS_ROW};">${u.nama_panggilan || '—'}</td>
+          <td style="border:${BORDER};padding:9px 12px;font-family:${FONT};font-size:${FS_ROW};">${u.lingkungan || '—'}</td>
         </tr>`;
       });
     }
@@ -138,7 +138,7 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
   const latihanFooter = `
     <tr>
       <td colspan="4" style="
-        border:${BORDER_OUTER};padding:10px 12px;text-align:center;
+        border:${BORDER_OUTER};padding:14px 12px;text-align:center;
         font-family:${FONT};font-size:${FS_FTR};font-weight:bold;
         background:#fff;letter-spacing:0.5px;">
         LATIHAN : ${latihanHari.toUpperCase()}${latihanJam ? ' (' + latihanJam + ')' : ''}
@@ -158,9 +158,9 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
           border:${BORDER};padding:8px 14px;text-align:center;
           font-family:${FONT};font-size:${FS_TGL};
           background:#f0f7ff;width:${Math.floor(100/count)}%;">
-          <div style="font-weight:bold;font-size:13px;">${nama}</div>
-          ${hp ? `<div style="font-size:11px;color:#555;margin-top:2px;">${hp}</div>` : ''}
-          ${latihanJam ? `<div style="font-size:11px;color:#333;margin-top:3px;">Latihan: ${latihanHari} (${latihanJam})</div>` : ''}
+          <div style="font-weight:bold;font-size:15px;">${nama}</div>
+          ${hp ? `<div style="font-size:13px;color:#555;margin-top:3px;">${hp}</div>` : ''}
+          ${latihanJam ? `<div style="font-size:13px;color:#333;margin-top:4px;">Latihan: ${latihanHari} (${latihanJam})</div>` : ''}
         </td>`;
     }).join('');
     const empties = Array(3 - pelatihNicks.length)
@@ -187,17 +187,17 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
         <thead>
           <tr>
             <th colspan="4" style="
-              border:${BORDER_OUTER};padding:12px 14px;text-align:center;
+              border:${BORDER_OUTER};padding:16px 14px;text-align:center;
               font-family:${FONT};font-size:${FS_HDR};font-weight:bold;letter-spacing:1px;">
               ${perayaan}
               ${subtitleTgl ? `<div style="font-size:${FS_SUB};font-weight:normal;color:#555;margin-top:4px;">${subtitleTgl}</div>` : ''}
             </th>
           </tr>
           <tr>
-            <th style="border:${BORDER};padding:7px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;min-width:165px;text-align:center;">TANGGAL</th>
-            <th style="border:${BORDER};padding:7px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">NAMA LENGKAP</th>
-            <th style="border:${BORDER};padding:7px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">PANGGILAN</th>
-            <th style="border:${BORDER};padding:7px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">LINGKUNGAN</th>
+            <th style="border:${BORDER};padding:10px 12px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;min-width:200px;text-align:center;">TANGGAL</th>
+            <th style="border:${BORDER};padding:10px 12px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">NAMA LENGKAP</th>
+            <th style="border:${BORDER};padding:10px 12px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">PANGGILAN</th>
+            <th style="border:${BORDER};padding:10px 12px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">LINGKUNGAN</th>
           </tr>
         </thead>
         <tbody>
