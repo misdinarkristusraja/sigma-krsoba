@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { parseQRValue } from '../lib/utils';
 import {
   CheckCircle, XCircle, AlertTriangle, Camera, QrCode,
-  Clock, Shield, Keyboard, User,
+  Clock, Shield, Keyboard, User, ChevronDown, CalendarClock,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -110,13 +110,41 @@ export default function ScanPage() {
 
   const [scanning,  setScanning]  = useState(false);
   const [result,    setResult]    = useState<any>(null);
-  const [walkIn,    setWalkIn]    = useState<any>(null);
   const [countdown, setCountdown] = useState(0);
   const [camError,  setCamError]  = useState('');
-  const [pendingOverride, setPendingOverride] = useState<any>(null);
-  const [showManual,      setShowManual]      = useState(false);
-  const [manualNick,      setManualNick]      = useState('');
-  const [manualLoading,   setManualLoading]   = useState(false);
+  const [showManual,    setShowManual]    = useState(false);
+  const [manualNick,    setManualNick]    = useState('');
+  const [manualLoading, setManualLoading] = useState(false);
+
+  // ── Override panel state ────────────────────────────────────
+  // Muncul saat: (a) di luar window waktu, (b) tidak ada jadwal hari ini,
+  // (c) user tidak ada di jadwal (walk-in), (d) input manual
+  const [override, setOverride] = useState<{
+    member:     any;
+    parsed:     any;
+    raw:        string;
+    isAnomaly:  boolean;
+    events:     any[];   // candidate events untuk dipilih
+    reason:     string;  // alasan otomatis (kenapa override muncul)
+    scanTypeHint: 'tugas' | 'latihan'; // default berdasarkan QR / waktu
+  } | null>(null);
+
+  // Form state di dalam override panel
+  const [ovEventId,    setOvEventId]    = useState('');
+  const [ovDatetime,   setOvDatetime]   = useState(''); // "YYYY-MM-DDTHH:mm" WIB
+  const [ovReason,     setOvReason]     = useState('');
+  const [ovCustom,     setOvCustom]     = useState('');
+  const [ovScanType,   setOvScanType]   = useState<'tugas'|'latihan'>('tugas');
+  const [ovSubmitting, setOvSubmitting] = useState(false);
+
+  // Preset alasan override
+  const OVERRIDE_PRESETS = [
+    'Hadir tapi lupa scan',
+    'Scan telat setelah misa',
+    'Menggantikan mendadak',
+    'Kamera tidak bisa baca QR',
+    'Lainnya...',
+  ];
 
   const startCamera = useCallback(async () => {
     // FIX BUG-012: Cancel RAF loop yang mungkin masih berjalan dari sesi sebelumnya
@@ -214,12 +242,15 @@ export default function ScanPage() {
 
     // 4. Validasi: ada event hari ini?
     if (!todayEvents || todayEvents.length === 0) {
-      const msg = `Tidak ada event/jadwal hari ini (${today}). Scan tidak valid.`;
-      if (isAdmin) {
-        setPendingOverride({ member, parsed, raw, isAnomaly, events:[], reason: msg });
-      } else {
-        showResult({ status:'invalid', message: msg, member });
-      }
+      const msg = `Tidak ada event hari ini (${today}).`;
+      // Semua Pengurus+ bisa override, cari event 7 hari terakhir sebagai kandidat
+      const { data: recentEvents } = await supabase
+        .from('events')
+        .select('id, nama_event, perayaan, tipe_event, tanggal_tugas, tanggal_latihan')
+        .not('is_draft', 'eq', true)
+        .order('tanggal_tugas', { ascending: false })
+        .limit(20);
+      openOverride({ member, parsed, raw, isAnomaly, events: recentEvents ?? [], reason: msg });
       return;
     }
 
@@ -228,13 +259,10 @@ export default function ScanPage() {
     if (activeWindows.length === 0) {
       const nextWindow = getNextWindowLabel(todayEvents, today);
       const msg = nextWindow
-        ? `Di luar window scan. Scan valid mulai H-2 jam misa.\nBerikutnya: ${nextWindow}`
+        ? `Di luar window scan. Berikutnya: ${nextWindow}`
         : `Semua window scan hari ini sudah lewat.`;
-      if (isAdmin) {
-        setPendingOverride({ member, parsed, raw, isAnomaly, events: todayEvents, reason: msg });
-      } else {
-        showResult({ status:'invalid', message: msg, member, nextWindow });
-      }
+      // Pengurus+ bisa override dengan input waktu mundur
+      openOverride({ member, parsed, raw, isAnomaly, events: todayEvents, reason: msg });
       return;
     }
 
@@ -248,29 +276,13 @@ export default function ScanPage() {
       if (asgn) { targetEvent = ev; assignmentId = asgn.id; break; }
     }
 
-    // 7. User tidak ada di jadwal hari ini → Walk-in (SKPL F3.5)
+    // 7. User tidak ada di jadwal hari ini → Walk-in / override
     if (!targetEvent) {
-      if (isAdmin) {
-        // Admin: tampilkan override panel dengan pilihan alasan
-        setPendingOverride({
-          member, parsed, raw, isAnomaly, events: todayEvents,
-          reason: `${member.nama_panggilan} tidak memiliki jadwal tugas hari ini.`,
-          allowWalkIn: true,
-        });
-      } else {
-        // FIX BUG-004: Pelatih/Pengurus non-admin → tampilkan dialog walk-in sesuai SKPL F3.5.
-        // Sebelumnya, blok ini langsung menampilkan showResult 'invalid', sehingga
-        // setWalkIn tidak pernah dipanggil dan dialog Menggantikan/Sukarela/Lainnya
-        // tidak pernah muncul untuk role selain Admin.
-        setWalkIn({
-          member,
-          qrData:      parsed,
-          raw,
-          isAnomaly,
-          activeEvent: todayEvents?.[0] || null,  // event paling relevan hari ini
-          activeWindows,
-        });
-      }
+      openOverride({
+        member, parsed, raw, isAnomaly, events: todayEvents,
+        reason: `${member.nama_panggilan} tidak ada di jadwal hari ini.`,
+        scanTypeHint: parsed.type === 'latihan' ? 'latihan' : 'tugas',
+      });
       return;
     }
 
@@ -306,7 +318,6 @@ export default function ScanPage() {
 
     if (error) { showResult({ status:'error', message:'Gagal simpan: '+error.message }); return; }
 
-    setPendingOverride(null);
     showResult({
       status: (isAnomaly && !isAdminOverride) ? 'warning' : 'success',
       message: isAdminOverride
@@ -320,32 +331,77 @@ export default function ScanPage() {
     });
   }
 
-  // ── Admin override ─────────────────────────────────────────
-  async function doAdminOverride(walkInReason: any) {
-    if (!pendingOverride) return;
-    const { member, parsed, raw, isAnomaly, events } = pendingOverride;
-    const eventId = events?.[0]?.id || null;
-    await saveScanRecord({
-      member, parsed, eventId, assignmentId: null,
-      isAnomaly, isWalkIn: true, walkInReason: walkInReason || 'Admin override',
-      raw, activeWindows: [], isAdminOverride: true,
-    });
+  // ── Buka override panel (ganti setPendingOverride lama) ────
+  function openOverride(opts: {
+    member: any; parsed: any; raw: string; isAnomaly: boolean;
+    events: any[]; reason: string; scanTypeHint?: 'tugas' | 'latihan';
+  }) {
+    const hint = opts.scanTypeHint ?? (opts.parsed?.type === 'latihan' ? 'latihan' : 'tugas');
+    // Default datetime = sekarang (WIB, format datetime-local)
+    const nowWIB = new Date(Date.now() + 7 * 3600 * 1000);
+    const localStr = nowWIB.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:mm"
+    setOverride({ ...opts, scanTypeHint: hint });
+    setOvEventId(opts.events?.[0]?.id || '');
+    setOvDatetime(localStr);
+    setOvReason('');
+    setOvCustom('');
+    setOvScanType(hint);
+    setOvSubmitting(false);
   }
 
-  // ── Walk-in (dari proses normal — non-admin) ───────────────
-  async function confirmWalkIn(reason: any) {
-    if (!walkIn) return;
-    await saveScanRecord({
-      member: walkIn.member, parsed: walkIn.qrData,
-      eventId: walkIn.activeEvent?.id || null, assignmentId: null,
-      isAnomaly: walkIn.isAnomaly, isWalkIn: true, walkInReason: reason,
-      raw: walkIn.raw, activeWindows: walkIn.activeWindows,
+  // ── Konfirmasi override ─────────────────────────────────────
+  async function doOverride() {
+    if (!override) return;
+    const finalReason = ovReason === 'Lainnya...' ? ovCustom.trim() : ovReason;
+    if (!finalReason) { toast.error('Pilih atau isi alasan override'); return; }
+    if (!ovEventId)   { toast.error('Pilih event / acara yang sesuai'); return; }
+
+    setOvSubmitting(true);
+
+    // Parse datetime WIB → UTC ISO
+    // ovDatetime = "YYYY-MM-DDTHH:mm" WIB, convert ke UTC
+    let timestamp: string;
+    try {
+      const wibMs = new Date(ovDatetime).getTime() - 7 * 3600 * 1000;
+      timestamp = new Date(wibMs).toISOString();
+    } catch {
+      timestamp = new Date().toISOString();
+    }
+
+    const { member, parsed, raw, isAnomaly } = override;
+    const scanType = ovScanType === 'latihan' ? 'walkin_latihan' : 'walkin_tugas';
+    const auditReason = `Override oleh ${profile?.nama_panggilan} (${profile?.role}): ${finalReason}`;
+
+    const { error } = await supabase.from('scan_records').insert({
+      user_id:         member.id,
+      event_id:        ovEventId,
+      scanner_user_id: profile?.id,
+      scan_type:       scanType,
+      is_walk_in:      true,
+      walkin_reason:   finalReason,
+      timestamp,
+      qr_version:      parsed?.version || 'manual',
+      raw_qr_value:    raw || member.myid || '',
+      is_anomaly:      true,
+      anomaly_reason:  auditReason,
+    });
+
+    setOvSubmitting(false);
+    if (error) { toast.error('Gagal simpan: ' + error.message); return; }
+
+    setOverride(null);
+    showResult({
+      status:  'warning',
+      message: `✓ Override — ${member.nama_panggilan}\n${finalReason}`,
+      member,
+      scanType,
+      isOverride: true,
     });
   }
 
   // ── Show result + auto-return ──────────────────────────────
   function showResult(data: any) {
-    setResult(data); setWalkIn(null);
+    setResult(data);
     let sec = AUTO_RETURN_SEC;
     setCountdown(sec);
     if (returnRef.current) clearInterval(returnRef.current);
@@ -385,19 +441,26 @@ export default function ScanPage() {
     setManualNick('');
     setManualLoading(false);
 
-    setPendingOverride({
+    // Ambil event kandidat terbaru
+    const { data: recentEvents } = await supabase
+      .from('events')
+      .select('id, nama_event, perayaan, tipe_event, tanggal_tugas, tanggal_latihan')
+      .not('is_draft', 'eq', true)
+      .order('tanggal_tugas', { ascending: false })
+      .limit(20);
+
+    openOverride({
       member,
       parsed: fakeParsed,
       raw: `manual:${member.nickname}`,
       isAnomaly: true,
-      events: [],
+      events: recentEvents ?? [],
       reason: `Input manual oleh ${profile?.nama_panggilan} (tanpa kartu QR)`,
-      allowWalkIn: true,
     });
   }
 
   function handleReset() {
-    setResult(null); setWalkIn(null); setPendingOverride(null);
+    setResult(null); setOverride(null);
     setCountdown(0); if (returnRef.current) clearInterval(returnRef.current);
     startCamera();
   }
@@ -420,9 +483,9 @@ export default function ScanPage() {
           <span className="text-white font-semibold">Scan Absensi</span>
         </div>
         <div className="flex items-center gap-2">
-          {isAdmin && <span className="text-xs bg-brand-800 text-white px-2 py-0.5 rounded-lg">Admin</span>}
+          {profile?.role && <span className="text-xs bg-brand-800/80 text-white px-2 py-0.5 rounded-lg">{profile.role}</span>}
           <button
-            onClick={() => { stopCamera(); setShowManual(v => !v); setResult(null); setPendingOverride(null); }}
+            onClick={() => { stopCamera(); setShowManual(v => !v); setResult(null); setOverride(null); }}
             className="flex items-center gap-1 text-xs bg-gray-800 text-gray-300 hover:bg-gray-700 px-2 py-1 rounded-lg transition-colors"
             title="Input manual (tanpa kartu)">
             <Keyboard size={13}/> Manual
@@ -434,7 +497,7 @@ export default function ScanPage() {
       <div className="flex-1 flex items-center justify-center relative p-4">
 
         {/* Manual input form */}
-        {showManual && !result && !pendingOverride && (
+        {showManual && !result && !override && (
           <div className="bg-gray-900 rounded-2xl p-6 max-w-sm w-full">
             <div className="text-center mb-4">
               <div className="w-12 h-12 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -470,7 +533,7 @@ export default function ScanPage() {
         )}
 
         {/* Camera */}
-        {!showManual && !result && !walkIn && !pendingOverride && (
+        {!showManual && !result && !override && (
           <div className="relative">
             <video ref={videoRef} className="max-w-full max-h-[70vh] rounded-xl" playsInline muted/>
             <canvas ref={canvasRef} className="hidden"/>
@@ -490,59 +553,146 @@ export default function ScanPage() {
           </div>
         )}
 
-        {/* Walk-in dialog — SKPL F3.5 — muncul saat user tidak ada di jadwal */}
-        {walkIn && (
-          <div className="bg-gray-900 rounded-2xl p-6 max-w-sm w-full">
-            <div className="text-center mb-4">
-              <AlertTriangle size={40} className="text-yellow-400 mx-auto mb-2"/>
-              <h3 className="text-white font-bold text-lg">Walk-in</h3>
-              <p className="text-gray-300 text-sm">{walkIn.member?.nama_panggilan} tidak ada di jadwal.</p>
+        {/* ── OVERRIDE PANEL — muncul untuk semua Pengurus+ ── */}
+        {override && (
+          <div className="bg-gray-900 rounded-2xl p-5 w-full max-w-md overflow-y-auto max-h-[90vh]">
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-yellow-900/50 rounded-xl flex items-center justify-center shrink-0">
+                <Shield size={20} className="text-yellow-400"/>
+              </div>
+              <div>
+                <h3 className="text-white font-bold text-base">Override Absensi</h3>
+                <p className="text-gray-400 text-xs">Dicatat sebagai anomali + audit log</p>
+              </div>
             </div>
-            <div className="space-y-2">
-              {['Menggantikan','Sukarela','Lainnya'].map(r => (
-                <button key={r} onClick={() => confirmWalkIn(r)}
-                  className="w-full py-3 px-4 bg-gray-700 hover:bg-brand-800 text-white rounded-xl text-sm font-medium transition-colors">
-                  {r}
-                </button>
-              ))}
-            </div>
-            <button onClick={handleReset} className="mt-3 w-full py-2 text-gray-400 text-sm">Batal</button>
-          </div>
-        )}
 
-        {/* ── ADMIN OVERRIDE panel ── */}
-        {pendingOverride && (
-          <div className="bg-gray-900 rounded-2xl p-6 max-w-sm w-full">
-            <div className="text-center mb-4">
-              <Shield size={40} className="text-brand-400 mx-auto mb-2"/>
-              <h3 className="text-white font-bold">Scan Tidak Valid</h3>
-              <p className="text-gray-400 text-xs mt-1">Kamu login sebagai Admin — bisa override</p>
+            {/* Member card */}
+            <div className="bg-gray-800 rounded-xl p-3 mb-4 flex items-center gap-3">
+              <div className="w-9 h-9 bg-brand-800 rounded-full flex items-center justify-center text-white font-bold text-sm shrink-0">
+                {override.member?.nama_panggilan?.[0]?.toUpperCase()}
+              </div>
+              <div className="min-w-0">
+                <p className="text-white text-sm font-semibold truncate">{override.member?.nama_panggilan}</p>
+                <p className="text-gray-400 text-xs">{override.member?.lingkungan}</p>
+              </div>
             </div>
-            <div className="bg-gray-800 rounded-xl p-3 mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-8 h-8 bg-brand-800 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                  {pendingOverride.member?.nama_panggilan?.[0]?.toUpperCase()}
-                </div>
-                <div>
-                  <p className="text-white text-sm font-semibold">{pendingOverride.member?.nama_panggilan}</p>
-                  <p className="text-gray-400 text-xs">{pendingOverride.member?.lingkungan}</p>
+
+            {/* Penyebab */}
+            <div className="bg-yellow-900/20 border border-yellow-800/40 rounded-xl px-3 py-2 mb-4">
+              <p className="text-yellow-300 text-xs leading-relaxed">{override.reason}</p>
+            </div>
+
+            <div className="space-y-3">
+              {/* Pilih Event */}
+              <div>
+                <label className="text-gray-400 text-xs mb-1 block">
+                  Acara / Event <span className="text-red-400">*</span>
+                </label>
+                <div className="relative">
+                  <select
+                    className="w-full bg-gray-800 text-white rounded-xl px-3 py-2.5 text-sm border border-gray-700 focus:border-brand-500 focus:outline-none appearance-none pr-8"
+                    value={ovEventId}
+                    onChange={e => setOvEventId(e.target.value)}
+                  >
+                    <option value="">— Pilih event —</option>
+                    {override.events.map((ev: any) => (
+                      <option key={ev.id} value={ev.id}>
+                        {ev.tanggal_tugas || ev.tanggal_latihan} · {ev.perayaan || ev.nama_event}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"/>
                 </div>
               </div>
-              <p className="text-yellow-400 text-xs leading-relaxed">{pendingOverride.reason}</p>
+
+              {/* Waktu scan (bisa diubah ke waktu asli) */}
+              <div>
+                <label className="text-gray-400 text-xs mb-1 flex items-center gap-1">
+                  <CalendarClock size={12}/> Waktu Hadir (WIB) <span className="text-red-400">*</span>
+                  <span className="text-gray-500 ml-1">— ubah jika lupa scan</span>
+                </label>
+                <input
+                  type="datetime-local"
+                  className="w-full bg-gray-800 text-white rounded-xl px-3 py-2.5 text-sm border border-gray-700 focus:border-brand-500 focus:outline-none"
+                  value={ovDatetime}
+                  onChange={e => setOvDatetime(e.target.value)}
+                />
+              </div>
+
+              {/* Tipe scan */}
+              <div>
+                <label className="text-gray-400 text-xs mb-1 block">Tipe Kehadiran</label>
+                <div className="flex gap-2">
+                  {(['tugas', 'latihan'] as const).map(t => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => setOvScanType(t)}
+                      className={[
+                        'flex-1 py-2 rounded-xl text-xs font-medium border transition-colors capitalize',
+                        ovScanType === t
+                          ? 'bg-brand-800 border-brand-600 text-white'
+                          : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-600',
+                      ].join(' ')}
+                    >
+                      {t === 'tugas' ? '⛪ Tugas Misa' : '🏃 Latihan'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Alasan */}
+              <div>
+                <label className="text-gray-400 text-xs mb-1 block">
+                  Alasan <span className="text-red-400">*</span>
+                </label>
+                <div className="grid grid-cols-2 gap-1.5 mb-2">
+                  {OVERRIDE_PRESETS.map(p => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setOvReason(p)}
+                      className={[
+                        'text-left px-3 py-2 rounded-lg text-xs border transition-colors leading-tight',
+                        ovReason === p
+                          ? 'bg-brand-900 border-brand-600 text-white'
+                          : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-600',
+                        p === 'Lainnya...' ? 'col-span-2' : '',
+                      ].join(' ')}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                {ovReason === 'Lainnya...' && (
+                  <input
+                    className="w-full bg-gray-800 text-white rounded-xl px-3 py-2.5 text-sm border border-gray-700 focus:border-brand-500 focus:outline-none placeholder-gray-500"
+                    placeholder="Tulis alasan..."
+                    value={ovCustom}
+                    onChange={e => setOvCustom(e.target.value)}
+                    autoFocus
+                  />
+                )}
+              </div>
             </div>
 
-            <p className="text-gray-300 text-xs text-center mb-3">Alasan override (dicatat di log):</p>
-            <div className="space-y-2">
-              {['Hadir tapi lupa scan','Scan telat','Menggantikan mendadak','Keperluan lain'].map(r => (
-                <button key={r} onClick={() => doAdminOverride(r)}
-                  className="w-full py-2.5 px-4 bg-brand-900 hover:bg-brand-800 text-white rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
-                  <Shield size={14} className="text-brand-400"/> {r}
-                </button>
-              ))}
+            {/* Actions */}
+            <div className="mt-4 space-y-2">
+              <button
+                onClick={doOverride}
+                disabled={ovSubmitting || !ovEventId || !ovReason || (ovReason === 'Lainnya...' && !ovCustom.trim())}
+                className="w-full py-3 bg-brand-800 hover:bg-brand-700 disabled:opacity-40 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+              >
+                {ovSubmitting
+                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/> Menyimpan...</>
+                  : <><Shield size={15}/> Konfirmasi Override</>
+                }
+              </button>
+              <button onClick={handleReset} className="w-full py-2 text-gray-400 text-sm hover:text-white transition-colors">
+                Batal
+              </button>
             </div>
-            <button onClick={handleReset} className="mt-3 w-full py-2 text-gray-400 text-sm hover:text-white">
-              Batal (Scan Berikutnya)
-            </button>
           </div>
         )}
 

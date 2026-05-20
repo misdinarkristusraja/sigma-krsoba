@@ -19,6 +19,7 @@ const RecapPage          = lazy(() => import('./pages/RecapPage'));
 const CardsPage          = lazy(() => import('./pages/CardsPage'));
 const MigrationPage      = lazy(() => import('./pages/MigrationPage'));
 const AdminPage          = lazy(() => import('./pages/AdminPage'));
+const AttendancePage     = lazy(() => import('./pages/AttendancePage'));
 const ReregistrationPage = lazy(() => import('./pages/ReregistrationPage'));
 const StatistikPage      = lazy(() => import('./pages/StatistikPage'));
 const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'));
@@ -117,6 +118,7 @@ function AppRoutes() {
             <Route path="/jadwal-mingguan" element={<ProtectedRoute roles={PENG}><ErrorBoundary><ScheduleWeekly/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/jadwal-harian"   element={<ErrorBoundary><ScheduleDaily/></ErrorBoundary>}/>
             <Route path="/scan-qr"         element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanPage/></ErrorBoundary></ProtectedRoute>}/>
+            <Route path="/presensi"        element={<ProtectedRoute roles={STAFF}><ErrorBoundary><AttendancePage/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/riwayat-scan"    element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanRecordsPage/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/tukar-jadwal"    element={<ErrorBoundary><SwapPage/></ErrorBoundary>}/>
             <Route path="/rekap"           element={<ErrorBoundary><RecapPage/></ErrorBoundary>}/>

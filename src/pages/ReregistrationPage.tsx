@@ -1,16 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
 import { formatHP, PENDIDIKAN_OPTIONS } from '../lib/utils';
-import { RefreshCw, CheckCircle, Clock, Lock } from 'lucide-react';
+import { RefreshCw, CheckCircle, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-// Daftar ulang dibuka bulan Juli
-const DAFTAR_ULANG_OPEN_MONTH = 7; // Juli
-const DAFTAR_ULANG_OPEN_DAY   = 1;
-const DAFTAR_ULANG_CLOSE_DAY  = 31;
 
 const LINGKUNGAN_LIST = [
   'Andreas','Bartolomeus','Benediktus','Carolus','Dominikus','Elisabet',
@@ -20,25 +14,37 @@ const LINGKUNGAN_LIST = [
 
 export default function ReregistrationPage() {
   const { profile, fetchProfile } = useAuth();
-  const navigate = useNavigate();
-  const [form,     setForm]     = useState<Record<string,any>>({});
-  const [loading,  setLoading]  = useState(false);
-  const [submitted,setSubmitted]= useState(false);
-  const [alreadyRe,setAlreadyRe]= useState(false);
+  const [form,      setForm]      = useState<Record<string,any>>({});
+  const [loading,   setLoading]   = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [alreadyRe, setAlreadyRe] = useState(false);
+  const [openDate,  setOpenDate]  = useState<Date | null>(null);
+  const [closeDate, setCloseDate] = useState<Date | null>(null);
+  const [configLoaded, setConfigLoaded] = useState(false);
 
-  const now     = new Date();
-  const month   = now.getMonth() + 1;
-  const day     = now.getDate();
-  const isOpen  = month === DAFTAR_ULANG_OPEN_MONTH
-    && day >= DAFTAR_ULANG_OPEN_DAY
-    && day <= DAFTAR_ULANG_CLOSE_DAY;
+  const now   = new Date();
+  const isOpen = openDate && closeDate
+    ? now >= openDate && now <= closeDate
+    : false;
 
-  // Hitung hari tersisa atau hari sampai buka
-  const daysUntilOpen = isOpen ? 0 : (() => {
-    const target = new Date(now.getFullYear(), DAFTAR_ULANG_OPEN_MONTH - 1, DAFTAR_ULANG_OPEN_DAY);
-    if (target < now) target.setFullYear(now.getFullYear() + 1);
-    return Math.ceil((target.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-  })();
+  const daysUntilOpen = (!isOpen && openDate)
+    ? Math.max(0, Math.ceil((openDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+    : 0;
+
+  useEffect(() => {
+    supabase
+      .from('system_config')
+      .select('key, value')
+      .in('key', ['rereg_open_date', 'rereg_close_date'])
+      .then(({ data }: any) => {
+        if (!data) return;
+        const map: Record<string, string> = {};
+        data.forEach((r: any) => { map[r.key] = r.value; });
+        if (map.rereg_open_date)  setOpenDate(new Date(map.rereg_open_date));
+        if (map.rereg_close_date) setCloseDate(new Date(map.rereg_close_date + 'T23:59:59'));
+        setConfigLoaded(true);
+      });
+  }, []);
 
   useEffect(() => {
     if (profile) {
@@ -126,6 +132,9 @@ export default function ReregistrationPage() {
 
   // Belum dibuka
   if (!isOpen) {
+    const openLabel = openDate
+      ? openDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+      : '—';
     return (
       <div className="space-y-5">
         <h1 className="page-title">Daftar Ulang</h1>
@@ -133,9 +142,11 @@ export default function ReregistrationPage() {
           <Lock size={48} className="mx-auto text-gray-300 mb-4" />
           <h2 className="font-bold text-xl text-gray-700">Daftar Ulang Belum Dibuka</h2>
           <p className="text-gray-500 text-sm mt-2">
-            Daftar ulang akan dibuka pada <strong>1 Juli {new Date().getFullYear()}</strong>.
+            Daftar ulang akan dibuka pada <strong>{openLabel}</strong>.
           </p>
-          <p className="text-brand-800 font-bold text-2xl mt-4">{daysUntilOpen} hari lagi</p>
+          {daysUntilOpen > 0 && (
+            <p className="text-brand-800 font-bold text-2xl mt-4">{daysUntilOpen} hari lagi</p>
+          )}
           <p className="text-xs text-gray-400 mt-1">
             Pastikan kamu siap memperbarui data sekolah, nomor HP, dan informasi lainnya.
           </p>
@@ -170,7 +181,7 @@ export default function ReregistrationPage() {
           <RefreshCw size={24} className="text-brand-800" /> Daftar Ulang
         </h1>
         <p className="page-subtitle">
-          Perbarui data kamu untuk periode {new Date().getFullYear()}/{new Date().getFullYear() + 1}
+          Perbarui data kamu untuk periode {openDate ? openDate.getFullYear() : new Date().getFullYear()}/{(openDate ? openDate.getFullYear() : new Date().getFullYear()) + 1}
         </p>
       </div>
 
@@ -179,7 +190,9 @@ export default function ReregistrationPage() {
         <p className="text-xs text-blue-700 mt-1">
           Pastikan semua data sudah benar — terutama <strong>sekolah</strong>, <strong>nomor HP</strong>, dan <strong>pendidikan</strong>.
           Data ini akan digunakan untuk penjadwalan Misa Harian.
-          Daftar ulang ditutup pada <strong>31 Juli {new Date().getFullYear()}</strong>.
+          {closeDate && (
+            <> Daftar ulang ditutup pada <strong>{closeDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.</>
+          )}
         </p>
       </div>
 

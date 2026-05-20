@@ -32,6 +32,8 @@ import toast from 'react-hot-toast';
 
 // ── Konstanta ────────────────────────────────────────────────────────────────
 const CONFIG_GROUPS = {
+  'Pendaftaran Baru':    ['reg_open_date', 'reg_close_date'],
+  'Daftar Ulang':        ['rereg_open_date', 'rereg_close_date', 'rereg_tahun'],
   'Opt-in Misa Harian':  ['window_optin_harian_start', 'window_optin_harian_end'],
   'Penjadwalan':         ['prioritas_sma_smk_interval', 'max_hari_tanpa_jadwal'],
   'Tukar Jadwal':        ['swap_expire_hours'],
@@ -408,6 +410,32 @@ export default function AdminPage() {
     }
   }
 
+  // ── Load + Save configs ───────────────────────────────────────────────────
+  const loadConfigs = useCallback(async () => {
+    const allKeys = Object.values(CONFIG_GROUPS).flat();
+    const { data } = await supabase
+      .from('system_config')
+      .select('key, value')
+      .in('key', allKeys);
+    if (data) {
+      const map: Record<string, string> = {};
+      data.forEach((r: any) => { map[r.key] = r.value; });
+      setConfigs(map);
+    }
+  }, []);
+
+  useEffect(() => { loadConfigs(); }, [loadConfigs]);
+
+  async function saveConfig(key: string, value: string) {
+    setSaving(true);
+    const { error } = await supabase
+      .from('system_config')
+      .upsert({ key, value, updated_by: currentUser?.id, updated_at: new Date().toISOString() }, { onConflict: 'key' });
+    setSaving(false);
+    if (error) toast.error('Gagal simpan: ' + error.message);
+    else toast.success(`${key} disimpan`);
+  }
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
@@ -544,11 +572,51 @@ export default function AdminPage() {
         </div>
       </section>
 
-      {/*
-        ── Section lain (Config, Role Management, dll) ──
-        Letakkan section lainnya yang sudah ada di sini.
-        Tidak ada yang perlu diubah pada section selain Mass Reset.
-      */}
+      {/* ── Section: Konfigurasi Sistem ── */}
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-blue-50">
+          <div className="p-2 bg-indigo-100 rounded-lg">
+            <Settings className="text-indigo-600" size={20} />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-900">Konfigurasi Sistem</h2>
+            <p className="text-xs text-gray-500">Kelola window pendaftaran, daftar ulang, dan parameter sistem</p>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {Object.entries(CONFIG_GROUPS).map(([groupLabel, keys]) => (
+            <div key={groupLabel}>
+              <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-1 border-b border-gray-100">
+                {groupLabel}
+              </h3>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {keys.map(key => (
+                  <div key={key}>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">{key}</label>
+                    <div className="flex gap-2">
+                      <input
+                        className="input flex-1 text-sm font-mono"
+                        value={configs[key] ?? ''}
+                        onChange={e => setConfigs(c => ({ ...c, [key]: e.target.value }))}
+                        placeholder="—"
+                        type={key.endsWith('_date') ? 'date' : 'text'}
+                      />
+                      <button
+                        onClick={() => saveConfig(key, configs[key] ?? '')}
+                        disabled={saving}
+                        className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                      >
+                        <Save size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

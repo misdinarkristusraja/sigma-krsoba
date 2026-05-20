@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { toNickname, formatHP, PENDIDIKAN_OPTIONS } from '../lib/utils';
-import { Church, Upload, CheckCircle, AlertCircle, ChevronDown } from 'lucide-react';
+import { Church, Upload, CheckCircle, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // Daftar lingkungan Paroki Kristus Raja Solo Baru
@@ -30,10 +30,29 @@ const SEKOLAH_SAMPLE = [
 ];
 
 export default function RegisterPage() {
-  const navigate = useNavigate();
-  const [step, setStep] = useState(1); // 1=data diri, 2=sekolah & orang tua, 3=sukses
+  const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [nicknameStatus, setNicknameStatus] = useState<'checking'|'ok'|'taken'|null>(null);
+  const [regOpenDate,  setRegOpenDate]  = useState<Date | null>(null);
+  const [regCloseDate, setRegCloseDate] = useState<Date | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from('system_config')
+      .select('key, value')
+      .in('key', ['reg_open_date', 'reg_close_date'])
+      .then(({ data }: any) => {
+        const map: Record<string, string> = {};
+        (data || []).forEach((r: any) => { map[r.key] = r.value; });
+        if (map.reg_open_date)  setRegOpenDate(new Date(map.reg_open_date));
+        if (map.reg_close_date) setRegCloseDate(new Date(map.reg_close_date + 'T23:59:59'));
+      });
+  }, []);
+
+  const now = new Date();
+  const regIsOpen = regOpenDate && regCloseDate
+    ? now >= regOpenDate && now <= regCloseDate
+    : true; // default open jika belum ada config
   const [sekolahQuery, setSekolahQuery] = useState('');
   const [sekolahSuggestions, setSekolahSuggestions] = useState<string[]>([]);
   const [showSekolah, setShowSekolah] = useState(false);
@@ -157,6 +176,31 @@ export default function RegisterPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  if (!regIsOpen) {
+    const openLabel  = regOpenDate  ? regOpenDate.toLocaleDateString('id-ID',  { day:'numeric', month:'long', year:'numeric' }) : '—';
+    const closeLabel = regCloseDate ? regCloseDate.toLocaleDateString('id-ID', { day:'numeric', month:'long', year:'numeric' }) : '—';
+    const isPast = regCloseDate && new Date() > regCloseDate;
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-brand-800 to-brand-950 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center">
+          <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">{isPast ? '🔒' : '⏳'}</span>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            {isPast ? 'Pendaftaran Sudah Ditutup' : 'Pendaftaran Belum Dibuka'}
+          </h2>
+          <p className="text-gray-500 text-sm mb-2">
+            {isPast
+              ? `Pendaftaran baru telah ditutup pada ${closeLabel}.`
+              : `Pendaftaran baru dibuka ${openLabel} – ${closeLabel}.`}
+          </p>
+          <p className="text-gray-400 text-xs mb-6">Hubungi Pengurus jika perlu informasi lebih lanjut.</p>
+          <Link to="/login" className="btn-primary w-full">Kembali ke Login</Link>
+        </div>
+      </div>
+    );
   }
 
   if (step === 3) {
