@@ -32,17 +32,16 @@ export default function AttendancePage() {
   const [manualNick,  setManualNick]  = useState('');
   const [manualLoading, setManualLoading] = useState(false);
 
-  // ── Load events ──────────────────────────────────────────────────
+  // ── Load acara ───────────────────────────────────────────────────
   const loadEvents = useCallback(async () => {
     setLoadingEvs(true);
     const { data, error } = await supabase
-      .from('events')
-      .select('id, nama_event, perayaan, tipe_event, tanggal_tugas, tanggal_latihan, status_event')
-      .in('status_event', ['Akan_Datang', 'Berlangsung', 'Sudah_Lewat'])
-      .not('is_draft', 'eq', true)
-      .order('tanggal_tugas', { ascending: false })
+      .from('acara')
+      .select('id, nama, tipe, tanggal, jam_mulai, jam_selesai, lokasi, is_active')
+      .eq('is_active', true)
+      .order('tanggal', { ascending: false })
       .limit(60);
-    if (error) toast.error('Gagal memuat event: ' + error.message);
+    if (error) toast.error('Gagal memuat acara: ' + error.message);
     setEvents(data ?? []);
     setLoadingEvs(false);
   }, []);
@@ -152,7 +151,7 @@ export default function AttendancePage() {
       .from('scan_records')
       .select('id, timestamp')
       .eq('user_id', member.id)
-      .eq('event_id', selectedEv.id)
+      .eq('acara_id', selectedEv.id)
       .gte('timestamp', since)
       .limit(1)
       .maybeSingle();
@@ -167,12 +166,13 @@ export default function AttendancePage() {
       return;
     }
 
-    // Tentukan scan_type dari tipe event
-    const scanType = selectedEv.tipe_event === 'Latihan' ? 'latihan' : 'tugas';
+    // Tentukan scan_type dari tipe acara
+    const scanType = selectedEv.tipe === 'Latihan' ? 'latihan' : 'tugas';
 
     const { error } = await supabase.from('scan_records').insert({
       user_id:         member.id,
-      event_id:        selectedEv.id,
+      event_id:        null,
+      acara_id:        selectedEv.id,
       scanner_user_id: profile?.id,
       scan_type:       scanType,
       is_walk_in:      false,
@@ -273,7 +273,7 @@ export default function AttendancePage() {
               <option value="">— Pilih acara —</option>
               {events.map(ev => (
                 <option key={ev.id} value={ev.id}>
-                  {ev.tanggal_tugas || ev.tanggal_latihan} · {ev.perayaan || ev.nama_event}
+                  {ev.tanggal} · {ev.nama} ({ev.tipe})
                 </option>
               ))}
             </select>
@@ -282,7 +282,9 @@ export default function AttendancePage() {
         )}
         {selectedEv && (
           <p className="text-xs text-gray-400 mt-1">
-            {selectedEv.tipe_event} · {selectedEv.status_event}
+            {selectedEv.tipe}
+            {selectedEv.jam_mulai ? ` · ${selectedEv.jam_mulai}` : ''}
+            {selectedEv.lokasi ? ` · ${selectedEv.lokasi}` : ''}
           </p>
         )}
       </div>
