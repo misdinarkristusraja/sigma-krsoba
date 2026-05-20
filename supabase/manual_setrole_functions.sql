@@ -1,9 +1,14 @@
--- ----------------------------------------------------------------
--- admin_reset_password â€” reset 1 user. Caller harus Administrator.
--- Owned by supabase_auth_admin agar bisa tulis auth.*
--- ----------------------------------------------------------------
-SET ROLE supabase_auth_admin;
+-- ================================================================
+-- SIGMA -- Admin Functions that write to auth.*
+-- Run this in: Supabase Dashboard -> SQL Editor
+-- ================================================================
+-- These functions need owner = supabase_auth_admin to write auth.*
+-- We create them as postgres, then ALTER OWNER.
+-- ================================================================
 
+-- ----------------------------------------------------------------
+-- admin_reset_password -- reset 1 user password
+-- ----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.admin_reset_password(
   p_target_id UUID,
   p_new_password TEXT
@@ -110,8 +115,10 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
+ALTER FUNCTION public.admin_reset_password(UUID, TEXT) OWNER TO supabase_auth_admin;
+
 -- ----------------------------------------------------------------
--- admin_provision_all â€” mass reset password
+-- admin_provision_all -- mass reset password for all members
 -- ----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.admin_provision_all()
 RETURNS JSONB
@@ -199,9 +206,11 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
+ALTER FUNCTION public.admin_provision_all() OWNER TO supabase_auth_admin;
+
 -- ----------------------------------------------------------------
--- admin_approve_registration â€” approve pending registration
--- Membuat auth.users + auth.identities + public.users dalam 1 RPC
+-- admin_approve_registration -- approve pending registration
+-- Creates auth.users + auth.identities + public.users in 1 RPC
 -- ----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.admin_approve_registration(
   p_registration_id UUID,
@@ -243,7 +252,6 @@ BEGIN
   v_email := COALESCE(NULLIF(trim(v_reg.email), ''),
                       v_reg.nickname || '@sigma.krsoba.id');
 
-  -- Cek nickname unique
   IF EXISTS (SELECT 1 FROM public.users WHERE LOWER(nickname) = LOWER(v_reg.nickname)) THEN
     RETURN jsonb_build_object('ok', false, 'error', 'NICKNAME_TAKEN',
       'message', 'Nickname ' || v_reg.nickname || ' sudah dipakai.');
@@ -262,7 +270,6 @@ BEGIN
   SELECT instance_id INTO v_inst_id FROM auth.users LIMIT 1;
   v_inst_id := COALESCE(v_inst_id, '00000000-0000-0000-0000-000000000000'::UUID);
 
-  -- Insert auth.users
   INSERT INTO auth.users (
     id, instance_id, aud, role, email, encrypted_password,
     email_confirmed_at, created_at, updated_at,
@@ -277,7 +284,6 @@ BEGIN
     '{}'::JSONB, false, '', '', ''
   );
 
-  -- Insert auth.identities
   INSERT INTO auth.identities (
     id, user_id, identity_data, provider, provider_id,
     last_sign_in_at, created_at, updated_at
@@ -288,7 +294,6 @@ BEGIN
     'email', v_email, NOW(), NOW(), NOW()
   );
 
-  -- Insert public.users
   INSERT INTO public.users (
     id, nickname, myid, nama_lengkap, nama_panggilan, tanggal_lahir,
     pendidikan, sekolah, is_tarakanita, wilayah, lingkungan,
@@ -324,11 +329,14 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$;
 
-RESET ROLE;
+ALTER FUNCTION public.admin_approve_registration(UUID, VARCHAR, TEXT) OWNER TO supabase_auth_admin;
 
-GRANT EXECUTE ON FUNCTION public.admin_reset_password(UUID, TEXT)        TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.admin_provision_all()                   TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION public.admin_approve_registration(UUID, VARCHAR, TEXT) TO authenticated, service_role;
-REVOKE EXECUTE ON FUNCTION public.admin_reset_password(UUID, TEXT)       FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.admin_provision_all()                  FROM anon, PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.admin_approve_registration(UUID, VARCHAR, TEXT) FROM anon, PUBLIC;
+-- ----------------------------------------------------------------
+-- Grants
+-- ----------------------------------------------------------------
+GRANT EXECUTE ON FUNCTION public.admin_reset_password(UUID, TEXT)                    TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.admin_provision_all()                               TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION public.admin_approve_registration(UUID, VARCHAR, TEXT)     TO authenticated, service_role;
+REVOKE EXECUTE ON FUNCTION public.admin_reset_password(UUID, TEXT)                   FROM anon, PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.admin_provision_all()                              FROM anon, PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.admin_approve_registration(UUID, VARCHAR, TEXT)    FROM anon, PUBLIC;
