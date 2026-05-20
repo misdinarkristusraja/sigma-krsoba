@@ -4,7 +4,8 @@ const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
 import {
   CalendarPlus, Pencil, Trash2, Plus, X,
-  CheckCircle2, Calendar, Clock, MapPin, Tag, Loader2,
+  CheckCircle2, Clock, MapPin, Tag, Loader2,
+  Users, ChevronRight, ArrowLeft, Download,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -26,6 +27,19 @@ interface Acara {
   created_at: string;
 }
 
+interface Peserta {
+  id: string;
+  timestamp: string;
+  scan_type: string;
+  is_anomaly: boolean;
+  users: {
+    nama_panggilan: string;
+    nama_lengkap: string;
+    nickname: string;
+    lingkungan: string | null;
+  };
+}
+
 const EMPTY_FORM = {
   nama: '',
   tipe: 'Lainnya',
@@ -37,24 +51,39 @@ const EMPTY_FORM = {
   is_active: true,
 };
 
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('id-ID', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Jakarta',
+  });
+}
+
 export default function AcaraPage() {
   const { profile } = useAuth();
+
+  // ── List state ───────────────────────────────────────────────
   const [acaraList, setAcaraList] = useState<Acara[]>([]);
   const [loading,   setLoading]   = useState(true);
+  const [filter,    setFilter]    = useState<'all' | 'active' | 'past'>('active');
+
+  // ── Form state ───────────────────────────────────────────────
   const [showForm,  setShowForm]  = useState(false);
   const [editId,    setEditId]    = useState<string | null>(null);
   const [form,      setForm]      = useState({ ...EMPTY_FORM });
   const [saving,    setSaving]    = useState(false);
   const [deleting,  setDeleting]  = useState<string | null>(null);
-  const [filter,    setFilter]    = useState<'all' | 'active' | 'past'>('active');
 
+  // ── Daftar hadir state ───────────────────────────────────────
+  const [selectedAcara, setSelectedAcara] = useState<Acara | null>(null);
+  const [peserta,       setPeserta]       = useState<Peserta[]>([]);
+  const [loadingPes,    setLoadingPes]    = useState(false);
+
+  // ── Load acara list ──────────────────────────────────────────
   const load = useCallback(async () => {
     setLoading(true);
-    const q = supabase
+    const { data, error } = await supabase
       .from('acara')
       .select('*')
       .order('tanggal', { ascending: false });
-    const { data, error } = await q;
     if (error) toast.error('Gagal memuat acara: ' + error.message);
     setAcaraList(data ?? []);
     setLoading(false);
@@ -62,6 +91,56 @@ export default function AcaraPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // ── Load peserta ─────────────────────────────────────────────
+  const loadPeserta = useCallback(async (acaraId: string) => {
+    setLoadingPes(true);
+    const { data, error } = await supabase
+      .from('scan_records')
+      .select(`
+        id, timestamp, scan_type, is_anomaly,
+        users ( nama_panggilan, nama_lengkap, nickname, lingkungan )
+      `)
+      .eq('acara_id', acaraId)
+      .order('timestamp', { ascending: true });
+    if (error) toast.error('Gagal memuat daftar hadir: ' + error.message);
+    setPeserta(data ?? []);
+    setLoadingPes(false);
+  }, []);
+
+  function openDaftarHadir(a: Acara) {
+    setSelectedAcara(a);
+    loadPeserta(a.id);
+  }
+
+  function closeDaftarHadir() {
+    setSelectedAcara(null);
+    setPeserta([]);
+  }
+
+  // ── Export CSV ───────────────────────────────────────────────
+  function exportCSV() {
+    if (!selectedAcara || !peserta.length) return;
+    const rows = [
+      ['No', 'Nama Panggilan', 'Nama Lengkap', 'Lingkungan', 'Waktu Hadir'],
+      ...peserta.map((p, i) => [
+        i + 1,
+        p.users?.nama_panggilan ?? '',
+        p.users?.nama_lengkap ?? '',
+        p.users?.lingkungan ?? '',
+        fmtTime(p.timestamp),
+      ]),
+    ];
+    const csv = rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `hadir_${selectedAcara.nama.replace(/\s+/g, '_')}_${selectedAcara.tanggal}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ── Form handlers ────────────────────────────────────────────
   function openNew() {
     setEditId(null);
     setForm({ ...EMPTY_FORM });
@@ -83,17 +162,11 @@ export default function AcaraPage() {
     setShowForm(true);
   }
 
-  function closeForm() {
-    setShowForm(false);
-    setEditId(null);
-  }
+  function closeForm() { setShowForm(false); setEditId(null); }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.nama.trim() || !form.tanggal) {
-      toast.error('Nama dan tanggal wajib diisi');
-      return;
-    }
+    if (!form.nama.trim() || !form.tanggal) { toast.error('Nama dan tanggal wajib diisi'); return; }
     setSaving(true);
     const payload = {
       nama:        form.nama.trim(),
@@ -106,24 +179,14 @@ export default function AcaraPage() {
       is_active:   form.is_active,
       updated_at:  new Date().toISOString(),
     };
-
     let error: any;
     if (editId) {
       ({ error } = await supabase.from('acara').update(payload).eq('id', editId));
     } else {
-      ({ error } = await supabase.from('acara').insert({
-        ...payload,
-        created_by: profile?.id,
-      }));
+      ({ error } = await supabase.from('acara').insert({ ...payload, created_by: profile?.id }));
     }
-
-    if (error) {
-      toast.error('Gagal menyimpan: ' + error.message);
-    } else {
-      toast.success(editId ? 'Acara diperbarui' : 'Acara ditambahkan');
-      closeForm();
-      load();
-    }
+    if (error) { toast.error('Gagal menyimpan: ' + error.message); }
+    else { toast.success(editId ? 'Acara diperbarui' : 'Acara ditambahkan'); closeForm(); load(); }
     setSaving(false);
   }
 
@@ -136,13 +199,104 @@ export default function AcaraPage() {
     setDeleting(null);
   }
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today    = new Date().toISOString().slice(0, 10);
   const filtered = acaraList.filter(a => {
     if (filter === 'active') return a.is_active && a.tanggal >= today;
     if (filter === 'past')   return a.tanggal < today;
     return true;
   });
 
+  // ── Daftar Hadir View ────────────────────────────────────────
+  if (selectedAcara) {
+    return (
+      <div className="space-y-4 max-w-2xl mx-auto">
+        {/* Back + header */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={closeDaftarHadir}
+            className="p-2 rounded-xl hover:bg-gray-100 text-gray-500"
+          >
+            <ArrowLeft size={18} />
+          </button>
+          <div className="flex-1 min-w-0">
+            <h1 className="page-title mb-0 truncate">{selectedAcara.nama}</h1>
+            <p className="text-sm text-gray-400 mt-0.5">
+              {new Date(selectedAcara.tanggal + 'T00:00:00').toLocaleDateString('id-ID', {
+                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+              })}
+              {selectedAcara.jam_mulai ? ` · ${selectedAcara.jam_mulai}` : ''}
+              {selectedAcara.lokasi ? ` · ${selectedAcara.lokasi}` : ''}
+            </p>
+          </div>
+          {peserta.length > 0 && (
+            <button
+              onClick={exportCSV}
+              className="btn-secondary gap-1.5 text-sm flex-shrink-0"
+              title="Export CSV"
+            >
+              <Download size={15} /> CSV
+            </button>
+          )}
+        </div>
+
+        {/* Stats bar */}
+        <div className="card py-3 px-4 flex items-center gap-3">
+          <Users size={18} className="text-brand-700" />
+          <span className="font-semibold text-brand-800 text-lg">{peserta.length}</span>
+          <span className="text-gray-500 text-sm">peserta hadir</span>
+        </div>
+
+        {/* Peserta list */}
+        {loadingPes ? (
+          <div className="card py-12 flex flex-col items-center gap-3 text-gray-400">
+            <Loader2 size={28} className="animate-spin" />
+            <span className="text-sm">Memuat daftar hadir...</span>
+          </div>
+        ) : peserta.length === 0 ? (
+          <div className="card py-12 text-center text-gray-400 text-sm">
+            Belum ada yang hadir tercatat untuk acara ini.
+          </div>
+        ) : (
+          <div className="card p-0 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-xs text-gray-400 uppercase tracking-wide text-left">
+                  <th className="px-4 py-3 font-medium w-8">#</th>
+                  <th className="px-4 py-3 font-medium">Nama</th>
+                  <th className="px-4 py-3 font-medium hidden sm:table-cell">Lingkungan</th>
+                  <th className="px-4 py-3 font-medium text-right">Waktu</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {peserta.map((p, i) => (
+                  <tr key={p.id} className={p.is_anomaly ? 'bg-yellow-50/50' : 'hover:bg-gray-50/50'}>
+                    <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-gray-800">{p.users?.nama_panggilan}</p>
+                      <p className="text-xs text-gray-400">{p.users?.nickname}</p>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">
+                      {p.users?.lingkungan ?? <span className="text-gray-300">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <span className="font-mono text-xs text-gray-600">{fmtTime(p.timestamp)}</span>
+                      {p.is_anomaly && (
+                        <span className="ml-1.5 text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full">
+                          anomali
+                        </span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ── Main List View ───────────────────────────────────────────
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -223,6 +377,13 @@ export default function AcaraPage() {
                   {/* Actions */}
                   <div className="flex gap-1.5">
                     <button
+                      onClick={() => openDaftarHadir(a)}
+                      className="p-1.5 rounded-lg hover:bg-brand-50 text-gray-400 hover:text-brand-800"
+                      title="Daftar Hadir"
+                    >
+                      <Users size={15} />
+                    </button>
+                    <button
                       onClick={() => openEdit(a)}
                       className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-brand-800"
                       title="Edit"
@@ -236,6 +397,12 @@ export default function AcaraPage() {
                       title="Hapus"
                     >
                       {deleting === a.id ? <Loader2 size={15} className="animate-spin" /> : <Trash2 size={15} />}
+                    </button>
+                    <button
+                      onClick={() => openDaftarHadir(a)}
+                      className="p-1.5 rounded-lg text-gray-300 hover:text-gray-500"
+                    >
+                      <ChevronRight size={15} />
                     </button>
                   </div>
                 </div>
@@ -266,7 +433,6 @@ export default function AcaraPage() {
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/50 overflow-y-auto">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md my-4">
-            {/* Modal header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
               <h2 className="font-semibold text-gray-800 flex items-center gap-2">
                 {editId ? <Pencil size={17} /> : <Plus size={17} />}
@@ -278,7 +444,6 @@ export default function AcaraPage() {
             </div>
 
             <form onSubmit={handleSave} className="p-5 space-y-4">
-              {/* Nama */}
               <div>
                 <label className="label mb-1">Nama Acara <span className="text-red-500">*</span></label>
                 <input
@@ -290,7 +455,6 @@ export default function AcaraPage() {
                 />
               </div>
 
-              {/* Tipe */}
               <div>
                 <label className="label mb-1">Tipe Acara</label>
                 <select
@@ -302,7 +466,6 @@ export default function AcaraPage() {
                 </select>
               </div>
 
-              {/* Tanggal */}
               <div>
                 <label className="label mb-1">Tanggal <span className="text-red-500">*</span></label>
                 <input
@@ -314,7 +477,6 @@ export default function AcaraPage() {
                 />
               </div>
 
-              {/* Jam */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="label mb-1">Jam Mulai</label>
@@ -336,7 +498,6 @@ export default function AcaraPage() {
                 </div>
               </div>
 
-              {/* Lokasi */}
               <div>
                 <label className="label mb-1">Lokasi</label>
                 <input
@@ -347,7 +508,6 @@ export default function AcaraPage() {
                 />
               </div>
 
-              {/* Deskripsi */}
               <div>
                 <label className="label mb-1">Deskripsi</label>
                 <textarea
@@ -359,7 +519,6 @@ export default function AcaraPage() {
                 />
               </div>
 
-              {/* Is active toggle */}
               <label className="flex items-center gap-3 cursor-pointer select-none">
                 <div
                   onClick={() => setForm(f => ({ ...f, is_active: !f.is_active }))}
@@ -376,20 +535,11 @@ export default function AcaraPage() {
                 <span className="text-sm text-gray-700">Acara aktif (tampil di daftar presensi)</span>
               </label>
 
-              {/* Buttons */}
               <div className="flex gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={closeForm}
-                  className="btn-secondary flex-1"
-                >
+                <button type="button" onClick={closeForm} className="btn-secondary flex-1">
                   Batal
                 </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="btn-primary flex-1 gap-1.5"
-                >
+                <button type="submit" disabled={saving} className="btn-primary flex-1 gap-1.5">
                   {saving
                     ? <><Loader2 size={15} className="animate-spin" /> Menyimpan...</>
                     : <><CheckCircle2 size={15} /> Simpan</>
