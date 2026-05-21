@@ -24,34 +24,27 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user,         setUser]         = useState<User | null>(null);
   const [profile,      setProfile]      = useState<Profile | null>(null);
-  const [loading,      setLoading]      = useState(true);
-  // FIX BUG-006: tambahkan state profileError yang jelas.
-  // Sebelumnya, semua jalur error (RPC gagal / data null) menggunakan fallback
-  // { role: 'Misdinar_Aktif' } — ini berbahaya karena akun Pending bisa mendapat
-  // akses seolah-olah sudah diapprove jika ada gangguan koneksi sementara.
-  // Sekarang: error → profileError=true, profile=null.
-  // ProtectedRoute di App.jsx menangani kondisi ini dengan pesan informatif.
+  // authReady: true once onAuthStateChange fires its first event (INITIAL_SESSION)
+  const [authReady,    setAuthReady]    = useState(false);
   const [profileError, setProfileError] = useState(false);
+
+  // loading = true until we know auth state AND profile result
+  const loading = !authReady;
 
   const fetchProfile = useCallback(async () => {
     try {
       const { data, error } = await supabase.rpc('get_my_profile');
-
       if (error) {
         console.error('fetchProfile RPC error:', error.message);
-        // Jangan beri role default — set error state agar UI menampilkan pesan jelas
         setProfileError(true);
         setProfile(null);
         return;
       }
-
       if (data) {
         setProfileError(false);
         setProfile(data);
       } else {
-        // Profil tidak ditemukan: akun mungkin belum diapprove (status Pending)
-        // atau ada masalah RLS. Jangan grant akses default.
-        console.warn('fetchProfile: profil tidak ditemukan (akun mungkin belum diapprove)');
+        console.warn('fetchProfile: profil tidak ditemukan');
         setProfileError(true);
         setProfile(null);
       }
@@ -62,24 +55,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
+  // Step 1: listen for auth state — synchronous only, no async work here.
+  // onAuthStateChange does NOT await async callbacks, so doing async work
+  // inside it causes setLoading(false) to race with fetchProfile completion.
   useEffect(() => {
-    // onAuthStateChange fires INITIAL_SESSION on mount — use it as single source of truth.
-    // Do NOT also call fetchProfile from getSession to avoid double-fetch race condition
-    // where the second call (via setTimeout) can land first with an error, setting
-    // profileError=true before the first call resolves with valid data.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile();
-      } else {
+      if (!session?.user) {
         setProfile(null);
         setProfileError(false);
       }
-      setLoading(false);
+      // Mark auth as resolved after the first event (INITIAL_SESSION on mount)
+      setAuthReady(true);
     });
-
     return () => subscription.unsubscribe();
-  }, [fetchProfile]);
+  }, []);
+
+  // Step 2: fetch profile whenever user changes — fully decoupled from auth listener.
+  useEffect(() => {
+    if (!authReady) return;   // wait for first auth event
+    if (user) {
+      fetchProfile();
+    }
+  }, [user, authReady, fetchProfile]);
 
   // Login dengan USERNAME saja (bukan email)
   async function signIn(username: string, password: string) {
