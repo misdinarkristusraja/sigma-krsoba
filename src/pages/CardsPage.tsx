@@ -81,7 +81,7 @@ async function drawCard(member: any, qrDataUrl: string, type: string): Promise<s
   }
   c.restore();
 
-  const QS = H - 16, QX = W - QS - 10, QY = 8;
+  const QS = 148, QX = W - QS - 14, QY = Math.floor((H - QS) / 2);
 
   // QR background
   c.save();
@@ -159,10 +159,12 @@ async function drawCard(member: any, qrDataUrl: string, type: string): Promise<s
   c.fillStyle = txtFaint;
   c.fillText('@misdinarkrsoba', LX, H - 16);
 
-  // Tagline — bottom left
+  // Tagline — under QR, centered
   c.font = 'italic 7.5px Arial';
   c.fillStyle = txtFaint;
-  c.fillText('Serve Lord With Gladness', LX, H - 8);
+  c.textAlign = 'center';
+  c.fillText('Serve Lord With Gladness', QX + QS / 2, H - 8);
+  c.textAlign = 'left';
 
   // Border outline
   c.save();
