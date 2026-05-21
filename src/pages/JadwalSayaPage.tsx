@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, RefreshCw, ChevronDown, ChevronUp, ArrowLeftRight, X } from 'lucide-react';
+import { buildWALink } from '../lib/utils';
 import toast from 'react-hot-toast';
 
 const WARNA_DOT: Record<string, string> = {
@@ -50,11 +51,16 @@ type Row = {
 };
 
 export default function JadwalSayaPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [rows,    setRows]    = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter,  setFilter]  = useState<'mendatang' | 'semua'>('mendatang');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // Swap modal state
+  const [swapRow,    setSwapRow]    = useState<Row | null>(null);
+  const [swapAlasan, setSwapAlasan] = useState('');
+  const [swapLoading, setSwapLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!user?.id) return;
@@ -121,6 +127,56 @@ export default function JadwalSayaPage() {
     const a = ev[`pic_hp_slot_${slot}a`];
     const b = ev[`pic_hp_slot_${slot}b`];
     return [a, b].filter(Boolean)[0] || null;
+  }
+
+  async function submitSwap() {
+    if (!swapRow || !swapAlasan.trim()) {
+      toast.error('Isi alasan terlebih dahulu'); return;
+    }
+    setSwapLoading(true);
+    try {
+      const ev   = swapRow.event! as any;
+      const slot = swapRow.slot_number;
+      const picNick = ev[`pic_slot_${slot}a`];
+      let picUserId: string | null = null;
+      let picWaLink = '';
+
+      if (picNick) {
+        const { data: picUser } = await supabase.from('users')
+          .select('id, hp_anak, hp_ortu').eq('nickname', picNick).maybeSingle();
+        if (picUser) {
+          picUserId = picUser.id;
+          const hp = picUser.hp_anak || picUser.hp_ortu || '';
+          picWaLink = buildWALink(hp,
+            `Halo ${picNick}, saya ${profile?.nama_panggilan} ingin tukar jadwal ` +
+            `${ev.perayaan || ev.nama_event} (${ev.tanggal_tugas}) Slot ${slot}. ` +
+            `Alasan: ${swapAlasan}. Mohon konfirmasi ya 🙏`
+          );
+        }
+      }
+
+      const { error } = await supabase.from('swap_requests').insert({
+        requester_id:  user!.id,
+        assignment_id: swapRow.id,
+        alasan:        swapAlasan,
+        pic_user_id:   picUserId,
+        pic_wa_link:   picWaLink,
+        status:        'Pending',
+        expires_at:    new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      });
+      if (error) throw error;
+
+      toast.success('Request tukar terkirim!');
+      setSwapRow(null);
+      setSwapAlasan('');
+      if (picWaLink) setTimeout(() => {
+        if (confirm('Buka WhatsApp untuk hubungi PIC?')) window.open(picWaLink, '_blank');
+      }, 400);
+    } catch (err: any) {
+      toast.error('Gagal: ' + err.message);
+    } finally {
+      setSwapLoading(false);
+    }
   }
 
   const today = new Date().toISOString().split('T')[0];
@@ -253,9 +309,20 @@ export default function JadwalSayaPage() {
                         )}
                       </td>
 
-                      {/* Expand toggle */}
+                      {/* Expand toggle + swap */}
                       <td className="px-3 py-3 text-gray-400">
-                        {isExpand ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        <div className="flex items-center gap-1">
+                          {!isPast && (
+                            <button
+                              onClick={e => { e.stopPropagation(); setSwapRow(row); setSwapAlasan(''); }}
+                              className="p-1 rounded text-gray-400 hover:text-brand-800 hover:bg-brand-50 transition-colors"
+                              title="Request tukar jadwal"
+                            >
+                              <ArrowLeftRight size={13} />
+                            </button>
+                          )}
+                          {isExpand ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </div>
                       </td>
                     </tr>
 
@@ -313,6 +380,53 @@ export default function JadwalSayaPage() {
 
           <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-400">
             {rows.length} jadwal • Klik baris untuk detail PIC
+          </div>
+        </div>
+      )}
+      {/* Swap request modal */}
+      {swapRow && swapRow.event && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <ArrowLeftRight size={18} className="text-brand-800" /> Request Tukar Jadwal
+              </h3>
+              <button onClick={() => setSwapRow(null)} className="p-1 text-gray-400 hover:text-gray-700">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-3 mb-4 text-sm">
+              <p className="font-semibold text-gray-800">{swapRow.event.perayaan || swapRow.event.nama_event}</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                {formatTgl(swapRow.event.tanggal_tugas)} · Slot {swapRow.slot_number}
+              </p>
+            </div>
+            <div>
+              <label className="label">Alasan Tukar *</label>
+              <textarea
+                className="input h-24 resize-none"
+                value={swapAlasan}
+                onChange={e => setSwapAlasan(e.target.value)}
+                placeholder="Contoh: ada acara keluarga, sakit, dll."
+                autoFocus
+              />
+            </div>
+            <div className="bg-blue-50 rounded-xl p-3 mt-3 text-xs text-blue-700">
+              Setelah submit → tombol WA PIC muncul di halaman Tukar Jadwal → hubungi PIC → setelah deal, tawarkan ke papan.
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={submitSwap}
+                disabled={swapLoading || !swapAlasan.trim()}
+                className="btn-primary flex-1 gap-2"
+              >
+                {swapLoading
+                  ? <><div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Mengirim...</>
+                  : <><ArrowLeftRight size={15} /> Submit Request</>
+                }
+              </button>
+              <button onClick={() => setSwapRow(null)} className="btn-secondary">Batal</button>
+            </div>
           </div>
         </div>
       )}

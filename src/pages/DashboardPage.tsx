@@ -307,9 +307,14 @@ export default function DashboardPage() {
           {/* My schedule */}
           {mySchedule.length > 0 && (
             <div className="card">
-              <h2 className="font-bold text-gray-900 flex items-center gap-2 mb-3">
-                <Clock size={18} className="text-brand-800" /> Jadwal Kamu
-              </h2>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="font-bold text-gray-900 flex items-center gap-2">
+                  <Clock size={18} className="text-brand-800" /> Jadwal Kamu
+                </h2>
+                <Link to="/jadwal-saya" className="text-xs text-brand-800 hover:underline flex items-center gap-1">
+                  Lihat semua <ChevronRight size={14} />
+                </Link>
+              </div>
               <div className="space-y-2">
                 {mySchedule.map((a, i) => (
                   <div key={i} className="flex items-center gap-3 p-3 bg-brand-50 rounded-xl">
