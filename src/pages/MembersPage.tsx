@@ -292,8 +292,7 @@ export default function MembersPage() {
                     <th>MyID / Checksum</th>
                     <th>Pendidikan</th>
                     <th>Lingkungan</th>
-                    <th>Status</th>
-                    <th>Role</th>
+                    <th>Status &amp; Role</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -348,10 +347,11 @@ export default function MembersPage() {
                         <span className="badge-gray">{m.pendidikan || '—'}</span>
                       </td>
                       <td className="text-gray-600 text-sm">{m.lingkungan || '—'}</td>
-                      {/* Status — inline editable for pengurus */}
+                      {/* Status + Role — satu kolom, dua inline edit */}
                       <td>
-                        {isPengurus && quickEdit?.id === m.id && quickEdit?.field === 'status' ? (
-                          <div className="flex items-center gap-1">
+                        <div className="flex flex-col gap-1">
+                          {/* Status */}
+                          {isPengurus && quickEdit?.id === m.id && quickEdit?.field === 'status' ? (
                             <select className="input text-xs py-0.5 w-28" autoFocus
                               defaultValue={m.status}
                               onChange={e => quickChange(m.id, 'status', e.target.value)}
@@ -360,43 +360,40 @@ export default function MembersPage() {
                               <option value="Pending">Pending</option>
                               <option value="Retired">Alumni</option>
                             </select>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => isPengurus && setQuickEdit({ id: m.id, field: 'status' })}
-                            className={`badge flex items-center gap-1 ${
-                              m.is_suspended ? 'badge-red' :
-                              m.status === 'Active'  ? 'badge-green' :
-                              m.status === 'Pending' ? 'badge-yellow' :
-                              'badge-gray'
-                            } ${isPengurus ? 'cursor-pointer hover:opacity-80' : ''}`}
-                            title={isPengurus ? 'Klik untuk ubah status' : ''}>
-                            {m.is_suspended ? '⛔ Suspended' : (STATUS_LABELS[m.status] || m.status)}
-                            {isPengurus && <ChevronDown size={10}/>}
-                          </button>
-                        )}
-                      </td>
-
-                      {/* Role — inline editable for admin only */}
-                      <td>
-                        {isAdmin && quickEdit?.id === m.id && quickEdit?.field === 'role' ? (
-                          <select className="input text-xs py-0.5 w-36" autoFocus
-                            defaultValue={m.role}
-                            onChange={e => quickChange(m.id, 'role', e.target.value)}
-                            onBlur={() => setQuickEdit(null)}>
-                            {['Administrator','Pengurus','Pelatih','Misdinar_Aktif','Misdinar_Retired'].map(r => (
-                              <option key={r} value={r}>{ROLE_LABELS[r]||r}</option>
-                            ))}
-                          </select>
-                        ) : (
-                          <button
-                            onClick={() => isAdmin && setQuickEdit({ id: m.id, field: 'role' })}
-                            className={`text-xs text-gray-500 flex items-center gap-1 ${isAdmin ? 'cursor-pointer hover:text-brand-800' : ''}`}
-                            title={isAdmin ? 'Klik untuk ubah role' : ''}>
-                            {ROLE_LABELS[m.role] || m.role}
-                            {isAdmin && <ChevronDown size={10} className="opacity-50"/>}
-                          </button>
-                        )}
+                          ) : (
+                            <button
+                              onClick={() => isPengurus && setQuickEdit({ id: m.id, field: 'status' })}
+                              className={`badge flex items-center gap-1 w-fit ${
+                                m.is_suspended ? 'badge-red' :
+                                m.status === 'Active'  ? 'badge-green' :
+                                m.status === 'Pending' ? 'badge-yellow' :
+                                'badge-gray'
+                              } ${isPengurus ? 'cursor-pointer hover:opacity-80' : ''}`}
+                              title={isPengurus ? 'Klik untuk ubah status' : ''}>
+                              {m.is_suspended ? '⛔ Suspended' : (STATUS_LABELS[m.status] || m.status)}
+                              {isPengurus && <ChevronDown size={10}/>}
+                            </button>
+                          )}
+                          {/* Role */}
+                          {isAdmin && quickEdit?.id === m.id && quickEdit?.field === 'role' ? (
+                            <select className="input text-xs py-0.5 w-36" autoFocus
+                              defaultValue={m.role}
+                              onChange={e => quickChange(m.id, 'role', e.target.value)}
+                              onBlur={() => setQuickEdit(null)}>
+                              {['Administrator','Pengurus','Pelatih','Misdinar_Aktif','Misdinar_Retired'].map(r => (
+                                <option key={r} value={r}>{ROLE_LABELS[r]||r}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <button
+                              onClick={() => isAdmin && setQuickEdit({ id: m.id, field: 'role' })}
+                              className={`text-xs text-gray-500 flex items-center gap-1 w-fit ${isAdmin ? 'cursor-pointer hover:text-brand-800' : ''}`}
+                              title={isAdmin ? 'Klik untuk ubah role' : ''}>
+                              {ROLE_LABELS[m.role] || m.role}
+                              {isAdmin && <ChevronDown size={10} className="opacity-50"/>}
+                            </button>
+                          )}
+                        </div>
                       </td>
 
                       {/* Actions */}
