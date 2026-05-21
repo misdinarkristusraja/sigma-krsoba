@@ -298,7 +298,7 @@ BEGIN
     pendidikan, sekolah, is_tarakanita, wilayah, lingkungan,
     email, hp_anak, hp_ortu, nama_ayah, nama_ibu, alamat,
     alasan_masuk, sampai_kapan, surat_pernyataan_url,
-    role, status, must_change_password
+    role, status, must_change_password, registration_year
   ) VALUES (
     v_new_id, v_reg.nickname, p_myid, v_reg.nama_lengkap, v_reg.nickname,
     v_reg.tanggal_lahir, v_reg.pendidikan, v_reg.sekolah,
@@ -307,7 +307,7 @@ BEGIN
     v_email, v_reg.hp_anak, v_reg.hp_ortu,
     v_reg.nama_ayah, v_reg.nama_ibu, v_reg.alamat,
     v_reg.alasan_masuk, v_reg.sampai_kapan, v_reg.surat_pernyataan_url,
-    'Misdinar_Aktif', 'Active', true
+    'Misdinar_Aktif', 'Active', true, EXTRACT(YEAR FROM NOW())::INTEGER
   );
 
   UPDATE registrations

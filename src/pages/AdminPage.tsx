@@ -408,10 +408,11 @@ export default function AdminPage() {
     const yearStart = `${yr}-01-01`;
     const [{ count: done }, { count: total }] = await Promise.all([
       supabase.from('reregistrations').select('id', { count: 'exact', head: true }).eq('tahun', yr),
-      // Exclude anggota yang baru mendaftar tahun rereg (tidak wajib daftar ulang)
+      // Exclude anggota yang mendaftar manual tahun rereg (registration_year = tahun)
+      // null = import/lama → wajib rereg → masuk hitungan
       supabase.from('users').select('id', { count: 'exact', head: true })
         .in('status', ['Active', 'Pending']).neq('role', 'Administrator')
-        .lt('created_at', yearStart),
+        .or(`registration_year.is.null,registration_year.neq.${yr}`),
     ]);
     setReregStats({ done: done || 0, total: total || 0 });
   }

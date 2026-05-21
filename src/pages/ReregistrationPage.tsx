@@ -23,10 +23,9 @@ export default function ReregistrationPage() {
     ? now >= openDate && now <= closeDate
     : false;
 
-  // User yang mendaftar pada rereg_tahun tidak perlu daftar ulang
-  const isNewMember = reregTahun !== null && profile?.created_at
-    ? new Date(profile.created_at).getFullYear() >= reregTahun
-    : false;
+  // User yang mendaftar manual (registration_year = rereg_tahun) tidak perlu daftar ulang
+  // Data lama/import punya registration_year = null → wajib rereg
+  const isNewMember = reregTahun !== null && (profile as any)?.registration_year === reregTahun;
 
   const daysUntilOpen = (!isOpen && openDate)
     ? Math.max(0, Math.ceil((openDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
