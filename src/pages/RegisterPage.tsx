@@ -4,8 +4,8 @@ import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { toNickname, formatHP, PENDIDIKAN_OPTIONS } from '../lib/utils';
 import { LINGKUNGAN_LIST, getWilayah } from '../lib/wilayah';
-import { useSekolahSearch } from '../hooks/useSekolahSearch';
-import { Church, Upload, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import SekolahDropdown from '../components/ui/SekolahDropdown';
+import { Church, Upload, CheckCircle, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function RegisterPage() {
@@ -231,18 +231,18 @@ export default function RegisterPage() {
           </div>
 
           {/* Data Diri */}
-          <F name="nama_lengkap" label="Nama Lengkap (Baptis)" required>
+          <F name="nama_lengkap" label="Nama Lengkap (dan Baptis)" required>
             <input className={`input ${errors.nama_lengkap ? 'input-error' : ''}`}
-              value={form.nama_lengkap} onChange={e => handleNamaChange(e.target.value)} placeholder="Nama sesuai baptis" />
+              value={form.nama_lengkap} onChange={e => handleNamaChange(e.target.value)} placeholder="contoh: Aloysius Giodizio Immanuel Setiyawan" />
           </F>
 
-          <F name="nickname" label="Nama Panggilan (Username)" required hint="Lowercase, tanpa spasi. Contoh: satrio">
+          <F name="nickname" label="Nama Panggilan" required hint="Lowercase (huruf kecil semua), tanpa spasi. Contoh: gio">
             <div className="relative">
               <input
                 className={`input ${errors.nickname ? 'input-error' : ''}`}
                 value={form.nickname}
                 onChange={e => { setForm(f => ({...f, nickname: toNickname(e.target.value)})); checkNickname(toNickname(e.target.value)); }}
-                placeholder="satrio"
+                placeholder="contoh: gio"
               />
               {nicknameStatus === 'checking' && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-gray-300 border-t-brand-800 rounded-full animate-spin" />
