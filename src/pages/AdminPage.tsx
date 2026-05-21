@@ -253,8 +253,7 @@ export default function AdminPage() {
   }, [loadUsers]);
 
   // ────────────────────────────────────────────────────────────────────────────
-  // MASS RESET — via RPC admin_provision_all() (SECURITY DEFINER di DB)
-  // RPC ini cek role Administrator di dalam, update password via crypt(), aman.
+  // MASS RESET — via Edge Function admin-reset-password (sudah deployed)
   async function massResetAllPasswords() {
     const targetCount = users.filter(
       (u) => ['Active', 'Pending'].includes(u.status) && u.role !== 'Administrator'
@@ -269,7 +268,7 @@ export default function AdminPage() {
       `⚠️ KONFIRMASI MASS RESET PASSWORD\n\n` +
       `Akan mereset password ${targetCount} anggota (Active + Pending).\n` +
       `Administrator tidak termasuk.\n\n` +
-      `Password baru di-generate secara acak.\n` +
+      `Password baru di-generate secara acak oleh server.\n` +
       `Kamu bisa kirim password baru via WhatsApp setelah proses selesai.\n\n` +
       `Lanjutkan?`
     );
@@ -280,22 +279,28 @@ export default function AdminPage() {
     setMassProgress({ status: 'running', total: targetCount });
 
     try {
-      const { data, error } = await supabase.rpc('admin_provision_all');
+      const { data, error } = await supabase.functions.invoke(
+        'admin-reset-password',
+        { body: { mode: 'provision_all' } }
+      );
 
       if (error) {
-        setMassProgress({ status: 'error', error: error.message });
-        toast.error('Mass reset gagal: ' + error.message);
+        const msg = error.message || 'Koneksi ke Edge Function gagal.';
+        setMassProgress({ status: 'error', error: msg });
+        toast.error('Mass reset gagal: ' + msg);
         return;
       }
 
-      const results  = Array.isArray(data) ? data : (data?.results ?? []);
-      const total    = results.length;
-      const success  = results.filter((r: any) => r.ok).length;
-      const skipped  = results.filter((r: any) => r.skipped).length;
-      const failed   = results.filter((r: any) => !r.ok && !r.skipped).length;
+      if (!data?.ok) {
+        const msg = data?.message || data?.error || 'Respons tidak valid dari server.';
+        setMassProgress({ status: 'error', error: msg });
+        toast.error('Mass reset ditolak: ' + msg);
+        return;
+      }
 
-      setMassResults(results);
-      setMassProgress({ status: 'done', total, success, skipped, failed });
+      const { total, success, skipped, failed, results } = data;
+      setMassResults(results ?? []);
+      setMassProgress({ status: 'done', total: total ?? 0, success: success ?? 0, skipped: skipped ?? 0, failed: failed ?? 0 });
 
       if (failed === 0) {
         toast.success(`✅ ${success} password berhasil direset!`, { duration: 5000 });
