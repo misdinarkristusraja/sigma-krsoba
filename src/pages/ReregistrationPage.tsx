@@ -3,14 +3,9 @@ import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
 import { formatHP, PENDIDIKAN_OPTIONS } from '../lib/utils';
+import { LINGKUNGAN_LIST, getWilayah } from '../lib/wilayah';
 import { RefreshCw, CheckCircle, Lock } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-const LINGKUNGAN_LIST = [
-  'Andreas','Bartolomeus','Benediktus','Carolus','Dominikus','Elisabet',
-  'Fransiskus','Gabriel','Herkulanus','Ignatius','Josephus','Kristoforus',
-  'Laurentius','Martinus','Nikolaus','Petrus','Raphael','Stefanus','Thomas','Yohanes',
-];
 
 export default function ReregistrationPage() {
   const { profile, fetchProfile } = useAuth();
@@ -21,10 +16,16 @@ export default function ReregistrationPage() {
   const [openDate,  setOpenDate]  = useState<Date | null>(null);
   const [closeDate, setCloseDate] = useState<Date | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
+  const [reregTahun,   setReregTahun]   = useState<number | null>(null);
 
   const now   = new Date();
   const isOpen = openDate && closeDate
     ? now >= openDate && now <= closeDate
+    : false;
+
+  // User yang mendaftar pada rereg_tahun tidak perlu daftar ulang
+  const isNewMember = reregTahun !== null && profile?.created_at
+    ? new Date(profile.created_at).getFullYear() >= reregTahun
     : false;
 
   const daysUntilOpen = (!isOpen && openDate)
@@ -35,13 +36,14 @@ export default function ReregistrationPage() {
     supabase
       .from('system_config')
       .select('key, value')
-      .in('key', ['rereg_open_date', 'rereg_close_date'])
+      .in('key', ['rereg_open_date', 'rereg_close_date', 'rereg_tahun'])
       .then(({ data }: any) => {
         if (!data) return;
         const map: Record<string, string> = {};
         data.forEach((r: any) => { map[r.key] = r.value; });
         if (map.rereg_open_date)  setOpenDate(new Date(map.rereg_open_date));
         if (map.rereg_close_date) setCloseDate(new Date(map.rereg_close_date + 'T23:59:59'));
+        if (map.rereg_tahun)      setReregTahun(parseInt(map.rereg_tahun));
         setConfigLoaded(true);
       });
   }, []);
@@ -128,6 +130,22 @@ export default function ReregistrationPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // Anggota baru tahun rereg — tidak perlu daftar ulang
+  if (isNewMember) {
+    return (
+      <div className="space-y-5">
+        <h1 className="page-title">Daftar Ulang</h1>
+        <div className="card text-center py-14">
+          <CheckCircle size={48} className="mx-auto text-blue-400 mb-4" />
+          <h2 className="font-bold text-xl text-gray-900">Kamu Tidak Perlu Daftar Ulang</h2>
+          <p className="text-gray-500 text-sm mt-2">
+            Anggota yang baru mendaftar pada tahun {reregTahun} tidak perlu melakukan daftar ulang.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   // Belum dibuka
@@ -223,7 +241,10 @@ export default function ReregistrationPage() {
             <div>
               <label className="label">Lingkungan *</label>
               <select className="input" required value={form.lingkungan || ''}
-                onChange={e => setForm(f => ({...f, lingkungan: e.target.value}))}>
+                onChange={e => {
+                  const ling = e.target.value;
+                  setForm(f => ({ ...f, lingkungan: ling, wilayah: getWilayah(ling) }));
+                }}>
                 <option value="">— Pilih —</option>
                 {LINGKUNGAN_LIST.map(l => <option key={l}>{l}</option>)}
               </select>

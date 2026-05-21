@@ -3,23 +3,9 @@ import { Link } from 'react-router-dom';
 import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { toNickname, formatHP, PENDIDIKAN_OPTIONS } from '../lib/utils';
+import { LINGKUNGAN_LIST, getWilayah } from '../lib/wilayah';
 import { Church, Upload, CheckCircle, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-// Daftar lingkungan Paroki Kristus Raja Solo Baru
-const LINGKUNGAN_LIST = [
-  'Andreas','Bartolomeus','Benediktus','Carolus','Dominikus',
-  'Elisabet','Fransiskus','Gabriel','Herkulanus','Ignatius',
-  'Josephus','Kristoforus','Laurentius','Martinus','Nikolaus',
-  'Petrus','Raphael','Stefanus','Thomas','Yohanes',
-];
-
-const WILAYAH_MAP = {
-  1: ['Andreas','Bartolomeus','Benediktus','Carolus','Dominikus'],
-  2: ['Elisabet','Fransiskus','Gabriel','Herkulanus','Ignatius'],
-  3: ['Josephus','Kristoforus','Laurentius','Martinus','Nikolaus'],
-  4: ['Petrus','Raphael','Stefanus','Thomas','Yohanes'],
-};
 
 // Sekolah typeahead — sample data (dalam produksi, fetch dari API/DB sekolah Jawa Tengah)
 const SEKOLAH_SAMPLE = [
@@ -143,10 +129,7 @@ export default function RegisterPage() {
       const isTarakanita = form.sekolah.toLowerCase().includes('tarakanita');
 
       // Tentukan wilayah dari lingkungan
-      let wilayah = null;
-      for (const [w, list] of Object.entries(WILAYAH_MAP) as [string, string[]][]) {
-        if (list.includes(form.lingkungan)) { wilayah = `Wilayah ${w}`; break; }
-      }
+      const wilayah = getWilayah(form.lingkungan) || null;
 
       // Insert ke tabel registrations (atau langsung ke users dengan status Pending)
       const { error } = await supabase.from('registrations').insert({
@@ -303,7 +286,11 @@ export default function RegisterPage() {
 
           <F name="lingkungan" label="Lingkungan" required>
             <select className={`input ${errors.lingkungan ? 'input-error' : ''}`}
-              value={form.lingkungan} onChange={e => setForm(f => ({...f, lingkungan: e.target.value}))}>
+              value={form.lingkungan}
+              onChange={e => {
+                const ling = e.target.value;
+                setForm(f => ({ ...f, lingkungan: ling, wilayah: getWilayah(ling) }));
+              }}>
               <option value="">Pilih lingkungan...</option>
               {LINGKUNGAN_LIST.map(l => <option key={l}>{l}</option>)}
             </select>

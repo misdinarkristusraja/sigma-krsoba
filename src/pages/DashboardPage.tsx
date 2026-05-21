@@ -69,6 +69,11 @@ export default function DashboardPage() {
     if (now < open || now > close) return;
 
     const tahun = parseInt(cfg.rereg_tahun || String(now.getFullYear()));
+
+    // Anggota baru tahun ini tidak perlu daftar ulang
+    const joinYear = profile?.created_at ? new Date(profile.created_at).getFullYear() : 0;
+    if (joinYear >= tahun) return;
+
     const { data } = await (supabase as any)
       .from('reregistrations')
       .select('id')

@@ -404,10 +404,14 @@ export default function AdminPage() {
   // ── Rereg stats + reset ───────────────────────────────────────────────────
   async function loadReregStats(year: string) {
     if (!year) return;
+    const yr = parseInt(year);
+    const yearStart = `${yr}-01-01`;
     const [{ count: done }, { count: total }] = await Promise.all([
-      supabase.from('reregistrations').select('id', { count: 'exact', head: true }).eq('tahun', parseInt(year)),
+      supabase.from('reregistrations').select('id', { count: 'exact', head: true }).eq('tahun', yr),
+      // Exclude anggota yang baru mendaftar tahun rereg (tidak wajib daftar ulang)
       supabase.from('users').select('id', { count: 'exact', head: true })
-        .in('status', ['Active', 'Pending']).neq('role', 'Administrator'),
+        .in('status', ['Active', 'Pending']).neq('role', 'Administrator')
+        .lt('created_at', yearStart),
     ]);
     setReregStats({ done: done || 0, total: total || 0 });
   }

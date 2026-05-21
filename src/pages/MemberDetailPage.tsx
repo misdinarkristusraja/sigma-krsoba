@@ -4,17 +4,12 @@ import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate, buildWALink, PENDIDIKAN_OPTIONS, formatHP, STATUS_LABELS, ROLE_LABELS } from '../lib/utils';
+import { LINGKUNGAN_LIST, getWilayah } from '../lib/wilayah';
 import {
   ArrowLeft, CreditCard, BarChart2, Phone, Edit2, Save, X,
   ShieldAlert, ShieldCheck, KeyRound, MessageCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-const LINGKUNGAN_LIST = [
-  'Andreas','Bartolomeus','Benediktus','Carolus','Dominikus','Elisabet',
-  'Fransiskus','Gabriel','Herkulanus','Ignatius','Josephus','Kristoforus',
-  'Laurentius','Martinus','Nikolaus','Petrus','Raphael','Stefanus','Thomas','Yohanes',
-];
 const ROLES = ['Administrator','Pengurus','Pelatih','Misdinar_Aktif','Misdinar_Retired'];
 
 // Generate password acak 8 karakter (huruf + angka, mudah dibaca)
@@ -245,7 +240,21 @@ export default function MemberDetailPage() {
             <F label="Tanggal Lahir"  name="tanggal_lahir" type="date" disabled/>
             <div className="grid grid-cols-2 gap-3">
               <F label="Pendidikan" name="pendidikan" options={PENDIDIKAN_OPTIONS}/>
-              <F label="Lingkungan" name="lingkungan" options={LINGKUNGAN_LIST}/>
+              <div>
+                <label className="label text-xs">Lingkungan</label>
+                {!editing ? (
+                  <p className="text-sm text-gray-800 py-1">{form.lingkungan || '—'}</p>
+                ) : (
+                  <select className="input text-sm" value={form.lingkungan || ''}
+                    onChange={e => {
+                      const ling = e.target.value;
+                      setForm(f => ({ ...f, lingkungan: ling, wilayah: getWilayah(ling) }));
+                    }}>
+                    <option value="">— Pilih —</option>
+                    {LINGKUNGAN_LIST.map((o: any) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                )}
+              </div>
             </div>
             <F label="Sekolah"   name="sekolah"/>
             <F label="Wilayah"   name="wilayah"/>
