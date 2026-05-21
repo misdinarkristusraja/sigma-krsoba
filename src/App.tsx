@@ -27,6 +27,7 @@ const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'));
 const LaporanPage        = lazy(() => import('./pages/LaporanPage'));
 const StreakPage          = lazy(() => import('./pages/StreakPage'));
 const JadwalSayaPage     = lazy(() => import('./pages/JadwalSayaPage'));
+const DirectoryPage      = lazy(() => import('./pages/DirectoryPage'));
 const PublicSchedule     = lazy(() => import('./pages/ScheduleDailyPage').then(m => ({ default: m.PublicSchedulePage })));
 const NotFound           = lazy(() => import('./pages/ScheduleDailyPage').then(m => ({ default: m.NotFoundPage })));
 
@@ -133,6 +134,7 @@ function AppRoutes() {
             <Route path="/laporan"         element={<ProtectedRoute roles={PENG}><ErrorBoundary><LaporanPage/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/streak"          element={<ErrorBoundary><StreakPage/></ErrorBoundary>}/>
             <Route path="/jadwal-saya"     element={<ErrorBoundary><JadwalSayaPage/></ErrorBoundary>}/>
+            <Route path="/direktori"       element={<ProtectedRoute roles={PENG}><ErrorBoundary><DirectoryPage/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/migrasi"         element={<ProtectedRoute roles={ADMIN}><ErrorBoundary><MigrationPage/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/admin"           element={<ProtectedRoute roles={ADMIN}><ErrorBoundary><AdminPage/></ErrorBoundary></ProtectedRoute>}/>
           </Route>

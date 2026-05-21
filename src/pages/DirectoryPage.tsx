@@ -1,0 +1,281 @@
+import React, { useState, useEffect } from 'react';
+import { supabase as supabaseTyped } from '../lib/supabase';
+const supabase = supabaseTyped as any;
+import { useAuth } from '../contexts/AuthContext';
+import { Search, Download, RefreshCw, Phone, User } from 'lucide-react';
+import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
+
+type Member = {
+  id: string;
+  nickname: string;
+  nama_lengkap: string;
+  nama_panggilan: string;
+  tanggal_lahir: string | null;
+  pendidikan: string | null;
+  sekolah: string | null;
+  wilayah: string | null;
+  lingkungan: string | null;
+  email: string | null;
+  hp_anak: string | null;
+  hp_ortu: string | null;
+  nama_ayah: string | null;
+  nama_ibu: string | null;
+  alamat: string | null;
+  role: string;
+  status: string;
+};
+
+const STATUS_COLOR: Record<string, string> = {
+  Active:           'bg-green-100 text-green-700',
+  Pending:          'bg-yellow-100 text-yellow-700',
+  Inactive:         'bg-gray-100 text-gray-500',
+  Suspended:        'bg-red-100 text-red-700',
+  Retired:          'bg-purple-100 text-purple-600',
+  Misdinar_Retired: 'bg-purple-100 text-purple-600',
+};
+
+function formatTgl(iso: string | null) {
+  if (!iso) return '—';
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function age(iso: string | null) {
+  if (!iso) return null;
+  const diff = Date.now() - new Date(iso).getTime();
+  return Math.floor(diff / (365.25 * 24 * 3600 * 1000));
+}
+
+export default function DirectoryPage() {
+  const { isPengurus } = useAuth();
+  const [members,  setMembers]  = useState<Member[]>([]);
+  const [loading,  setLoading]  = useState(false);
+  const [search,   setSearch]   = useState('');
+  const [statusF,  setStatusF]  = useState('Active');
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('id,nickname,nama_lengkap,nama_panggilan,tanggal_lahir,pendidikan,sekolah,wilayah,lingkungan,email,hp_anak,hp_ortu,nama_ayah,nama_ibu,alamat,role,status')
+        .order('nama_panggilan');
+      if (error) throw error;
+      setMembers(data || []);
+    } catch (err: any) {
+      toast.error('Gagal memuat data: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  const filtered = members.filter(m => {
+    const matchStatus = statusF === 'Semua' || m.status === statusF;
+    const q = search.toLowerCase();
+    const matchSearch = !q ||
+      m.nama_lengkap?.toLowerCase().includes(q) ||
+      m.nama_panggilan?.toLowerCase().includes(q) ||
+      m.nickname?.toLowerCase().includes(q) ||
+      m.lingkungan?.toLowerCase().includes(q) ||
+      m.hp_anak?.includes(q) ||
+      m.hp_ortu?.includes(q);
+    return matchStatus && matchSearch;
+  });
+
+  function exportExcel() {
+    const rows = filtered.map((m, i) => ({
+      'No':             i + 1,
+      'Nama Panggilan': m.nama_panggilan || '',
+      'Nama Lengkap':   m.nama_lengkap   || '',
+      'Nickname':       m.nickname       || '',
+      'Tgl Lahir':      m.tanggal_lahir  ? formatTgl(m.tanggal_lahir) : '',
+      'Umur':           age(m.tanggal_lahir) ?? '',
+      'Pendidikan':     m.pendidikan     || '',
+      'Sekolah':        m.sekolah        || '',
+      'Lingkungan':     m.lingkungan     || '',
+      'Wilayah':        m.wilayah        || '',
+      'HP Anak':        m.hp_anak        || '',
+      'HP Ortu':        m.hp_ortu        || '',
+      'Nama Ayah':      m.nama_ayah      || '',
+      'Nama Ibu':       m.nama_ibu       || '',
+      'Alamat':         m.alamat         || '',
+      'Email':          m.email          || '',
+      'Role':           m.role           || '',
+      'Status':         m.status         || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [4,18,22,14,12,6,12,20,16,14,14,14,16,16,28,24,14,10].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Direktori');
+    const date = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `direktori_anggota_${date}.xlsx`);
+    toast.success('File Excel berhasil diunduh');
+  }
+
+  const statuses = ['Active', 'Pending', 'Inactive', 'Suspended', 'Retired', 'Misdinar_Retired', 'Semua'];
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-5">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900">Direktori Anggota</h1>
+          <p className="text-sm text-gray-500">Data lengkap semua anggota — akses terbatas Admin & Pengurus</p>
+        </div>
+        <div className="flex gap-2">
+          <button onClick={load} disabled={loading}
+            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors" title="Refresh">
+            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+          </button>
+          <button onClick={exportExcel}
+            className="inline-flex items-center gap-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg transition-colors font-medium">
+            <Download size={15} /> Export Excel
+          </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            className="input pl-9 text-sm w-full"
+            placeholder="Cari nama, lingkungan, HP..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-wrap gap-1">
+          {statuses.map(s => (
+            <button key={s} onClick={() => setStatusF(s)}
+              className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                statusF === s ? 'bg-brand-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}>
+              {s.replace('_', ' ')}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <p className="text-xs text-gray-400">{filtered.length} anggota</p>
+
+      {/* Loading */}
+      {loading && (
+        <div className="flex justify-center py-12 text-gray-400">
+          <RefreshCw size={20} className="animate-spin mr-2" /> Memuat...
+        </div>
+      )}
+
+      {/* Table */}
+      {!loading && (
+        <div className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
+                <tr className="text-xs text-gray-500 uppercase tracking-wide text-left">
+                  <th className="px-4 py-3 font-medium">Nama</th>
+                  <th className="px-4 py-3 font-medium">Lingkungan</th>
+                  <th className="px-4 py-3 font-medium">Tgl Lahir</th>
+                  <th className="px-4 py-3 font-medium">HP Anak</th>
+                  <th className="px-4 py-3 font-medium">HP Ortu</th>
+                  <th className="px-4 py-3 font-medium">Status</th>
+                  <th className="px-4 py-3 font-medium w-8"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filtered.map(m => {
+                  const isOpen = expanded === m.id;
+                  const umur = age(m.tanggal_lahir);
+                  return (
+                    <React.Fragment key={m.id}>
+                      <tr
+                        onClick={() => setExpanded(isOpen ? null : m.id)}
+                        className="cursor-pointer hover:bg-blue-50/30 transition-colors bg-white"
+                      >
+                        <td className="px-4 py-3">
+                          <p className="font-medium text-gray-800">{m.nama_panggilan || m.nickname}</p>
+                          <p className="text-xs text-gray-400">{m.nama_lengkap}</p>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                          {m.lingkungan || <span className="text-gray-300 italic">—</span>}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                          {m.tanggal_lahir ? (
+                            <span>{formatTgl(m.tanggal_lahir)}{umur ? <span className="text-xs text-gray-400 ml-1">({umur}th)</span> : null}</span>
+                          ) : <span className="text-gray-300 italic">—</span>}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {m.hp_anak ? (
+                            <a href={`tel:${m.hp_anak}`} onClick={e => e.stopPropagation()}
+                              className="text-blue-600 hover:underline flex items-center gap-1 text-xs">
+                              <Phone size={11} />{m.hp_anak}
+                            </a>
+                          ) : <span className="text-gray-300 italic text-xs">—</span>}
+                        </td>
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          {m.hp_ortu ? (
+                            <a href={`tel:${m.hp_ortu}`} onClick={e => e.stopPropagation()}
+                              className="text-blue-600 hover:underline flex items-center gap-1 text-xs">
+                              <Phone size={11} />{m.hp_ortu}
+                            </a>
+                          ) : <span className="text-gray-300 italic text-xs">—</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_COLOR[m.status] || 'bg-gray-100 text-gray-500'}`}>
+                            {m.status?.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="px-3 py-3 text-gray-400 text-xs">{isOpen ? '▲' : '▼'}</td>
+                      </tr>
+
+                      {/* Expanded detail */}
+                      {isOpen && (
+                        <tr className="bg-blue-50/20">
+                          <td colSpan={7} className="px-6 py-5">
+                            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3 text-sm">
+                              <Field label="Nickname"    value={m.nickname} />
+                              <Field label="Pendidikan"  value={m.pendidikan} />
+                              <Field label="Sekolah"     value={m.sekolah} />
+                              <Field label="Wilayah"     value={m.wilayah} />
+                              <Field label="Email"       value={m.email} />
+                              <Field label="Nama Ayah"   value={m.nama_ayah} />
+                              <Field label="Nama Ibu"    value={m.nama_ibu} />
+                              <Field label="Alamat"      value={m.alamat} wide />
+                              <Field label="Role"        value={m.role} />
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+
+                {filtered.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-4 py-16 text-center text-gray-400">
+                      <User size={36} className="mx-auto mb-2 opacity-30" />
+                      <p>Tidak ada anggota ditemukan</p>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Field({ label, value, wide }: { label: string; value?: string | null; wide?: boolean }) {
+  return (
+    <div className={wide ? 'sm:col-span-2' : ''}>
+      <p className="text-xs font-semibold text-gray-400 uppercase mb-0.5">{label}</p>
+      <p className="text-gray-800">{value || <span className="text-gray-300 italic text-xs">—</span>}</p>
+    </div>
+  );
+}
