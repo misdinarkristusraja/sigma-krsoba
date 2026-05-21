@@ -45,9 +45,8 @@ export default function ScanLatihanPage() {
     (async () => {
       setLoadingSetup(true);
       const { data } = await supabase.from('events')
-        .select('id, nama_event, perayaan, tanggal_tugas, tipe_event')
+        .select('id, nama_event, perayaan, tanggal_tugas, tipe_event, is_draft')
         .eq('is_misa_besar', true)
-        .eq('is_draft', false)
         .order('tanggal_tugas', { ascending: false })
         .limit(20);
       setEvents(data || []);
@@ -304,7 +303,7 @@ export default function ScanLatihanPage() {
                     <option value="">— Pilih Event —</option>
                     {events.map(ev => (
                       <option key={ev.id} value={ev.id}>
-                        {ev.perayaan || ev.nama_event} ({ev.tanggal_tugas})
+                        {ev.is_draft ? '[Draft] ' : ''}{ev.perayaan || ev.nama_event} ({ev.tanggal_tugas})
                       </option>
                     ))}
                   </select>

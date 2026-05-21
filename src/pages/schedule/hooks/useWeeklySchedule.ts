@@ -25,9 +25,10 @@ export function useWeeklySchedule() {
       .select(`
         id, nama_event, tipe_event, tanggal_tugas, tanggal_latihan,
         perayaan, warna_liturgi, jumlah_misa, status_event, is_draft,
-        published_at, draft_note, is_misa_besar,
+        published_at, draft_note, is_misa_besar, latihan_times,
         event_pics(id, slot, nama, hp, urutan),
         event_pelatih(id, nama, urutan),
+        event_latihan(id, tanggal, jam, lokasi, catatan),
         assignments(id, slot_number, position, user_id,
           users(nickname, nama_panggilan, nama_lengkap, pendidikan, lingkungan))
       `)

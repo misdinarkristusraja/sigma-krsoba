@@ -355,16 +355,30 @@ export default function ScheduleWeeklyPage() {
                     </div>
                   ))}
                 </div>
-                <div className="max-w-xs">
-                  <label className="label text-xs">Jam Latihan (muncul di PNG export)</label>
-                  <input
-                    type="time"
-                    className={`input text-sm ${latihanJamBatch[ev.id] !== undefined ? 'border-teal-400 bg-teal-50' : ''}`}
-                    value={getLatihanJam(ev)}
-                    onChange={e => setLatihanJamBatch(b => ({ ...b, [ev.id]: e.target.value }))}
-                    placeholder="cth. 16:00"
-                  />
-                </div>
+                {ev.is_misa_besar ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+                    <p className="font-semibold mb-1">🎓 Misa Besar — Jadwal Latihan dikelola di Edit Event</p>
+                    <p className="text-amber-700">Klik <strong>Edit</strong> pada kartu jadwal → bagian Sesi Latihan untuk tambah/hapus sesi.</p>
+                    {ev.event_latihan?.length > 0 && (
+                      <div className="mt-2 space-y-0.5">
+                        {(ev.event_latihan as any[]).map((l: any) => (
+                          <p key={l.id} className="text-amber-900">• {l.tanggal} · {l.jam}{l.lokasi ? ` · ${l.lokasi}` : ''}</p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="max-w-xs">
+                    <label className="label text-xs">Jam Latihan (muncul di PNG export)</label>
+                    <input
+                      type="time"
+                      className={`input text-sm ${latihanJamBatch[ev.id] !== undefined ? 'border-teal-400 bg-teal-50' : ''}`}
+                      value={getLatihanJam(ev)}
+                      onChange={e => setLatihanJamBatch(b => ({ ...b, [ev.id]: e.target.value }))}
+                      placeholder="cth. 16:00"
+                    />
+                  </div>
+                )}
                 {(ev.event_pelatih?.length > 0) && (
                   <div className="flex gap-2 flex-wrap">
                     <span className="text-xs text-gray-500">Tersimpan:</span>

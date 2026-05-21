@@ -1,17 +1,26 @@
 import React, { useState } from 'react';
-import { Check, X, UserCheck, AlertTriangle, Plus, Trash2 } from 'lucide-react';
+import { Check, X, UserCheck, AlertTriangle, Plus, Trash2, CalendarDays } from 'lucide-react';
 import { supabase as supabaseTyped } from '@/lib/supabase';
 const supabase = supabaseTyped as any;
 import { formatDate } from '@/lib/utils';
 import toast from 'react-hot-toast';
 
-const SLOT_INFO = {
+const SLOT_INFO: Record<number, { time: string; label: string; jam: string }> = {
   1: { time: 'Sabtu 17:30',  label: 'Sabtu Sore',    jam: '17.30' },
   2: { time: 'Minggu 06:00', label: 'Minggu Pagi I',  jam: '06.00' },
   3: { time: 'Minggu 08:00', label: 'Minggu Pagi II', jam: '08.00' },
   4: { time: 'Minggu 17:30', label: 'Minggu Sore',   jam: '17.30' },
 };
 const WARNA_OPTIONS  = ['Hijau','Merah','Putih','Ungu','MerahMuda','Hitam'];
+
+function parseMKSchedule(draftNote: string | null, fallback: string) {
+  if (!draftNote) return [];
+  return draftNote.replace(/^Jam:\s*/i, '').split('|').map(part => {
+    const m = part.trim().match(/Slot\s+(\d+):\s*([\d.]+)(?:\|(\d{4}-\d{2}-\d{2}))?/i);
+    if (!m) return null;
+    return { slot: Number(m[1]), jam: m[2] || '07.00', tanggal: m[3] || fallback };
+  }).filter(Boolean) as { slot: number; jam: string; tanggal: string }[];
+}
 
 // --- Komponen EditPetugasSection dari file asli ---
 function EditPetugasSection({ ev, onSaved }: { ev: any, onSaved: () => void }) {
@@ -222,21 +231,118 @@ function PicSlotEditor({ slot, slotLabel, pics, setPics, picOptions }: {
   );
 }
 
+// ── Jadwal Latihan Editor (untuk Misa Besar) ─────────────────────────────────
+function LatihanEditor({ eventId }: { eventId: string }) {
+  const [rows,    setRows]    = useState<any[]>([]);
+  const [loaded,  setLoaded]  = useState(false);
+  const [saving,  setSaving]  = useState(false);
+
+  React.useEffect(() => {
+    if (!eventId || loaded) return;
+    supabase.from('event_latihan')
+      .select('id, tanggal, jam, lokasi, catatan')
+      .eq('event_id', eventId)
+      .order('tanggal')
+      .then(({ data }: { data: any[] | null }) => {
+        setRows(data || []);
+        setLoaded(true);
+      });
+  }, [eventId]);
+
+  function addRow() {
+    setRows(r => [...r, { _new: true, id: `tmp_${Date.now()}`, tanggal: '', jam: '16:00', lokasi: '', catatan: '' }]);
+  }
+
+  function updateRow(id: string, field: string, val: string) {
+    setRows(r => r.map(x => x.id === id ? { ...x, [field]: val } : x));
+  }
+
+  function removeRow(id: string) {
+    setRows(r => r.filter(x => x.id !== id));
+  }
+
+  async function save() {
+    setSaving(true);
+    // Delete rows no longer in list (existing rows)
+    const { data: existing } = await supabase.from('event_latihan').select('id').eq('event_id', eventId);
+    const existingIds = (existing || []).map((x: any) => x.id);
+    const keptIds = rows.filter(r => !r._new).map(r => r.id);
+    const toDelete = existingIds.filter((id: string) => !keptIds.includes(id));
+    for (const id of toDelete) await supabase.from('event_latihan').delete().eq('id', id);
+
+    // Upsert kept + new rows
+    for (const row of rows) {
+      if (!row.tanggal || !row.jam) continue;
+      if (row._new) {
+        await supabase.from('event_latihan').insert({ event_id: eventId, tanggal: row.tanggal, jam: row.jam, lokasi: row.lokasi || null, catatan: row.catatan || null });
+      } else {
+        await supabase.from('event_latihan').update({ tanggal: row.tanggal, jam: row.jam, lokasi: row.lokasi || null, catatan: row.catatan || null }).eq('id', row.id);
+      }
+    }
+    // Reload
+    const { data } = await supabase.from('event_latihan').select('id, tanggal, jam, lokasi, catatan').eq('event_id', eventId).order('tanggal');
+    setRows(data || []);
+    setSaving(false);
+    toast.success('Jadwal latihan disimpan!');
+  }
+
+  if (!loaded) return <div className="text-xs text-gray-400 py-2">Memuat sesi latihan…</div>;
+
+  return (
+    <div className="border border-amber-200 bg-amber-50/60 rounded-xl p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-amber-800 flex items-center gap-1.5">
+          <CalendarDays size={14}/> Sesi Latihan
+        </p>
+        <button type="button" onClick={addRow} className="text-[11px] text-amber-700 hover:text-amber-900 flex items-center gap-0.5 font-medium">
+          <Plus size={11}/> Tambah Sesi
+        </button>
+      </div>
+      {rows.length === 0 && (
+        <p className="text-xs text-gray-400 italic">Belum ada sesi — klik Tambah Sesi</p>
+      )}
+      <div className="space-y-2">
+        {rows.map(row => (
+          <div key={row.id} className="grid grid-cols-[1fr_auto_1fr_auto] gap-2 items-center">
+            <input type="date" className="input text-xs" value={row.tanggal} onChange={e => updateRow(row.id, 'tanggal', e.target.value)} />
+            <input type="time" className="input text-xs w-24" value={row.jam} onChange={e => updateRow(row.id, 'jam', e.target.value)} />
+            <input type="text" className="input text-xs" placeholder="Lokasi (opsional)" value={row.lokasi || ''} onChange={e => updateRow(row.id, 'lokasi', e.target.value)} />
+            <button type="button" onClick={() => removeRow(row.id)} className="text-red-400 hover:text-red-600"><Trash2 size={14}/></button>
+          </div>
+        ))}
+      </div>
+      {rows.length > 0 && (
+        <button type="button" onClick={save} disabled={saving} className="btn-primary btn-sm w-full gap-1 text-xs">
+          <Check size={13}/> {saving ? 'Menyimpan…' : 'Simpan Sesi Latihan'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 export function EditEventModal({ editEvent, setEditEvent, picOptions, loadEvents, saveEditEvent }: any) {
   if (!editEvent) return null;
 
-  // Kelola event_pics sebagai local state
   const [localPics, setLocalPics] = useState<any[]>(editEvent.event_pics || []);
   const [savingPics, setSavingPics] = useState(false);
 
-  const nSlots = editEvent.tipe_event === 'Misa_Khusus' ? (editEvent.jumlah_misa || 1) : 4;
+  const isMK    = editEvent.tipe_event === 'Misa_Khusus';
+  const nSlots  = isMK ? (editEvent.jumlah_misa || 1) : 4;
+
+  // For Misa Khusus: derive slot labels from draft_note jam
+  const mkSched = isMK ? parseMKSchedule(editEvent.draft_note, editEvent.tanggal_tugas) : [];
+  function getSlotLabel(slot: number): string {
+    if (isMK) {
+      const sc = mkSched.find(s => s.slot === slot);
+      return `Misa ${slot}${sc ? ` · ${sc.jam}` : ''}${sc?.tanggal ? ` (${sc.tanggal})` : ''}`;
+    }
+    return SLOT_INFO[slot]?.time || `Slot ${slot}`;
+  }
 
   async function handleSaveAll() {
     setSavingPics(true);
     try {
-      // Save event fields
       await saveEditEvent();
-      // Save pics: delete all for this event, re-insert
       await supabase.from('event_pics').delete().eq('event_id', editEvent.id);
       const toInsert = localPics.filter(p => p.nama && p.nama.trim());
       if (toInsert.length) {
@@ -285,10 +391,15 @@ export function EditEventModal({ editEvent, setEditEvent, picOptions, loadEvents
               <input type="checkbox" checked={!!editEvent.is_misa_besar} readOnly className="w-4 h-4 accent-brand-800"/>
               <div>
                 <p className="text-sm font-semibold text-gray-800">🎓 Misa Besar</p>
-                <p className="text-xs text-gray-500">Aktifkan kehadiran latihan wajib</p>
+                <p className="text-xs text-gray-500">Aktifkan kehadiran latihan wajib + scan latihan</p>
               </div>
             </div>
           </div>
+
+          {/* Jadwal latihan sesi (only for misa besar) */}
+          {editEvent.is_misa_besar && (
+            <LatihanEditor eventId={editEvent.id} />
+          )}
         </div>
         <div className="mb-5">
           <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2 text-sm">
@@ -299,7 +410,7 @@ export function EditEventModal({ editEvent, setEditEvent, picOptions, loadEvents
               <PicSlotEditor
                 key={slot}
                 slot={slot}
-                slotLabel={(SLOT_INFO as any)[slot]?.time || `Slot ${slot}`}
+                slotLabel={getSlotLabel(slot)}
                 pics={localPics}
                 setPics={setLocalPics}
                 picOptions={picOptions}
