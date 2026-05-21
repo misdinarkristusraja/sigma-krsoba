@@ -178,7 +178,7 @@ serve(async (req: Request) => {
       const { data: members, error: fetchErr } = await admin
         .from("users")
         .select(
-          "id, email, nickname, nama_panggilan, lingkungan, hp_ortu, hp_anak"
+          "id, email, nickname, nama_panggilan, lingkungan, hp_ortu, hp_anak, role"
         )
         .in("status", ["Active", "Pending"])
         .neq("role", "Administrator");
@@ -226,6 +226,11 @@ serve(async (req: Request) => {
               hp_ortu:     m.hp_ortu       ?? "",
               hp_anak:     m.hp_anak       ?? "",
             };
+
+            // Hard-skip Administrator — double guard selain filter DB
+            if (m.role === "Administrator") {
+              return { ...base, ok: false, skipped: true, error: "ADMIN_SKIPPED" };
+            }
 
             // Skip user tanpa email
             if (!m.email || !m.email.trim()) {
