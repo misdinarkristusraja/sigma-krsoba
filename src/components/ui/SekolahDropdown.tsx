@@ -103,11 +103,11 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
     if (!jenjang) return;
     setLoading(true);
     try {
-      const res  = await fetch(`${BASE}/sekolah/${jenjang}?kab_kota=${kabKota}&perPage=20`);
+      const res  = await fetch(`${BASE}/sekolah/${jenjang}?kab_kota=${kabKota}&perPage=100`);
       const json = await res.json();
       let data: Sekolah[] = mapData(json.dataSekolah || []);
       if (data.length === 0) {
-        const res2  = await fetch(`${BASE}/sekolah/${jenjang}?provinsi=030000&perPage=20`);
+        const res2  = await fetch(`${BASE}/sekolah/${jenjang}?provinsi=030000&perPage=30`);
         const json2 = await res2.json();
         data = mapData(json2.dataSekolah || []);
       }
@@ -123,10 +123,10 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
     if (!jenjang) return;
     setLoading(true);
     try {
-      const res  = await fetch(`${BASE}/sekolah/s?sekolah=${encodeURIComponent(q)}&perPage=15`);
+      const res  = await fetch(`${BASE}/sekolah/s?sekolah=${encodeURIComponent(q)}&perPage=50`);
       const json = await res.json();
       const all  = mapData(json.dataSekolah || []);
-      setList(all.filter(s => s.bentuk.toLowerCase() === jenjang));
+      setList(all.filter(s => s.bentuk.toUpperCase() === jenjang.toUpperCase()));
     } catch {
       setList([]);
     } finally {
