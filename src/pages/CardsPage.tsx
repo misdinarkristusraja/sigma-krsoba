@@ -81,11 +81,11 @@ async function drawCard(member: any, qrDataUrl: string, type: string): Promise<s
   }
   c.restore();
 
-  const QS = 100, QX = W - QS - 16, QY = Math.floor((H - QS) / 2) - 6;
+  const QS = H - 16, QX = W - QS - 10, QY = 8;
 
   // QR background
   c.save();
-  rr(c, QX - 6, QY - 6, QS + 12, QS + 12, 10);
+  rr(c, QX - 6, QY - 6, QS + 12, QS + 12, 12);
   c.fillStyle = isTugas ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.13)';
   c.fill();
   c.strokeStyle = isTugas ? '#FCD34D' : 'rgba(255,255,255,0.25)';
@@ -134,7 +134,7 @@ async function drawCard(member: any, qrDataUrl: string, type: string): Promise<s
   // Divider
   c.strokeStyle = isTugas ? 'rgba(180,83,9,0.18)' : 'rgba(255,255,255,0.15)';
   c.lineWidth = 0.6;
-  c.beginPath(); c.moveTo(LX, 88); c.lineTo(QX - 12, 88); c.stroke();
+  c.beginPath(); c.moveTo(LX, 88); c.lineTo(QX - 8, 88); c.stroke();
 
   // Name
   const name = truncate(titleCase(member.nama_panggilan || member.nickname), 18);
@@ -159,12 +159,10 @@ async function drawCard(member: any, qrDataUrl: string, type: string): Promise<s
   c.fillStyle = txtFaint;
   c.fillText('@misdinarkrsoba', LX, H - 16);
 
-  // Tagline under QR — centered, with breathing room
+  // Tagline — bottom left
   c.font = 'italic 7.5px Arial';
   c.fillStyle = txtFaint;
-  c.textAlign = 'center';
-  c.fillText('Serve Lord With Gladness', QX + QS/2, H - 8);
-  c.textAlign = 'left';
+  c.fillText('Serve Lord With Gladness', LX, H - 8);
 
   // Border outline
   c.save();

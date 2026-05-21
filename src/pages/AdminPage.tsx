@@ -26,9 +26,10 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   Settings, Save, Database, KeyRound, MessageCircle,
   CheckCircle2, XCircle, AlertTriangle, Loader2, Eye, EyeOff,
-  RefreshCw, ClipboardCopy, SkipForward, Users,
+  RefreshCw, ClipboardCopy, SkipForward, Users, Download,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 // ── Konstanta ────────────────────────────────────────────────────────────────
 const CONFIG_GROUPS = {
@@ -109,22 +110,57 @@ function MassResetResultsTable({ results }: { results: any[] }) {
   const skipped = results.filter((r) => r.skipped).length;
   const failed  = results.filter((r) => !r.ok && !r.skipped).length;
 
+  function exportExcel() {
+    const rows = results
+      .filter((r) => r.ok)
+      .map((r, i) => ({
+        'No':            i + 1,
+        'Nama Panggilan': r.nama || '',
+        'Nickname':      r.nickname || '',
+        'Lingkungan':    r.lingkungan || '',
+        'HP Ortu':       r.hp_ortu || '',
+        'HP Anak':       r.hp_anak || '',
+        'Password Baru': r.password || '',
+      }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    // Auto-width
+    const colWidths = [6, 22, 18, 16, 16, 16, 14];
+    ws['!cols'] = colWidths.map((w) => ({ wch: w }));
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Password Reset');
+    const date = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `mass_reset_${date}.xlsx`);
+    toast.success('File Excel berhasil diunduh');
+  }
+
   return (
     <div className="mt-4 rounded-xl border border-gray-200 overflow-hidden">
-      {/* Ringkasan */}
-      <div className="bg-gray-50 px-4 py-3 flex flex-wrap gap-4 text-sm font-medium border-b border-gray-200">
-        <span className="flex items-center gap-1.5 text-gray-700">
-          <Users size={14} /> Total: {results.length}
-        </span>
-        <span className="flex items-center gap-1.5 text-green-700">
-          <CheckCircle2 size={14} /> Sukses: {success}
-        </span>
-        <span className="flex items-center gap-1.5 text-yellow-600">
-          <SkipForward size={14} /> Dilewati: {skipped}
-        </span>
-        <span className="flex items-center gap-1.5 text-red-700">
-          <XCircle size={14} /> Gagal: {failed}
-        </span>
+      {/* Ringkasan + Export */}
+      <div className="bg-gray-50 px-4 py-3 flex items-center justify-between border-b border-gray-200">
+        <div className="flex flex-wrap items-center gap-4 text-sm font-medium">
+          <span className="flex items-center gap-1.5 text-gray-700">
+            <Users size={14} /> Total: {results.length}
+          </span>
+          <span className="flex items-center gap-1.5 text-green-700">
+            <CheckCircle2 size={14} /> Sukses: {success}
+          </span>
+          <span className="flex items-center gap-1.5 text-yellow-600">
+            <SkipForward size={14} /> Dilewati: {skipped}
+          </span>
+          <span className="flex items-center gap-1.5 text-red-700">
+            <XCircle size={14} /> Gagal: {failed}
+          </span>
+        </div>
+        {success > 0 && (
+          <button
+            onClick={exportExcel}
+            className="shrink-0 inline-flex items-center gap-1.5 text-xs bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg transition-colors font-medium"
+          >
+            <Download size={13} /> Export Excel
+          </button>
+        )}
       </div>
 
       {/* Tabel */}

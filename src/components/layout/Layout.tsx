@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Calendar, CalendarDays, QrCode,
   ArrowLeftRight, BarChart2, CreditCard, Database,
   Settings, LogOut, Menu, X, Church, AlertTriangle,
-  ClipboardList, RefreshCw, ClipboardCheck, PartyPopper,
+  ClipboardList, RefreshCw, ClipboardCheck, PartyPopper, ListChecks,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { cn, truncate } from '../../lib/utils';
@@ -25,6 +25,7 @@ const NAV_ITEMS = [
   { icon: ClipboardCheck,  label: 'Presensi Acara',  path: '/presensi',        roles: STAFF },
   { icon: PartyPopper,     label: 'Acara',            path: '/acara',           roles: PENG  },
   { icon: ClipboardList,   label: 'Riwayat Scan',    path: '/riwayat-scan',    roles: STAFF },
+  { icon: ListChecks,      label: 'Jadwal Saya',     path: '/jadwal-saya',     roles: null  },
   { icon: ArrowLeftRight,  label: 'Tukar Jadwal',    path: '/tukar-jadwal',    roles: null  },
   { icon: BarChart2,       label: 'Rekap & Poin',    path: '/rekap',           roles: null  },
   { icon: CreditCard,      label: 'Kartu Anggota',   path: '/kartu',           roles: null  },
@@ -37,7 +38,7 @@ const NAV_ITEMS = [
 const BOTTOM_TAB_ITEMS = [
   { icon: LayoutDashboard, label: 'Home',    path: '/dashboard'     },
   { icon: CalendarDays,    label: 'Harian',  path: '/jadwal-harian' },
-  { icon: ArrowLeftRight,  label: 'Tukar',   path: '/tukar-jadwal'  },
+  { icon: ListChecks,      label: 'Jadwal',  path: '/jadwal-saya'   },
   { icon: BarChart2,       label: 'Rekap',   path: '/rekap'         },
   { icon: CreditCard,      label: 'Kartu',   path: '/kartu'         },
 ];

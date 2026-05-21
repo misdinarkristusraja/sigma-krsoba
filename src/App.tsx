@@ -26,6 +26,7 @@ const StatistikPage      = lazy(() => import('./pages/StatistikPage'));
 const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'));
 const LaporanPage        = lazy(() => import('./pages/LaporanPage'));
 const StreakPage          = lazy(() => import('./pages/StreakPage'));
+const JadwalSayaPage     = lazy(() => import('./pages/JadwalSayaPage'));
 const PublicSchedule     = lazy(() => import('./pages/ScheduleDailyPage').then(m => ({ default: m.PublicSchedulePage })));
 const NotFound           = lazy(() => import('./pages/ScheduleDailyPage').then(m => ({ default: m.NotFoundPage })));
 
@@ -78,8 +79,10 @@ function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?
 }
 
 function AppRoutes() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, profileError } = useAuth();
   if (loading) return <LoadingScreen/>;
+  // Wait for profile fetch before rendering — prevents whitescreen flash on /ganti-password
+  if (user && !profile && !profileError) return <LoadingScreen/>;
 
   // Force change password jika flag aktif
   const path = window.location.pathname;
@@ -129,6 +132,7 @@ function AppRoutes() {
             <Route path="/statistik"       element={<ProtectedRoute roles={PENG}><ErrorBoundary><StatistikPage/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/laporan"         element={<ProtectedRoute roles={PENG}><ErrorBoundary><LaporanPage/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/streak"          element={<ErrorBoundary><StreakPage/></ErrorBoundary>}/>
+            <Route path="/jadwal-saya"     element={<ErrorBoundary><JadwalSayaPage/></ErrorBoundary>}/>
             <Route path="/migrasi"         element={<ProtectedRoute roles={ADMIN}><ErrorBoundary><MigrationPage/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/admin"           element={<ProtectedRoute roles={ADMIN}><ErrorBoundary><AdminPage/></ErrorBoundary></ProtectedRoute>}/>
           </Route>
