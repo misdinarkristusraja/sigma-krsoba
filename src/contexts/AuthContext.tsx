@@ -34,31 +34,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profileError, setProfileError] = useState(false);
 
   const fetchProfile = useCallback(async () => {
-    try {
-      const { data, error } = await supabase.rpc('get_my_profile');
-
-      if (error) {
-        console.error('fetchProfile RPC error:', error.message);
-        // Jangan beri role default — set error state agar UI menampilkan pesan jelas
+    // Retry up to 3x with backoff — handles JWT propagation delay and
+    // race conditions where onAuthStateChange fires before DB is ready.
+    const delays = [0, 300, 800];
+    for (let attempt = 0; attempt < delays.length; attempt++) {
+      if (delays[attempt] > 0) {
+        await new Promise(res => setTimeout(res, delays[attempt]));
+      }
+      try {
+        const { data, error } = await supabase.rpc('get_my_profile');
+        if (error) {
+          console.warn(`fetchProfile attempt ${attempt + 1} error:`, error.message);
+          if (attempt < delays.length - 1) continue;
+          setProfileError(true);
+          setProfile(null);
+          return;
+        }
+        if (data) {
+          setProfileError(false);
+          setProfile(data);
+          return;
+        }
+        // null data — profile not found or JWT not yet propagated, retry
+        console.warn(`fetchProfile attempt ${attempt + 1}: null data`);
+        if (attempt < delays.length - 1) continue;
+        // Final attempt still null — account not approved or genuinely missing
         setProfileError(true);
         setProfile(null);
-        return;
-      }
-
-      if (data) {
-        setProfileError(false);
-        setProfile(data);
-      } else {
-        // Profil tidak ditemukan: akun mungkin belum diapprove (status Pending)
-        // atau ada masalah RLS. Jangan grant akses default.
-        console.warn('fetchProfile: profil tidak ditemukan (akun mungkin belum diapprove)');
+      } catch (err) {
+        console.error(`fetchProfile attempt ${attempt + 1} exception:`, err);
+        if (attempt < delays.length - 1) continue;
         setProfileError(true);
         setProfile(null);
       }
-    } catch (err) {
-      console.error('fetchProfile exception:', err);
-      setProfileError(true);
-      setProfile(null);
     }
   }, []);
 
