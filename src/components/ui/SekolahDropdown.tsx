@@ -9,40 +9,41 @@ const JENJANG_MAP: Record<string, string> = {
 };
 
 const KAB_KOTA_JATENG = [
-  { nama: 'Sukoharjo',       kode: '033909' },
-  { nama: 'Surakarta (Solo)',kode: '033373' },
-  { nama: 'Karanganyar',     kode: '033907' },
-  { nama: 'Wonogiri',        kode: '033910' },
-  { nama: 'Sragen',          kode: '033911' },
-  { nama: 'Klaten',          kode: '033905' },
-  { nama: 'Boyolali',        kode: '033901' },
-  { nama: 'Magelang (Kab)',  kode: '033602' },
-  { nama: 'Magelang (Kota)', kode: '033672' },
-  { nama: 'Semarang (Kab)',  kode: '033322' },
-  { nama: 'Semarang (Kota)', kode: '033374' },
-  { nama: 'Salatiga',        kode: '033773' },
-  { nama: 'Demak',           kode: '033321' },
-  { nama: 'Purworejo',       kode: '033606' },
-  { nama: 'Kebumen',         kode: '033605' },
-  { nama: 'Purbalingga',     kode: '033303' },
-  { nama: 'Banyumas',        kode: '033302' },
-  { nama: 'Cilacap',         kode: '033301' },
-  { nama: 'Wonosobo',        kode: '033307' },
-  { nama: 'Temanggung',      kode: '033308' },
-  { nama: 'Kendal',          kode: '033324' },
-  { nama: 'Batang',          kode: '033325' },
-  { nama: 'Pekalongan (Kab)',kode: '033326' },
-  { nama: 'Pekalongan (Kota)',kode:'033375' },
-  { nama: 'Pemalang',        kode: '033327' },
-  { nama: 'Tegal (Kab)',     kode: '033328' },
-  { nama: 'Tegal (Kota)',    kode: '033376' },
-  { nama: 'Brebes',          kode: '033329' },
-  { nama: 'Kudus',           kode: '033319' },
-  { nama: 'Jepara',          kode: '033320' },
-  { nama: 'Pati',            kode: '033318' },
-  { nama: 'Rembang',         kode: '033317' },
-  { nama: 'Blora',           kode: '033316' },
-  { nama: 'Grobogan',        kode: '033315' },
+  { nama: 'Sukoharjo',        kode: '031100' },
+  { nama: 'Surakarta (Solo)', kode: '036100' },
+  { nama: 'Karanganyar',      kode: '031300' },
+  { nama: 'Wonogiri',         kode: '031200' },
+  { nama: 'Sragen',           kode: '031400' },
+  { nama: 'Klaten',           kode: '031000' },
+  { nama: 'Boyolali',         kode: '030900' },
+  { nama: 'Magelang (Kab)',   kode: '030800' },
+  { nama: 'Magelang (Kota)',  kode: '036000' },
+  { nama: 'Semarang (Kab)',   kode: '032200' },
+  { nama: 'Semarang (Kota)',  kode: '036300' },
+  { nama: 'Salatiga',         kode: '036200' },
+  { nama: 'Demak',            kode: '032100' },
+  { nama: 'Purworejo',        kode: '030600' },
+  { nama: 'Kebumen',          kode: '030500' },
+  { nama: 'Banjarnegara',     kode: '030400' },
+  { nama: 'Purbalingga',      kode: '030300' },
+  { nama: 'Banyumas',         kode: '030200' },
+  { nama: 'Cilacap',          kode: '030100' },
+  { nama: 'Wonosobo',         kode: '030700' },
+  { nama: 'Temanggung',       kode: '032300' },
+  { nama: 'Kendal',           kode: '032400' },
+  { nama: 'Batang',           kode: '032500' },
+  { nama: 'Pekalongan (Kab)', kode: '032600' },
+  { nama: 'Pekalongan (Kota)',kode: '036400' },
+  { nama: 'Pemalang',         kode: '032700' },
+  { nama: 'Tegal (Kab)',      kode: '032800' },
+  { nama: 'Tegal (Kota)',     kode: '036500' },
+  { nama: 'Brebes',           kode: '032900' },
+  { nama: 'Kudus',            kode: '031900' },
+  { nama: 'Jepara',           kode: '032000' },
+  { nama: 'Pati',             kode: '031800' },
+  { nama: 'Rembang',          kode: '031700' },
+  { nama: 'Blora',            kode: '031600' },
+  { nama: 'Grobogan',         kode: '031500' },
 ];
 
 type Sekolah = {
@@ -78,15 +79,15 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
   }, [open, jenjang, kabKota]);
 
   useEffect(() => {
+    if (!open || !jenjang) return;
     if (searchRef.current) clearTimeout(searchRef.current);
-    if (!jenjang) return;
     if (query.trim().length < 2) {
       loadDefault();
       return;
     }
     searchRef.current = setTimeout(() => doSearch(query.trim()), 350);
     return () => { if (searchRef.current) clearTimeout(searchRef.current); };
-  }, [query, jenjang]);
+  }, [query, jenjang, open]);
 
   useEffect(() => {
     function handler(e: MouseEvent) {
