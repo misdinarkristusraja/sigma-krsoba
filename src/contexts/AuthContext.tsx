@@ -24,27 +24,34 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user,         setUser]         = useState<User | null>(null);
   const [profile,      setProfile]      = useState<Profile | null>(null);
-  // authReady: true once onAuthStateChange fires its first event (INITIAL_SESSION)
-  const [authReady,    setAuthReady]    = useState(false);
+  const [loading,      setLoading]      = useState(true);
+  // FIX BUG-006: tambahkan state profileError yang jelas.
+  // Sebelumnya, semua jalur error (RPC gagal / data null) menggunakan fallback
+  // { role: 'Misdinar_Aktif' } — ini berbahaya karena akun Pending bisa mendapat
+  // akses seolah-olah sudah diapprove jika ada gangguan koneksi sementara.
+  // Sekarang: error → profileError=true, profile=null.
+  // ProtectedRoute di App.jsx menangani kondisi ini dengan pesan informatif.
   const [profileError, setProfileError] = useState(false);
-
-  // loading = true until we know auth state AND profile result
-  const loading = !authReady;
 
   const fetchProfile = useCallback(async () => {
     try {
       const { data, error } = await supabase.rpc('get_my_profile');
+
       if (error) {
         console.error('fetchProfile RPC error:', error.message);
+        // Jangan beri role default — set error state agar UI menampilkan pesan jelas
         setProfileError(true);
         setProfile(null);
         return;
       }
+
       if (data) {
         setProfileError(false);
         setProfile(data);
       } else {
-        console.warn('fetchProfile: profil tidak ditemukan');
+        // Profil tidak ditemukan: akun mungkin belum diapprove (status Pending)
+        // atau ada masalah RLS. Jangan grant akses default.
+        console.warn('fetchProfile: profil tidak ditemukan (akun mungkin belum diapprove)');
         setProfileError(true);
         setProfile(null);
       }
@@ -55,29 +62,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Step 1: listen for auth state — synchronous only, no async work here.
-  // onAuthStateChange does NOT await async callbacks, so doing async work
-  // inside it causes setLoading(false) to race with fetchProfile completion.
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setUser(session?.user ?? null);
-      if (!session?.user) {
+      if (session?.user) await fetchProfile();
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      setUser(session?.user ?? null);
+      if (session?.user) {
+        // Delay singkat (150ms) dipertahankan untuk memberi waktu Supabase Auth
+        // menyelesaikan sinkronisasi session sebelum memanggil RPC get_my_profile.
+        // Tanpa ini, RPC kadang dipanggil sebelum JWT ter-propagate ke DB,
+        // menyebabkan RLS gagal dan profile null.
+        setTimeout(() => fetchProfile(), 150);
+      } else {
         setProfile(null);
         setProfileError(false);
       }
-      // Mark auth as resolved after the first event (INITIAL_SESSION on mount)
-      setAuthReady(true);
     });
-    return () => subscription.unsubscribe();
-  }, []);
 
-  // Step 2: fetch profile whenever user changes — fully decoupled from auth listener.
-  useEffect(() => {
-    if (!authReady) return;   // wait for first auth event
-    if (user) {
-      fetchProfile();
-    }
-  }, [user, authReady, fetchProfile]);
+    return () => subscription.unsubscribe();
+  }, [fetchProfile]);
 
   // Login dengan USERNAME saja (bukan email)
   async function signIn(username: string, password: string) {
@@ -102,7 +109,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
 
-    // onAuthStateChange will fire SIGNED_IN and call fetchProfile — don't duplicate here
+    // Set state user secara sinkronus agar router/context segera ter-update
+    if (data.session?.user) {
+      setUser(data.session.user);
+    }
+
+    // 3. Fetch profile — onAuthStateChange juga akan memanggil fetchProfile,
+    // tapi kita panggil di sini juga agar UI login langsung responsif.
+    await fetchProfile();
     return data;
   }
 
