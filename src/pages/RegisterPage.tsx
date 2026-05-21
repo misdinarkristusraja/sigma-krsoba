@@ -32,12 +32,7 @@ export default function RegisterPage() {
   const regIsOpen = regOpenDate && regCloseDate
     ? now >= regOpenDate && now <= regCloseDate
     : true; // default open jika belum ada config
-  const [sekolahQuery, setSekolahQuery] = useState('');
-  const [showSekolah,  setShowSekolah]  = useState(false);
-  const { results: sekolahResults, loading: sekolahLoading, search: searchSekolah, clear: clearSekolah } = useSekolahSearch();
   const nicknameTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
-  // track selected NPSN for is_tarakanita detection
-  const [selectedNpsn, setSelectedNpsn] = useState('');
 
   const [form, setForm] = useState<Record<string,any>>({
     nama_lengkap: '', nickname: '', tanggal_lahir: '', alamat: '',
@@ -69,27 +64,6 @@ export default function RegisterPage() {
       const { data } = await supabase.from('users').select('id').eq('nickname', value).maybeSingle();
       setNicknameStatus(data ? 'taken' : 'ok');
     }, 400);
-  }
-
-  function handleSekolahChange(val: string) {
-    setSekolahQuery(val);
-    setForm(f => ({ ...f, sekolah: val }));
-    setSelectedNpsn('');
-    if (val.length >= 2) {
-      searchSekolah(val);
-      setShowSekolah(true);
-    } else {
-      clearSekolah();
-      setShowSekolah(false);
-    }
-  }
-
-  function selectSekolah(npsn: string, nama: string, isTarakanitaSoloBaru: boolean) {
-    setSekolahQuery(nama);
-    setSelectedNpsn(npsn);
-    setForm(f => ({ ...f, sekolah: nama, is_tarakanita: isTarakanitaSoloBaru }));
-    setShowSekolah(false);
-    clearSekolah();
   }
 
   function validate() {
@@ -267,56 +241,13 @@ export default function RegisterPage() {
             </F>
           </div>
 
-          {/* Sekolah typeahead — API sekolah Indonesia */}
-          <F name="sekolah" label="Sekolah" hint="Ketik minimal 2 huruf untuk mencari (SD/SMP/SMA/SMK)">
-            <div className="relative">
-              <div className="relative">
-                <input
-                  className="input pr-8"
-                  value={sekolahQuery}
-                  onChange={e => handleSekolahChange(e.target.value)}
-                  onBlur={() => setTimeout(() => setShowSekolah(false), 200)}
-                  onFocus={() => sekolahResults.length > 0 && setShowSekolah(true)}
-                  placeholder="Cari nama sekolah..."
-                  autoComplete="off"
-                />
-                {sekolahLoading && (
-                  <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />
-                )}
-              </div>
-              {showSekolah && sekolahResults.length > 0 && (
-                <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-56 overflow-y-auto">
-                  {sekolahResults.map(s => (
-                    <button
-                      key={s.npsn}
-                      type="button"
-                      className="w-full text-left px-3 py-2.5 text-sm hover:bg-gray-50 border-b border-gray-50 last:border-0 flex items-start gap-2"
-                      onMouseDown={() => selectSekolah(s.npsn, s.sekolah, s.isTarakanitaSoloBaru)}
-                    >
-                      <span className={`mt-0.5 shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${
-                        s.bentuk === 'SD'  ? 'bg-green-100 text-green-700'  :
-                        s.bentuk === 'SMP' ? 'bg-blue-100 text-blue-700'   :
-                        s.bentuk === 'SMA' ? 'bg-purple-100 text-purple-700':
-                                             'bg-orange-100 text-orange-700'
-                      }`}>{s.bentuk}</span>
-                      <span className="flex-1 min-w-0">
-                        <span className="font-medium text-gray-800">{s.sekolah}</span>
-                        {s.isTarakanitaSoloBaru && (
-                          <span className="ml-1.5 text-[10px] bg-brand-100 text-brand-800 font-semibold px-1.5 py-0.5 rounded">Tarakanita ✓</span>
-                        )}
-                        <span className="block text-xs text-gray-400">{s.kabupaten_kota}</span>
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-              {selectedNpsn && (
-                <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                  <CheckCircle size={11} /> Sekolah dipilih dari database nasional
-                  {form.is_tarakanita && <span className="ml-1 font-semibold text-brand-800">· Status Tarakanita otomatis ✓</span>}
-                </p>
-              )}
-            </div>
+          {/* Sekolah — dropdown + search via API */}
+          <F name="sekolah" label="Sekolah" hint="Pilih jenjang dulu, lalu cari nama sekolah">
+            <SekolahDropdown
+              pendidikan={form.pendidikan}
+              value={form.sekolah}
+              onChange={(nama, isTarakanita) => setForm(f => ({ ...f, sekolah: nama, is_tarakanita: isTarakanita }))}
+            />
           </F>
 
           <F name="lingkungan" label="Lingkungan" required>
