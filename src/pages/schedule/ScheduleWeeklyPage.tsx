@@ -39,9 +39,6 @@ export default function ScheduleWeeklyPage() {
   const [showAddMisa,setShowAddMisa]= useState(false);
   const [picOptions, setPicOptions] = useState<any[]>([]);
 
-  // PIC batch state
-  const [picBatch,     setPicBatch]     = useState<Record<string, any>>({});
-  const [savingPIC,    setSavingPIC]    = useState(false);
   // Pelatih batch state
   const [pelatihBatch,    setPelatihBatch]    = useState<Record<string, any>>({});
   const [latihanJamBatch, setLatihanJamBatch] = useState<Record<string, string>>({});
@@ -71,47 +68,15 @@ export default function ScheduleWeeklyPage() {
   function prevMonth() { if (month === 1) { setMonth(12); setYear(y => y - 1); } else setMonth(m => m - 1); }
   function nextMonth() { if (month === 12) { setMonth(1); setYear(y => y + 1); } else setMonth(m => m + 1); }
 
-  // ── PIC batch ──────────────────────────────────────────────
-  function setPICField(eventId: string, slot: number, pos: 'a' | 'b', nick: string) {
-    const found = picOptions.find(p => p.nickname === nick);
-    const hp    = found ? (found.hp_anak || found.hp_ortu || '') : '';
-    setPicBatch(b => ({
-      ...b,
-      [eventId]: { ...(b[eventId] || {}), [slot]: { ...(b[eventId]?.[slot] || {}), [pos]: nick, [pos === 'a' ? 'hpA' : 'hpB']: hp } },
-    }));
-  }
-
-  async function savePICBatch() {
-    const entries = Object.entries(picBatch);
-    if (!entries.length) { toast('Tidak ada perubahan'); return; }
-    setSavingPIC(true);
-    let saved = 0;
-    for (const [eventId, slots] of entries) {
-      const update: Record<string, any> = {};
-      for (let s = 1; s <= 4; s++) {
-        const sl = (slots as any)[s];
-        if (!sl) continue;
-        if (sl.a   !== undefined) update[`pic_slot_${s}a`]    = sl.a   || null;
-        if (sl.b   !== undefined) update[`pic_slot_${s}b`]    = sl.b   || null;
-        if (sl.hpA !== undefined) update[`pic_hp_slot_${s}a`] = sl.hpA || null;
-        if (sl.hpB !== undefined) update[`pic_hp_slot_${s}b`] = sl.hpB || null;
-      }
-      if (Object.keys(update).length) { await supabase.from('events').update(update).eq('id', eventId); saved++; }
-    }
-    setPicBatch({});
-    setSavingPIC(false);
-    toast.success(`PIC disimpan untuk ${saved} jadwal!`);
-    loadEvents();
-  }
-
   // ── Pelatih batch ──────────────────────────────────────────
+  // pelatihBatch: { [eventId]: { [urutan]: nick } }
   function getPelatihField(ev: any, pos: number) {
-    const key = `p${pos}`;
-    if (pelatihBatch[ev.id]?.[key] !== undefined) return pelatihBatch[ev.id][key];
-    return ev[`pelatih_slot_${pos}`] || '';
+    if (pelatihBatch[ev.id]?.[pos] !== undefined) return pelatihBatch[ev.id][pos];
+    const existing = (ev.event_pelatih || []).find((p: any) => p.urutan === pos);
+    return existing?.nama || '';
   }
   function setPelatihField(eventId: string, pos: number, nick: string) {
-    setPelatihBatch(b => ({ ...b, [eventId]: { ...(b[eventId] || {}), [`p${pos}`]: nick } }));
+    setPelatihBatch(b => ({ ...b, [eventId]: { ...(b[eventId] || {}), [pos]: nick } }));
   }
   function getLatihanJam(ev: any) {
     if (latihanJamBatch[ev.id] !== undefined) return latihanJamBatch[ev.id];
@@ -123,7 +88,6 @@ export default function ScheduleWeeklyPage() {
   async function savePelatihBatch() {
     setSavingPelatih(true);
     let saved = 0;
-    // Merge eventIds dari pelatih + jam batch
     const allIds = new Set([
       ...Object.keys(pelatihBatch),
       ...Object.keys(latihanJamBatch),
@@ -131,14 +95,21 @@ export default function ScheduleWeeklyPage() {
     for (const eventId of allIds) {
       const pelatih = pelatihBatch[eventId] || {};
       const jam     = latihanJamBatch[eventId];
-      const payload: any = {};
-      if (pelatih.p1 !== undefined) payload.pelatih_slot_1 = pelatih.p1 || null;
-      if (pelatih.p2 !== undefined) payload.pelatih_slot_2 = pelatih.p2 || null;
-      if (pelatih.p3 !== undefined) payload.pelatih_slot_3 = pelatih.p3 || null;
-      if (jam !== undefined) payload.latihan_times = jam ? [jam] : [];
-      if (!Object.keys(payload).length) continue;
-      const { error } = await supabase.from('events').update(payload).eq('id', eventId);
-      if (!error) saved++;
+
+      // Update event_pelatih rows (delete all for event then re-insert)
+      if (Object.keys(pelatih).length) {
+        await supabase.from('event_pelatih').delete().eq('event_id', eventId);
+        const rows = Object.entries(pelatih)
+          .filter(([, nick]) => nick)
+          .map(([pos, nick]) => ({ event_id: eventId, nama: nick as string, urutan: Number(pos) }));
+        if (rows.length) await supabase.from('event_pelatih').insert(rows);
+      }
+
+      // Update latihan_times on events table
+      if (jam !== undefined) {
+        await supabase.from('events').update({ latihan_times: jam ? [jam] : [] }).eq('id', eventId);
+      }
+      saved++;
     }
     await loadEvents();
     setPelatihBatch({});
@@ -149,7 +120,10 @@ export default function ScheduleWeeklyPage() {
 
   // ── Event actions ──────────────────────────────────────────
   async function publishEvent(ev: any) {
-    const missingPIC = [1,2,3,4].filter(s => !ev[`pic_slot_${s}a`] && !ev[`pic_slot_${s}b`]);
+    const pics = ev.event_pics || [];
+    const nSlots = ev.tipe_event === 'Misa_Khusus' ? (ev.jumlah_misa || 1) : 4;
+    const missingPIC = Array.from({ length: nSlots }, (_, i) => i + 1)
+      .filter(s => !pics.some((p: any) => p.slot === s));
     if (missingPIC.length && !confirm(`Slot ${missingPIC.join(', ')} belum ada PIC. Publish tetap?`)) return;
     const { error } = await supabase.from('events').update({ is_draft: false, published_at: new Date().toISOString() }).eq('id', ev.id);
     if (error) { toast.error(error.message); return; }
@@ -175,18 +149,10 @@ export default function ScheduleWeeklyPage() {
       perayaan: editEvent.perayaan, nama_event: (editEvent.perayaan || '').toUpperCase(),
       warna_liturgi: editEvent.warna_liturgi, tanggal_latihan: editEvent.tanggal_latihan,
       draft_note: editEvent.draft_note,
-      pic_slot_1a: editEvent.pic_slot_1a||null, pic_hp_slot_1a: editEvent.pic_hp_slot_1a||null,
-      pic_slot_1b: editEvent.pic_slot_1b||null, pic_hp_slot_1b: editEvent.pic_hp_slot_1b||null,
-      pic_slot_2a: editEvent.pic_slot_2a||null, pic_hp_slot_2a: editEvent.pic_hp_slot_2a||null,
-      pic_slot_2b: editEvent.pic_slot_2b||null, pic_hp_slot_2b: editEvent.pic_hp_slot_2b||null,
-      pic_slot_3a: editEvent.pic_slot_3a||null, pic_hp_slot_3a: editEvent.pic_hp_slot_3a||null,
-      pic_slot_3b: editEvent.pic_slot_3b||null, pic_hp_slot_3b: editEvent.pic_hp_slot_3b||null,
-      pic_slot_4a: editEvent.pic_slot_4a||null, pic_hp_slot_4a: editEvent.pic_hp_slot_4a||null,
-      pic_slot_4b: editEvent.pic_slot_4b||null, pic_hp_slot_4b: editEvent.pic_hp_slot_4b||null,
       is_misa_besar: editEvent.is_misa_besar || false,
     }).eq('id', editEvent.id);
     if (error) { toast.error(error.message); return; }
-    toast.success('Jadwal diperbarui!');
+    // PIC saving is handled by EditEventModal via event_pics table
     setEditEvent(null);
     loadEvents();
   }
@@ -228,7 +194,7 @@ export default function ScheduleWeeklyPage() {
 
   const TABS = [
     { key: 'jadwal',  label: '📅 Jadwal' },
-    { key: 'pic',     label: `🙋 PIC${Object.keys(picBatch).length > 0 ? ` (${Object.keys(picBatch).length})` : ''}` },
+    { key: 'pic',     label: '🙋 PIC' },
     { key: 'pelatih', label: '👨‍🏫 Pelatih Piket' },
     { key: 'monitor', label: '📊 Prioritas' },
   ] as const;
@@ -307,11 +273,12 @@ export default function ScheduleWeeklyPage() {
       {/* ── TAB: PIC ── */}
       {activeTab === 'pic' && (
         <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center justify-between gap-3">
-            <p className="text-sm text-blue-700">Isi PIC untuk semua slot sekaligus, lalu klik <strong>Simpan Semua PIC</strong>.</p>
-            <button onClick={savePICBatch} disabled={savingPIC || !Object.keys(picBatch).length} className="btn-primary gap-2 flex-shrink-0">
-              <Check size={16}/> {savingPIC ? 'Menyimpan...' : 'Simpan Semua PIC'}
-            </button>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <p className="text-sm font-semibold text-blue-800 mb-1">PIC Dinamis</p>
+            <p className="text-sm text-blue-700">
+              PIC sekarang bisa lebih dari 2 per slot. Klik <strong>Edit</strong> pada event di tab Jadwal,
+              lalu tambah/hapus PIC sesuai kebutuhan.
+            </p>
           </div>
           {events.length === 0
             ? <div className="card text-center py-10 text-gray-400">Belum ada jadwal bulan ini</div>
@@ -319,7 +286,6 @@ export default function ScheduleWeeklyPage() {
               const lc     = getLiturgyClass(ev.warna_liturgi);
               const isMK   = ev.tipe_event === 'Misa_Khusus';
               const nSlots = isMK ? (ev.jumlah_misa || 1) : 4;
-              const slotSched = isMK ? parseSlotSchedule(ev.draft_note, ev.tanggal_tugas) : [];
               return (
                 <div key={ev.id} className={`card border-l-4 ${ev.is_draft ? 'border-yellow-400' : 'border-green-400'}`}>
                   <div className="flex items-center gap-3 mb-3">
@@ -334,27 +300,16 @@ export default function ScheduleWeeklyPage() {
                   </div>
                   <div className={`grid gap-3 ${nSlots <= 2 ? 'grid-cols-2' : nSlots === 3 ? 'grid-cols-3' : 'grid-cols-2 xl:grid-cols-4'}`}>
                     {Array.from({ length: nSlots }, (_,i) => i+1).map(slot => {
-                      const curA = picBatch[ev.id]?.[slot]?.a ?? ev[`pic_slot_${slot}a`] ?? '';
-                      const curB = picBatch[ev.id]?.[slot]?.b ?? ev[`pic_slot_${slot}b`] ?? '';
-                      const sc   = slotSched.find(s => s.slot === slot);
-                      const slotLabel = isMK
-                        ? `Misa ${slot} · ${sc?.jam || `Slot ${slot}`}${sc?.tanggal ? ` (${new Date(sc.tanggal+'T00:00:00').toLocaleDateString('id-ID',{day:'numeric',month:'short'})})` : ''}`
-                        : SLOT_INFO[slot]?.time || `Slot ${slot}`;
-                      const adminPeng = picOptions.filter(p => p.role === 'Administrator' || p.role === 'Pengurus');
+                      const slotPics = (ev.event_pics || []).filter((p: any) => p.slot === slot).sort((a: any, b: any) => a.urutan - b.urutan);
                       return (
-                        <div key={slot} className="p-3 bg-gray-50 rounded-xl space-y-2">
-                          <p className="text-xs font-bold text-gray-700">{slotLabel}</p>
-                          {(['a','b'] as const).map(pos => (
-                            <div key={pos}>
-                              <label className="text-[10px] text-gray-400">PIC {pos === 'a' ? '1' : '2'}</label>
-                              <select className="input text-xs mt-0.5" value={pos === 'a' ? curA : curB}
-                                onChange={e => setPICField(ev.id, slot, pos, e.target.value)}>
-                                <option value="">— Pilih —</option>
-                                {adminPeng.map(p => <option key={p.id} value={p.nickname}>{p.nama_panggilan}</option>)}
-                              </select>
-                            </div>
-                          ))}
-                          {(curA||curB) && <p className="text-[10px] text-brand-700 font-medium truncate">✓ {[curA,curB].filter(Boolean).join(' & ')}</p>}
+                        <div key={slot} className="p-3 bg-gray-50 rounded-xl space-y-1">
+                          <p className="text-xs font-bold text-gray-700">{SLOT_INFO[slot]?.time || `Slot ${slot}`}</p>
+                          {slotPics.length === 0
+                            ? <p className="text-[11px] text-red-400">PIC belum diisi</p>
+                            : slotPics.map((p: any, i: number) => (
+                              <p key={i} className="text-[11px] text-brand-700 font-medium">✓ {p.nama}{p.hp ? ` · ${p.hp}` : ''}</p>
+                            ))
+                          }
                         </div>
                       );
                     })}
@@ -410,12 +365,12 @@ export default function ScheduleWeeklyPage() {
                     placeholder="cth. 16:00"
                   />
                 </div>
-                {(ev.pelatih_slot_1||ev.pelatih_slot_2||ev.pelatih_slot_3) && (
+                {(ev.event_pelatih?.length > 0) && (
                   <div className="flex gap-2 flex-wrap">
                     <span className="text-xs text-gray-500">Tersimpan:</span>
-                    {[ev.pelatih_slot_1,ev.pelatih_slot_2,ev.pelatih_slot_3].filter(Boolean).map((p: string,i: number) => {
-                      const u = picOptions.find(u => u.nickname === p);
-                      return <span key={i} className="text-xs bg-teal-100 text-teal-800 px-2 py-0.5 rounded-lg font-medium">{u?.nama_panggilan||p}</span>;
+                    {(ev.event_pelatih as any[]).sort((a,b) => a.urutan - b.urutan).map((p: any) => {
+                      const u = picOptions.find(u => u.nickname === p.nama);
+                      return <span key={p.urutan} className="text-xs bg-teal-100 text-teal-800 px-2 py-0.5 rounded-lg font-medium">{u?.nama_panggilan || p.nama}</span>;
                     })}
                   </div>
                 )}

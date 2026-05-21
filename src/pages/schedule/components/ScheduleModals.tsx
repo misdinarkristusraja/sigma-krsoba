@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Check, X, UserCheck, AlertTriangle } from 'lucide-react';
+import { Check, X, UserCheck, AlertTriangle, Plus, Trash2 } from 'lucide-react';
 import { supabase as supabaseTyped } from '@/lib/supabase';
 const supabase = supabaseTyped as any;
 import { formatDate } from '@/lib/utils';
@@ -147,32 +147,109 @@ function EditPetugasSection({ ev, onSaved }: { ev: any, onSaved: () => void }) {
   );
 }
 
+// ── PIC Editor per slot (dinamis) ────────────────────────────────
+function PicSlotEditor({ slot, slotLabel, pics, setPics, picOptions }: {
+  slot: number;
+  slotLabel: string;
+  pics: { slot: number; nama: string; hp: string; urutan: number }[];
+  setPics: (fn: (prev: any[]) => any[]) => void;
+  picOptions: any[];
+}) {
+  const staffOptions = picOptions.filter((p: any) =>
+    ['Administrator', 'Pengurus'].includes(p.role)
+  );
+
+  function addPic() {
+    const maxUrutan = pics.filter(p => p.slot === slot).reduce((m, p) => Math.max(m, p.urutan), 0);
+    setPics(prev => [...prev, { slot, nama: '', hp: '', urutan: maxUrutan + 1 }]);
+  }
+
+  function removePic(urutan: number) {
+    setPics(prev => {
+      const filtered = prev.filter(p => !(p.slot === slot && p.urutan === urutan));
+      // reindex urutan
+      let idx = 1;
+      return filtered.map(p => p.slot === slot ? { ...p, urutan: idx++ } : p);
+    });
+  }
+
+  function updatePic(urutan: number, nick: string) {
+    const found = staffOptions.find((p: any) => p.nickname === nick);
+    const hp = found ? (found.hp_anak || found.hp_ortu || '') : '';
+    const nama = found ? (found.nama_panggilan || nick) : nick;
+    setPics(prev => prev.map(p =>
+      p.slot === slot && p.urutan === urutan ? { ...p, nama, hp } : p
+    ));
+  }
+
+  const slotPics = pics.filter(p => p.slot === slot).sort((a, b) => a.urutan - b.urutan);
+
+  return (
+    <div className="p-3 bg-gray-50 rounded-xl">
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-xs font-bold text-gray-600">{slotLabel}</p>
+        <button type="button" onClick={addPic}
+          className="text-[11px] text-brand-800 hover:text-brand-600 flex items-center gap-0.5 font-medium">
+          <Plus size={11}/> Tambah PIC
+        </button>
+      </div>
+      {slotPics.length === 0 && (
+        <p className="text-[11px] text-gray-400 italic">Belum ada PIC — klik Tambah PIC</p>
+      )}
+      <div className="space-y-2">
+        {slotPics.map((p, i) => (
+          <div key={p.urutan} className="flex items-center gap-2">
+            <span className="text-[10px] text-gray-400 w-4 shrink-0">{i + 1}.</span>
+            <select
+              className="input text-xs flex-1"
+              value={staffOptions.find((o: any) => o.nama_panggilan === p.nama || o.nickname === p.nama)?.nickname || ''}
+              onChange={e => updatePic(p.urutan, e.target.value)}
+            >
+              <option value="">— Pilih PIC —</option>
+              {staffOptions.map((o: any) => (
+                <option key={o.id} value={o.nickname}>{o.nama_panggilan} (@{o.nickname})</option>
+              ))}
+            </select>
+            {p.hp && <span className="text-[10px] text-gray-400 shrink-0">📱 {p.hp}</span>}
+            <button type="button" onClick={() => removePic(p.urutan)}
+              className="text-red-400 hover:text-red-600 shrink-0">
+              <Trash2 size={13}/>
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function EditEventModal({ editEvent, setEditEvent, picOptions, loadEvents, saveEditEvent }: any) {
   if (!editEvent) return null;
 
-  function PicSelect({ slot, pos }: any) {
-    const fNick = `pic_slot_${slot}${pos}`;
-    const fHp   = `pic_hp_slot_${slot}${pos}`;
-    const val   = editEvent?.[fNick] || '';
+  // Kelola event_pics sebagai local state
+  const [localPics, setLocalPics] = useState<any[]>(editEvent.event_pics || []);
+  const [savingPics, setSavingPics] = useState(false);
 
-    function onChange(nick: string) {
-      const found = picOptions.find((p:any) => p.nickname === nick);
-      const hp    = found ? (found.hp_anak || found.hp_ortu || '') : '';
-      setEditEvent((v:any) => ({ ...v, [fNick]: nick, [fHp]: hp }));
+  const nSlots = editEvent.tipe_event === 'Misa_Khusus' ? (editEvent.jumlah_misa || 1) : 4;
+
+  async function handleSaveAll() {
+    setSavingPics(true);
+    try {
+      // Save event fields
+      await saveEditEvent();
+      // Save pics: delete all for this event, re-insert
+      await supabase.from('event_pics').delete().eq('event_id', editEvent.id);
+      const toInsert = localPics.filter(p => p.nama && p.nama.trim());
+      if (toInsert.length) {
+        await supabase.from('event_pics').insert(
+          toInsert.map(p => ({ event_id: editEvent.id, slot: p.slot, nama: p.nama, hp: p.hp || null, urutan: p.urutan }))
+        );
+      }
+      toast.success('PIC disimpan!');
+    } catch (e: any) {
+      toast.error('Gagal simpan PIC: ' + e.message);
+    } finally {
+      setSavingPics(false);
     }
-
-    return (
-      <div className="flex-1">
-        <label className="text-[10px] text-gray-500 font-medium">PIC {pos === 'a' ? '1' : '2'}</label>
-        <select className="input text-xs mt-0.5" value={val} onChange={e => onChange(e.target.value)}>
-          <option value="">— Pilih PIC —</option>
-          {picOptions.filter((p:any) => p.role === 'Administrator' || p.role === 'Pengurus').map((p:any) => (
-            <option key={p.id} value={p.nickname}>{p.nama_panggilan} (@{p.nickname})</option>
-          ))}
-        </select>
-        {editEvent?.[fHp] && <p className="text-[10px] text-gray-400 mt-0.5">📞 {editEvent[fHp]}</p>}
-      </div>
-    );
   }
 
   return (
@@ -218,11 +295,15 @@ export function EditEventModal({ editEvent, setEditEvent, picOptions, loadEvents
             <UserCheck size={15} className="text-brand-800"/> PIC per Slot
           </h4>
           <div className="space-y-3">
-            {[1,2,3,4].map(slot=>(
-              <div key={slot} className="p-3 bg-gray-50 rounded-xl">
-                <p className="text-xs font-bold text-gray-600 mb-2">{(SLOT_INFO as any)[slot].time}</p>
-                <div className="flex gap-3"><PicSelect slot={slot} pos="a"/><PicSelect slot={slot} pos="b"/></div>
-              </div>
+            {Array.from({ length: nSlots }, (_, i) => i + 1).map(slot => (
+              <PicSlotEditor
+                key={slot}
+                slot={slot}
+                slotLabel={(SLOT_INFO as any)[slot]?.time || `Slot ${slot}`}
+                pics={localPics}
+                setPics={setLocalPics}
+                picOptions={picOptions}
+              />
             ))}
           </div>
         </div>
@@ -233,7 +314,9 @@ export function EditEventModal({ editEvent, setEditEvent, picOptions, loadEvents
         </div>
         <EditPetugasSection ev={editEvent} onSaved={()=>{setEditEvent(null);loadEvents();}}/>
         <div className="flex gap-2 mt-4">
-          <button onClick={saveEditEvent} className="btn-primary flex-1 gap-2"><Check size={16}/> Simpan</button>
+          <button onClick={handleSaveAll} disabled={savingPics} className="btn-primary flex-1 gap-2">
+            <Check size={16}/> {savingPics ? 'Menyimpan…' : 'Simpan'}
+          </button>
           <button onClick={()=>setEditEvent(null)} className="btn-secondary">Batal</button>
         </div>
       </div>

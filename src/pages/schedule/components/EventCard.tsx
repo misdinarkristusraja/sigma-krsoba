@@ -1,6 +1,6 @@
 import React from 'react';
 import { Edit2, Globe, Lock, Trash2, FileEdit, UserCheck } from 'lucide-react';
-import { formatDate, getLiturgyClass } from '@/lib/utils';
+import { formatDate, getLiturgyClass, getPicsForSlot } from '@/lib/utils';
 import { AssignmentMatrix } from './AssignmentMatrix';
 import { ExportToolbar } from './ExportToolbar';
 
@@ -23,9 +23,10 @@ function VigiliSection({ vigili, picOptions, onEdit, onDelete, onPublish, onUnpu
   onUnpublish: (ev: any) => void;
 }) {
   const va   = vigili.assignments || [];
-  const vPicA = vigili.pic_slot_1a;
-  const vPicB = vigili.pic_slot_1b;
-  const vHpA  = vigili.pic_hp_slot_1a;
+  const vPics = getPicsForSlot(vigili.event_pics, 1);
+  const vPicA = vPics[0]?.nama || null;
+  const vPicB = vPics[1]?.nama || null;
+  const vHpA  = vPics[0]?.hp  || null;
   const vJam  = vigili.draft_note?.match(/Jam: ([\d.]+)/)?.[1] || '17.30';
   const vTgl  = formatDate(vigili.tanggal_tugas, 'EEEE, dd MMM yyyy');
 
@@ -72,7 +73,10 @@ function VigiliSection({ vigili, picOptions, onEdit, onDelete, onPublish, onUnpu
 export function EventCard({ ev, vigili, picOptions, onEdit, onDelete, onPublish, onUnpublish }: EventCardProps) {
   const lc = getLiturgyClass(ev.warna_liturgi);
 
-  const pelatihNicks = [ev.pelatih_slot_1, ev.pelatih_slot_2, ev.pelatih_slot_3].filter(Boolean);
+  const pelatihNicks = (ev.event_pelatih || [])
+    .sort((a: any, b: any) => a.urutan - b.urutan)
+    .map((p: any) => p.nama)
+    .filter(Boolean);
 
   return (
     <div className={`card border-l-4 ${ev.is_draft ? 'border-yellow-400 bg-yellow-50/20' : 'border-green-400'}`}>

@@ -55,6 +55,13 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
   for (let s = 1; s <= nSlots; s++) bySlot[s] = assignments.filter(a => a.slot_number === s);
   const perayaan = (ev.perayaan || ev.nama_event || 'MISA MINGGUAN').toUpperCase();
 
+  // Helper: get PICs for a slot from event_pics array
+  function slotPics(slot: number) {
+    return ((ev.event_pics || []) as any[])
+      .filter(p => p.slot === slot)
+      .sort((a, b) => a.urutan - b.urutan);
+  }
+
   // Subtitle tanggal
   let subtitleTgl: string;
   if (isMisaKhusus) {
@@ -72,9 +79,10 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
   for (let slot = 1; slot <= nSlots; slot++) {
     const info    = SLOT_INFO[slot] || SLOT_INFO[1];
     const people  = bySlot[slot] || [];
-    const picA    = (ev[`pic_slot_${slot}a`] || '').toUpperCase();
-    const picB    = (ev[`pic_slot_${slot}b`] || '').toUpperCase();
-    const hpA     = ev[`pic_hp_slot_${slot}a`] || '';
+    const pics    = slotPics(slot);
+    const picA    = (pics[0]?.nama || '').toUpperCase();
+    const picB    = (pics[1]?.nama || '').toUpperCase();
+    const hpA     = pics[0]?.hp || '';
     const sc      = schedule.find(s => s.slot === slot);
     const tglSlot = isMisaKhusus
       ? fmtTglIndo(sc?.tanggal || ev.tanggal_tugas)
@@ -127,8 +135,11 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
     }
   }
 
-  // Pelatih section — tambah JAM LATIHAN
-  const pelatihNicks = [ev.pelatih_slot_1, ev.pelatih_slot_2, ev.pelatih_slot_3].filter(Boolean);
+  // Pelatih section — dari event_pelatih array
+  const pelatihNicks: string[] = ((ev.event_pelatih || []) as any[])
+    .sort((a, b) => a.urutan - b.urutan)
+    .map((p: any) => p.nama)
+    .filter(Boolean);
   // Jam latihan: dari latihan_times array atau latihan_notes
   const latihanJam = (() => {
     if (ev.latihan_times && ev.latihan_times.length) return ev.latihan_times.join(', ');
@@ -221,22 +232,31 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
 // ── WA Text builder ──────────────────────────────────────────────────────────
 function buildWAText(ev: any): string {
   const asgn   = ev.assignments || [];
+  const isMK   = ev.tipe_event === 'Misa_Khusus';
+  const nSlots = isMK ? (ev.jumlah_misa || 1) : 4;
   const bySlot: Record<number, any[]> = {};
-  for (let s = 1; s <= 4; s++) bySlot[s] = asgn.filter((a: any) => a.slot_number === s);
+  for (let s = 1; s <= nSlots; s++) bySlot[s] = asgn.filter((a: any) => a.slot_number === s);
   const latihanJam = ev.latihan_times?.[0] || ev.latihan_notes || '';
+
+  function slotPics(slot: number) {
+    return ((ev.event_pics || []) as any[])
+      .filter(p => p.slot === slot)
+      .sort((a: any, b: any) => a.urutan - b.urutan);
+  }
+
   const lines = [
     '✝️ JADWAL MISDINAR',
     (ev.perayaan || ev.nama_event || '').toUpperCase(),
     `${formatDate(ev.tanggal_latihan, 'dd')}–${formatDate(ev.tanggal_tugas, 'dd MMMM yyyy')}`,
     '',
   ];
-  for (let slot = 1; slot <= 4; slot++) {
-    const info = SLOT_INFO[slot];
-    const picA = ev[`pic_slot_${slot}a`] || '';
-    const picB = ev[`pic_slot_${slot}b`] || '';
-    const hpA  = ev[`pic_hp_slot_${slot}a`] || '';
-    lines.push(`📍 ${info.time}`);
-    if (picA || picB) lines.push(`PIC: ${[picA, picB].filter(Boolean).join(' & ')}${hpA ? ` (${hpA})` : ''}`);
+  for (let slot = 1; slot <= nSlots; slot++) {
+    const info = SLOT_INFO[slot] || SLOT_INFO[1];
+    const pics = slotPics(slot);
+    const picNames = pics.map((p: any) => p.nama).join(' & ');
+    const hpA  = pics[0]?.hp || '';
+    lines.push(`📍 ${isMK ? `Misa ${slot}` : info.time}`);
+    if (picNames) lines.push(`PIC: ${picNames}${hpA ? ` (${hpA})` : ''}`);
     const names = bySlot[slot]?.map((a: any) => a.users?.nama_panggilan) || [];
     if (!names.length) for (let i = 1; i <= PETUGAS_PER_SLOT; i++) lines.push(`${i}. (kosong)`);
     else names.forEach((n, i) => lines.push(`${i + 1}. ${n}`));
@@ -256,7 +276,9 @@ async function buildMonthlyPDF(year: number, month: number, pelatihOptions: any[
     .select(`
       *,
       assignments(slot_number, position,
-        users(id, nama_lengkap, nama_panggilan, lingkungan))
+        users(id, nama_lengkap, nama_panggilan, lingkungan)),
+      event_pics(slot, nama, hp, urutan),
+      event_pelatih(nama, urutan)
     `)
     .gte('tanggal_tugas', start)
     .lte('tanggal_tugas', end)

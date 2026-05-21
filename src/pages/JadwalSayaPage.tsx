@@ -27,6 +27,8 @@ function formatJam(iso: string) {
   return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false });
 }
 
+type EventPicRow = { slot: number; nama: string; hp?: string | null; urutan: number };
+
 type Row = {
   id: string;
   slot_number: number;
@@ -39,14 +41,7 @@ type Row = {
     tanggal_latihan: string | null;
     warna_liturgi: string;
     latihan_times: string[] | null;
-    pic_slot_1a: string | null; pic_slot_1b: string | null;
-    pic_slot_2a: string | null; pic_slot_2b: string | null;
-    pic_slot_3a: string | null; pic_slot_3b: string | null;
-    pic_slot_4a: string | null; pic_slot_4b: string | null;
-    pic_hp_slot_1a: string | null; pic_hp_slot_1b: string | null;
-    pic_hp_slot_2a: string | null; pic_hp_slot_2b: string | null;
-    pic_hp_slot_3a: string | null; pic_hp_slot_3b: string | null;
-    pic_hp_slot_4a: string | null; pic_hp_slot_4b: string | null;
+    event_pics: EventPicRow[] | null;
   } | null;
 };
 
@@ -75,10 +70,7 @@ export default function JadwalSayaPage() {
             id, nama_event, perayaan, tipe_event,
             tanggal_tugas, tanggal_latihan, warna_liturgi,
             latihan_times,
-            pic_slot_1a, pic_slot_1b, pic_hp_slot_1a, pic_hp_slot_1b,
-            pic_slot_2a, pic_slot_2b, pic_hp_slot_2a, pic_hp_slot_2b,
-            pic_slot_3a, pic_slot_3b, pic_hp_slot_3a, pic_hp_slot_3b,
-            pic_slot_4a, pic_slot_4b, pic_hp_slot_4a, pic_hp_slot_4b
+            event_pics(slot, nama, hp, urutan)
           )
         `)
         .eq('user_id', user.id)
@@ -116,17 +108,19 @@ export default function JadwalSayaPage() {
     });
   }
 
-  function getPic(ev: any, slot: number) {
-    const a = ev[`pic_slot_${slot}a`];
-    const b = ev[`pic_slot_${slot}b`];
-    if (!a && !b) return null;
-    return [a, b].filter(Boolean).join(' & ');
+  function getPic(ev: any, slot: number): string | null {
+    const pics: EventPicRow[] = (ev.event_pics || [])
+      .filter((p: EventPicRow) => p.slot === slot)
+      .sort((a: EventPicRow, b: EventPicRow) => a.urutan - b.urutan);
+    if (!pics.length) return null;
+    return pics.map(p => p.nama).join(' & ');
   }
 
-  function getPicHp(ev: any, slot: number) {
-    const a = ev[`pic_hp_slot_${slot}a`];
-    const b = ev[`pic_hp_slot_${slot}b`];
-    return [a, b].filter(Boolean)[0] || null;
+  function getPicHp(ev: any, slot: number): string | null {
+    const pics: EventPicRow[] = (ev.event_pics || [])
+      .filter((p: EventPicRow) => p.slot === slot)
+      .sort((a: EventPicRow, b: EventPicRow) => a.urutan - b.urutan);
+    return pics[0]?.hp || null;
   }
 
   async function submitSwap() {
@@ -137,7 +131,10 @@ export default function JadwalSayaPage() {
     try {
       const ev   = swapRow.event! as any;
       const slot = swapRow.slot_number;
-      const picNick = ev[`pic_slot_${slot}a`];
+      const slotPics: EventPicRow[] = (ev.event_pics || [])
+        .filter((p: EventPicRow) => p.slot === slot)
+        .sort((a: EventPicRow, b: EventPicRow) => a.urutan - b.urutan);
+      const picNick = slotPics[0]?.nama || null;
       let picUserId: string | null = null;
       let picWaLink = '';
 

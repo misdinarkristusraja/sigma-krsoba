@@ -295,3 +295,22 @@ export function getDisplayName(member: MemberLike, allMembers: MemberLike[]): st
   const tagged = tagDuplicateNames(allMembers);
   return tagged[member.id] || member.nama_panggilan || member.nickname || member.id;
 }
+
+// ── Event PIC helpers ─────────────────────────────────────
+export type EventPic = { id?: string; slot: number; nama: string; hp?: string | null; urutan: number };
+
+export function getPicsForSlot(event_pics: EventPic[] | null | undefined, slot: number): EventPic[] {
+  if (!event_pics) return [];
+  return event_pics
+    .filter(p => p.slot === slot)
+    .sort((a, b) => a.urutan - b.urutan);
+}
+
+export function getPicNames(event_pics: EventPic[] | null | undefined, slot: number): string {
+  return getPicsForSlot(event_pics, slot).map(p => p.nama).join(' / ') || '—';
+}
+
+export function getPicHp(event_pics: EventPic[] | null | undefined, slot: number): string | null {
+  const pics = getPicsForSlot(event_pics, slot);
+  return pics[0]?.hp || null;
+}

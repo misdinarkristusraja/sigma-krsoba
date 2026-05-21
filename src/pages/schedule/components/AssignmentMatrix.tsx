@@ -1,6 +1,6 @@
 import React from 'react';
 import { UserCheck, AlertTriangle } from 'lucide-react';
-import { formatDate, tagDuplicateNames } from '@/lib/utils';
+import { formatDate, tagDuplicateNames, getPicsForSlot } from '@/lib/utils';
 
 const SLOT_INFO: Record<number, { time: string; label: string; jam: string }> = {
   1: { time: 'Sabtu 17:30',  label: 'Sabtu Sore',    jam: '17.30' },
@@ -37,10 +37,10 @@ export function AssignmentMatrix({ ev }: AssignmentMatrixProps) {
   return (
     <div className={`grid gap-3 ${nSlots <= 2 ? 'grid-cols-2' : nSlots === 3 ? 'grid-cols-3' : 'grid-cols-2 xl:grid-cols-4'}`}>
       {Array.from({ length: nSlots }, (_, i) => i + 1).map(slot => {
-        const people = asgn.filter((a: any) => a.slot_number === slot);
-        const picA   = ev[`pic_slot_${slot}a`];
-        const picB   = ev[`pic_slot_${slot}b`];
-        const hpA    = ev[`pic_hp_slot_${slot}a`];
+        const people   = asgn.filter((a: any) => a.slot_number === slot);
+        const slotPics = getPicsForSlot(ev.event_pics, slot);
+        const picNames = slotPics.map((p: any) => p.nama).join(' & ') || null;
+        const hpA      = slotPics[0]?.hp || null;
 
         let jamLabel: string;
         let tglLabel: string;
@@ -61,10 +61,10 @@ export function AssignmentMatrix({ ev }: AssignmentMatrixProps) {
             <div className="pb-2 border-b border-gray-200/70">
               <p className="text-xs font-bold text-gray-700">{jamLabel}</p>
               <p className="text-[10px] text-gray-500">{tglLabel}</p>
-              {picA || picB ? (
+              {picNames ? (
                 <div className="mt-1">
                   <p className="text-[11px] text-brand-700 flex items-center gap-1">
-                    <UserCheck size={11} />PIC: {[picA, picB].filter(Boolean).join(' & ')}
+                    <UserCheck size={11} />PIC: {picNames}
                   </p>
                   {hpA && <p className="text-[10px] text-gray-400 ml-3.5">📱 {hpA}</p>}
                 </div>

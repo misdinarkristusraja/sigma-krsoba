@@ -106,10 +106,7 @@ export default function SwapPage() {
       .from('assignments')
       .select(`id, slot_number,
         events(id, nama_event, tanggal_tugas, perayaan,
-          pic_slot_1a, pic_hp_slot_1a, pic_slot_1b, pic_hp_slot_1b,
-          pic_slot_2a, pic_hp_slot_2a, pic_slot_2b, pic_hp_slot_2b,
-          pic_slot_3a, pic_hp_slot_3a, pic_slot_3b, pic_hp_slot_3b,
-          pic_slot_4a, pic_hp_slot_4a, pic_slot_4b, pic_hp_slot_4b)`)
+          event_pics(slot, nama, hp, urutan))`)
       .eq('user_id', profile!.id)
       .gte('events.tanggal_tugas', today)
       .order('events.tanggal_tugas').limit(10);
@@ -138,7 +135,10 @@ export default function SwapPage() {
 
     const ev    = asgn.events;
     const slot  = asgn.slot_number;
-    const picNick = ev[`pic_slot_${slot}a`];
+    const slotPics = ((ev.event_pics || []) as any[])
+      .filter((p: any) => p.slot === slot)
+      .sort((a: any, b: any) => a.urutan - b.urutan);
+    const picNick = slotPics[0]?.nama || null;
     let picUserId = null, picWaLink = '';
 
     if (picNick) {

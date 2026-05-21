@@ -26,11 +26,8 @@ export function useWeeklySchedule() {
         id, nama_event, tipe_event, tanggal_tugas, tanggal_latihan,
         perayaan, warna_liturgi, jumlah_misa, status_event, is_draft,
         published_at, draft_note, is_misa_besar,
-        pic_slot_1a, pic_hp_slot_1a, pic_slot_1b, pic_hp_slot_1b,
-        pelatih_slot_1, pelatih_slot_2, pelatih_slot_3,
-        pic_slot_2a, pic_hp_slot_2a, pic_slot_2b, pic_hp_slot_2b,
-        pic_slot_3a, pic_hp_slot_3a, pic_slot_3b, pic_hp_slot_3b,
-        pic_slot_4a, pic_hp_slot_4a, pic_slot_4b, pic_hp_slot_4b,
+        event_pics(id, slot, nama, hp, urutan),
+        event_pelatih(id, nama, urutan),
         assignments(id, slot_number, position, user_id,
           users(nickname, nama_panggilan, nama_lengkap, pendidikan, lingkungan))
       `)
@@ -38,7 +35,7 @@ export function useWeeklySchedule() {
       .lte('tanggal_tugas', end)
       .not('tipe_event', 'eq', 'Misa_Harian')
       .order('tanggal_tugas');
-      
+
     if (error) toast.error('Gagal load: ' + error.message);
     setEvents(data || []);
     setLoading(false);
