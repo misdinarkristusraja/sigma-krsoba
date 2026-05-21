@@ -315,11 +315,11 @@ export default function AdminPage() {
     setMassProgress({ status: 'running', total: targetCount });
 
     try {
-      // Ambil session token aktif user
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
+      // Force-refresh session agar token tidak expired
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      const token = refreshed?.session?.access_token;
       if (!token) {
-        setMassProgress({ status: 'error', error: 'Sesi login tidak ditemukan. Silakan login ulang.' });
+        setMassProgress({ status: 'error', error: 'Sesi login tidak ditemukan atau expired. Silakan login ulang.' });
         toast.error('Sesi tidak ditemukan, login ulang.');
         return;
       }
