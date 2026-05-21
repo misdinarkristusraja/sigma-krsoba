@@ -1,12 +1,49 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, ChevronDown, CheckCircle } from 'lucide-react';
+import { Search, Loader2, ChevronDown, CheckCircle, MapPin } from 'lucide-react';
 
 const BASE = 'https://api-sekolah-indonesia.vercel.app';
-const NPSN_TARAKANITA = '20310748'; // SMP Tarakanita Kab. Sukoharjo
+const NPSN_TARAKANITA = '20310748';
 
 const JENJANG_MAP: Record<string, string> = {
   SD: 'sd', SMP: 'smp', SMA: 'sma', SMK: 'smk',
 };
+
+const KAB_KOTA_JATENG = [
+  { nama: 'Sukoharjo',       kode: '033909' },
+  { nama: 'Surakarta (Solo)',kode: '033373' },
+  { nama: 'Karanganyar',     kode: '033907' },
+  { nama: 'Wonogiri',        kode: '033910' },
+  { nama: 'Sragen',          kode: '033911' },
+  { nama: 'Klaten',          kode: '033905' },
+  { nama: 'Boyolali',        kode: '033901' },
+  { nama: 'Magelang (Kab)',  kode: '033602' },
+  { nama: 'Magelang (Kota)', kode: '033672' },
+  { nama: 'Semarang (Kab)',  kode: '033322' },
+  { nama: 'Semarang (Kota)', kode: '033374' },
+  { nama: 'Salatiga',        kode: '033773' },
+  { nama: 'Demak',           kode: '033321' },
+  { nama: 'Purworejo',       kode: '033606' },
+  { nama: 'Kebumen',         kode: '033605' },
+  { nama: 'Purbalingga',     kode: '033303' },
+  { nama: 'Banyumas',        kode: '033302' },
+  { nama: 'Cilacap',         kode: '033301' },
+  { nama: 'Wonosobo',        kode: '033307' },
+  { nama: 'Temanggung',      kode: '033308' },
+  { nama: 'Kendal',          kode: '033324' },
+  { nama: 'Batang',          kode: '033325' },
+  { nama: 'Pekalongan (Kab)',kode: '033326' },
+  { nama: 'Pekalongan (Kota)',kode:'033375' },
+  { nama: 'Pemalang',        kode: '033327' },
+  { nama: 'Tegal (Kab)',     kode: '033328' },
+  { nama: 'Tegal (Kota)',    kode: '033376' },
+  { nama: 'Brebes',          kode: '033329' },
+  { nama: 'Kudus',           kode: '033319' },
+  { nama: 'Jepara',          kode: '033320' },
+  { nama: 'Pati',            kode: '033318' },
+  { nama: 'Rembang',         kode: '033317' },
+  { nama: 'Blora',           kode: '033316' },
+  { nama: 'Grobogan',        kode: '033315' },
+];
 
 type Sekolah = {
   npsn: string;
@@ -17,8 +54,8 @@ type Sekolah = {
 };
 
 type Props = {
-  pendidikan: string;           // 'SD' | 'SMP' | 'SMA' | 'SMK' | 'Lulus' | ''
-  value: string;                // nama sekolah yang dipilih
+  pendidikan: string;
+  value: string;
   onChange: (nama: string, isTarakanita: boolean) => void;
 };
 
@@ -27,25 +64,23 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
   const [query,    setQuery]    = useState('');
   const [list,     setList]     = useState<Sekolah[]>([]);
   const [loading,  setLoading]  = useState(false);
-  const searchRef  = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputRef   = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [kabKota,  setKabKota]  = useState('033909'); // default Sukoharjo
+  const searchRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef    = useRef<HTMLInputElement>(null);
+  const containerRef= useRef<HTMLDivElement>(null);
 
   const jenjang = JENJANG_MAP[pendidikan] ?? null;
 
-  // Load default list ketika jenjang berubah atau dropdown dibuka
   useEffect(() => {
     if (!open || !jenjang) return;
-    if (query.trim().length >= 2) return; // sudah search, jangan overwrite
+    if (query.trim().length >= 2) return;
     loadDefault();
-  }, [open, jenjang]);
+  }, [open, jenjang, kabKota]);
 
-  // Search saat query berubah
   useEffect(() => {
     if (searchRef.current) clearTimeout(searchRef.current);
     if (!jenjang) return;
     if (query.trim().length < 2) {
-      // kembali ke default
       loadDefault();
       return;
     }
@@ -53,7 +88,6 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
     return () => { if (searchRef.current) clearTimeout(searchRef.current); };
   }, [query, jenjang]);
 
-  // Tutup dropdown kalau klik di luar
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -68,12 +102,9 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
     if (!jenjang) return;
     setLoading(true);
     try {
-      // Load ~20 sekolah di Sukoharjo + Solo Raya sebagai default
-      const res  = await fetch(`${BASE}/sekolah/${jenjang}?kab_kota=033909&perPage=20`);
+      const res  = await fetch(`${BASE}/sekolah/${jenjang}?kab_kota=${kabKota}&perPage=20`);
       const json = await res.json();
       let data: Sekolah[] = mapData(json.dataSekolah || []);
-
-      // Jika Sukoharjo kosong, fallback ke semua Jawa Tengah
       if (data.length === 0) {
         const res2  = await fetch(`${BASE}/sekolah/${jenjang}?provinsi=030000&perPage=20`);
         const json2 = await res2.json();
@@ -94,9 +125,7 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
       const res  = await fetch(`${BASE}/sekolah/s?sekolah=${encodeURIComponent(q)}&perPage=15`);
       const json = await res.json();
       const all  = mapData(json.dataSekolah || []);
-      // Filter by jenjang
-      const filtered = all.filter(s => s.bentuk.toLowerCase() === jenjang);
-      setList(filtered);
+      setList(all.filter(s => s.bentuk.toLowerCase() === jenjang));
     } catch {
       setList([]);
     } finally {
@@ -126,7 +155,6 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
     setQuery('');
   }
 
-  // Tidak bisa pilih sekolah kalau jenjang belum dipilih atau Lulus
   if (!jenjang) {
     return (
       <input
@@ -140,7 +168,6 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
 
   return (
     <div ref={containerRef} className="relative">
-      {/* Trigger */}
       <button
         type="button"
         onClick={handleOpen}
@@ -150,9 +177,22 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
         <ChevronDown size={14} className={`shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
-      {/* Dropdown */}
       {open && (
         <div className="absolute z-30 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl">
+          {/* Kab/Kota filter */}
+          <div className="p-2 border-b border-gray-100 flex items-center gap-1.5">
+            <MapPin size={12} className="text-gray-400 shrink-0" />
+            <select
+              className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-brand-400 bg-white"
+              value={kabKota}
+              onChange={e => { setKabKota(e.target.value); setQuery(''); }}
+            >
+              {KAB_KOTA_JATENG.map(k => (
+                <option key={k.kode} value={k.kode}>{k.nama}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Search box */}
           <div className="p-2 border-b border-gray-100">
             <div className="relative">
@@ -213,7 +253,6 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
         </div>
       )}
 
-      {/* Tarakanita badge */}
       {value && list.find(s => s.sekolah === value)?.isTarakanita && (
         <p className="text-xs text-brand-800 font-semibold mt-1 flex items-center gap-1">
           <CheckCircle size={11} /> Status Tarakanita otomatis aktif
