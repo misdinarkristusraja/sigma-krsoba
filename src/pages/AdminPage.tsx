@@ -274,6 +274,10 @@ export default function AdminPage() {
   const [reregStats,     setReregStats]     = useState<{ done: number; total: number } | null>(null);
   const [reregResetting, setReregResetting] = useState(false);
 
+  // State untuk Auto-Retire
+  const [autoRetiring,   setAutoRetiring]   = useState(false);
+  const [retireResult,   setRetireResult]   = useState<number | null>(null);
+
   // ── Fungsi: Load users (tidak berubah) ──────────────────────────────────
   const loadUsers = useCallback(async () => {
     const { data, error } = await supabase
@@ -429,6 +433,23 @@ export default function AdminPage() {
     if (error) { toast.error('Gagal reset: ' + error.message); return; }
     toast.success(`Data daftar ulang ${reregYear} berhasil direset`);
     loadReregStats(reregYear);
+  }
+
+  async function autoRetireNonRereg() {
+    const confirmed = window.confirm(
+      '⚠️ AUTO-RETIRE\n\nMisdinar Aktif yang belum daftar ulang setelah close date akan di-set Retired.\n\nPastikan rereg_close_date sudah lewat. Lanjutkan?'
+    );
+    if (!confirmed) return;
+    setAutoRetiring(true);
+    setRetireResult(null);
+    const { data, error } = await supabase.rpc('auto_retire_non_rereg');
+    setAutoRetiring(false);
+    if (error) { toast.error('Gagal: ' + error.message); return; }
+    const count = typeof data === 'number' ? data : 0;
+    setRetireResult(count);
+    if (count === 0) toast('Tidak ada anggota yang perlu di-retire (close date belum lewat atau semua sudah rereg).');
+    else toast.success(`${count} anggota berhasil di-retire.`);
+    if (reregYear) loadReregStats(reregYear);
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -628,6 +649,36 @@ export default function AdminPage() {
               </div>
             </div>
           )}
+
+          {/* Auto-retire */}
+          <div className="border-t border-gray-100 pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Auto-Retire Non-Rereg</p>
+                <p className="text-xs text-gray-500">
+                  Misdinar Aktif yang belum daftar ulang setelah <code>rereg_close_date</code> otomatis di-set Retired.
+                  Hanya jalan jika close date sudah lewat.
+                </p>
+              </div>
+              <button
+                onClick={autoRetireNonRereg}
+                disabled={autoRetiring}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {autoRetiring
+                  ? <><Loader2 size={14} className="animate-spin" /> Memproses...</>
+                  : '⚡ Jalankan Auto-Retire'
+                }
+              </button>
+            </div>
+            {retireResult !== null && (
+              <div className={`mt-3 rounded-xl px-4 py-3 text-sm font-medium ${retireResult > 0 ? 'bg-orange-50 text-orange-700' : 'bg-green-50 text-green-700'}`}>
+                {retireResult > 0
+                  ? `✓ ${retireResult} anggota berhasil di-retire.`
+                  : '✓ Tidak ada yang perlu di-retire (close date belum lewat atau semua sudah rereg).'}
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
