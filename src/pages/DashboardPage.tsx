@@ -41,12 +41,42 @@ export default function DashboardPage() {
   const [pendingRegs,   setPending]      = useState(0);
   const [pengurusStats, setPengurusStats]= useState<any>(null);
   const [loadingPStats, setLoadingPStats]= useState(false);
+  const [reregBanner,   setReregBanner]  = useState<'open_not_done' | 'open_done' | null>(null);
 
   useEffect(() => {
     if (!isPengurus) return;
     loadPendingRegs();
     loadPengurusStats();
   }, [isPengurus]);
+
+  useEffect(() => {
+    if (!profile) return;
+    checkReregBanner();
+  }, [profile]);
+
+  async function checkReregBanner() {
+    const { data: cfgRows } = await (supabase as any)
+      .from('system_config')
+      .select('key, value')
+      .in('key', ['rereg_open_date', 'rereg_close_date', 'rereg_tahun']);
+    if (!cfgRows) return;
+    const cfg: Record<string, string> = {};
+    cfgRows.forEach((r: any) => { cfg[r.key] = r.value; });
+    if (!cfg.rereg_open_date || !cfg.rereg_close_date) return;
+    const now   = new Date();
+    const open  = new Date(cfg.rereg_open_date);
+    const close = new Date(cfg.rereg_close_date + 'T23:59:59');
+    if (now < open || now > close) return;
+
+    const tahun = parseInt(cfg.rereg_tahun || String(now.getFullYear()));
+    const { data } = await (supabase as any)
+      .from('reregistrations')
+      .select('id')
+      .eq('user_id', profile!.id)
+      .eq('tahun', tahun)
+      .maybeSingle();
+    setReregBanner(data ? 'open_done' : 'open_not_done');
+  }
 
   async function loadPendingRegs() {
     const { count } = await supabase
@@ -137,6 +167,28 @@ export default function DashboardPage() {
           </Link>
         )}
       </div>
+
+      {/* Banner Daftar Ulang */}
+      {reregBanner === 'open_not_done' && (
+        <Link to="/daftar-ulang"
+          className="flex items-center gap-3 bg-amber-50 border border-amber-300 rounded-2xl px-4 py-4 hover:bg-amber-100 transition-colors">
+          <AlertTriangle size={20} className="text-amber-600 shrink-0" />
+          <div className="flex-1">
+            <p className="font-semibold text-amber-800 text-sm">Daftar Ulang Sedang Dibuka!</p>
+            <p className="text-xs text-amber-600 mt-0.5">Kamu belum daftar ulang. Klik untuk mengisi sekarang sebelum masa daftar ulang berakhir.</p>
+          </div>
+          <ChevronRight size={16} className="text-amber-500 shrink-0" />
+        </Link>
+      )}
+      {reregBanner === 'open_done' && (
+        <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-4 py-4">
+          <CheckCircle size={20} className="text-green-600 shrink-0" />
+          <div>
+            <p className="font-semibold text-green-800 text-sm">Daftar Ulang Selesai</p>
+            <p className="text-xs text-green-600 mt-0.5">Kamu sudah berhasil daftar ulang tahun ini.</p>
+          </div>
+        </div>
+      )}
 
       {/* Pengurus stats */}
       {isPengurus && (

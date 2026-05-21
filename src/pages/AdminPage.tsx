@@ -26,7 +26,7 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   Settings, Save, Database, KeyRound, MessageCircle,
   CheckCircle2, XCircle, AlertTriangle, Loader2, Eye, EyeOff,
-  RefreshCw, ClipboardCopy, SkipForward, Users, Download,
+  RefreshCw, ClipboardCopy, SkipForward, Users, Download, RotateCcw,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
@@ -268,8 +268,11 @@ export default function AdminPage() {
   const [massLoading, setMassLoading]   = useState(false);
   const [massResults, setMassResults]   = useState<any[]>([]);
   const [massProgress, setMassProgress] = useState<{ status: string; total?: number; success?: number; skipped?: number; failed?: number; error?: string; hint?: string } | null>(null);
-  // null = belum dijalankan
-  // { status: 'running' | 'done' | 'error', total?, success?, failed?, error? }
+
+  // State untuk Reset Daftar Ulang
+  const [reregYear,      setReregYear]      = useState<string>('');
+  const [reregStats,     setReregStats]     = useState<{ done: number; total: number } | null>(null);
+  const [reregResetting, setReregResetting] = useState(false);
 
   // ── Fungsi: Load users (tidak berubah) ──────────────────────────────────
   const loadUsers = useCallback(async () => {
@@ -396,6 +399,31 @@ export default function AdminPage() {
     setSaving(false);
     if (error) toast.error('Gagal simpan: ' + error.message);
     else toast.success(`${key} disimpan`);
+  }
+
+  // ── Rereg stats + reset ───────────────────────────────────────────────────
+  async function loadReregStats(year: string) {
+    if (!year) return;
+    const [{ count: done }, { count: total }] = await Promise.all([
+      supabase.from('reregistrations').select('id', { count: 'exact', head: true }).eq('tahun', parseInt(year)),
+      supabase.from('users').select('id', { count: 'exact', head: true })
+        .in('status', ['Active', 'Pending']).neq('role', 'Administrator'),
+    ]);
+    setReregStats({ done: done || 0, total: total || 0 });
+  }
+
+  async function resetReregistrations() {
+    if (!reregYear) { toast.error('Pilih tahun terlebih dahulu'); return; }
+    const confirmed = window.confirm(
+      `⚠️ KONFIRMASI RESET DAFTAR ULANG\n\nSemua data daftar ulang tahun ${reregYear} akan dihapus.\nAnggota yang sudah daftar ulang akan dianggap belum daftar ulang.\n\nLanjutkan?`
+    );
+    if (!confirmed) return;
+    setReregResetting(true);
+    const { error } = await supabase.from('reregistrations').delete().eq('tahun', parseInt(reregYear));
+    setReregResetting(false);
+    if (error) { toast.error('Gagal reset: ' + error.message); return; }
+    toast.success(`Data daftar ulang ${reregYear} berhasil direset`);
+    loadReregStats(reregYear);
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -531,6 +559,70 @@ export default function AdminPage() {
 
           {/* Tabel hasil */}
           <MassResetResultsTable results={massResults} />
+        </div>
+      </section>
+
+      {/* ── Section: Reset Daftar Ulang ── */}
+      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-fuchsia-50">
+          <div className="p-2 bg-purple-100 rounded-lg">
+            <RotateCcw className="text-purple-600" size={20} />
+          </div>
+          <div>
+            <h2 className="font-semibold text-gray-900">Reset Daftar Ulang</h2>
+            <p className="text-xs text-gray-500">Hapus status daftar ulang anggota untuk tahun tertentu</p>
+          </div>
+        </div>
+        <div className="px-6 py-5 space-y-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Tahun</label>
+              <input
+                type="number"
+                className="input w-32 text-sm font-mono"
+                placeholder={new Date().getFullYear().toString()}
+                value={reregYear}
+                onChange={e => { setReregYear(e.target.value); setReregStats(null); }}
+                min="2020" max="2100"
+              />
+            </div>
+            <button
+              onClick={() => loadReregStats(reregYear)}
+              disabled={!reregYear}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+            >
+              Cek Status
+            </button>
+            {reregStats && (
+              <button
+                onClick={resetReregistrations}
+                disabled={reregResetting || reregStats.done === 0}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {reregResetting
+                  ? <><Loader2 size={14} className="animate-spin" /> Mereset...</>
+                  : <><RotateCcw size={14} /> Reset {reregYear}</>
+                }
+              </button>
+            )}
+          </div>
+
+          {reregStats && (
+            <div className="flex flex-wrap gap-4 text-sm">
+              <div className="bg-green-50 rounded-xl px-4 py-3 text-center min-w-[100px]">
+                <p className="text-2xl font-black text-green-700">{reregStats.done}</p>
+                <p className="text-xs text-green-600">Sudah Daftar Ulang</p>
+              </div>
+              <div className="bg-orange-50 rounded-xl px-4 py-3 text-center min-w-[100px]">
+                <p className="text-2xl font-black text-orange-600">{reregStats.total - reregStats.done}</p>
+                <p className="text-xs text-orange-500">Belum Daftar Ulang</p>
+              </div>
+              <div className="bg-gray-50 rounded-xl px-4 py-3 text-center min-w-[100px]">
+                <p className="text-2xl font-black text-gray-700">{reregStats.total}</p>
+                <p className="text-xs text-gray-500">Total Anggota Aktif</p>
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
