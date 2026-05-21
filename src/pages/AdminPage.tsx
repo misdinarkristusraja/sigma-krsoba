@@ -279,17 +279,35 @@ export default function AdminPage() {
     setMassProgress({ status: 'running', total: targetCount });
 
     try {
-      const { data, error } = await supabase.functions.invoke(
-        'admin-reset-password',
-        { body: { mode: 'provision_all' } }
-      );
+      // Ambil session token aktif user
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) {
+        setMassProgress({ status: 'error', error: 'Sesi login tidak ditemukan. Silakan login ulang.' });
+        toast.error('Sesi tidak ditemukan, login ulang.');
+        return;
+      }
 
-      if (error) {
-        const msg = error.message || 'Koneksi ke Edge Function gagal.';
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const res = await fetch(`${supabaseUrl}/functions/v1/admin-reset-password`, {
+        method:  'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'Authorization': `Bearer ${token}`,
+          'apikey':        import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+        },
+        body: JSON.stringify({ mode: 'provision_all' }),
+      });
+
+      if (!res.ok) {
+        const txt = await res.text();
+        const msg = `HTTP ${res.status}: ${txt.slice(0, 200)}`;
         setMassProgress({ status: 'error', error: msg });
         toast.error('Mass reset gagal: ' + msg);
         return;
       }
+
+      const data = await res.json();
 
       if (!data?.ok) {
         const msg = data?.message || data?.error || 'Respons tidak valid dari server.';
