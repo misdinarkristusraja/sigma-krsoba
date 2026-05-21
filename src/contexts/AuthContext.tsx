@@ -70,18 +70,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        if (event === 'INITIAL_SESSION') {
-          // No delay needed — JWT is already propagated on page load
-          await fetchProfile();
-        } else {
-          // SIGNED_IN after login: small delay so JWT propagates to DB before RPC
-          setTimeout(() => fetchProfile(), 150);
-        }
+        await fetchProfile();
       } else {
         setProfile(null);
         setProfileError(false);
       }
-      // Mark loading done after first event regardless of outcome
       setLoading(false);
     });
 
@@ -111,14 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
 
-    // Set state user secara sinkronus agar router/context segera ter-update
-    if (data.session?.user) {
-      setUser(data.session.user);
-    }
-
-    // 3. Fetch profile — onAuthStateChange juga akan memanggil fetchProfile,
-    // tapi kita panggil di sini juga agar UI login langsung responsif.
-    await fetchProfile();
+    // onAuthStateChange will fire SIGNED_IN and call fetchProfile — don't duplicate here
     return data;
   }
 
