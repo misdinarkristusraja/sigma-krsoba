@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Loader2, ChevronDown, CheckCircle, MapPin } from 'lucide-react';
 
 const BASE = 'https://api-sekolah-indonesia.vercel.app';
@@ -65,74 +65,12 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
   const [query,    setQuery]    = useState('');
   const [list,     setList]     = useState<Sekolah[]>([]);
   const [loading,  setLoading]  = useState(false);
-  const [kabKota,  setKabKota]  = useState('033909'); // default Sukoharjo
+  const [kabKota,  setKabKota]  = useState('031100'); // default Sukoharjo
   const searchRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef    = useRef<HTMLInputElement>(null);
   const containerRef= useRef<HTMLDivElement>(null);
 
   const jenjang = JENJANG_MAP[pendidikan] ?? null;
-
-  useEffect(() => {
-    if (!open || !jenjang) return;
-    if (query.trim().length >= 2) return;
-    loadDefault();
-  }, [open, jenjang, kabKota]);
-
-  useEffect(() => {
-    if (!open || !jenjang) return;
-    if (searchRef.current) clearTimeout(searchRef.current);
-    if (query.trim().length < 2) {
-      loadDefault();
-      return;
-    }
-    searchRef.current = setTimeout(() => doSearch(query.trim()), 350);
-    return () => { if (searchRef.current) clearTimeout(searchRef.current); };
-  }, [query, jenjang, open]);
-
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    if (open) document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  async function loadDefault() {
-    if (!jenjang) return;
-    setLoading(true);
-    try {
-      const res  = await fetch(`${BASE}/sekolah/${jenjang}?kab_kota=${kabKota}&perPage=100`);
-      const json = await res.json();
-      let data: Sekolah[] = mapData(json.dataSekolah || []);
-      if (data.length === 0) {
-        const res2  = await fetch(`${BASE}/sekolah/${jenjang}?provinsi=030000&perPage=30`);
-        const json2 = await res2.json();
-        data = mapData(json2.dataSekolah || []);
-      }
-      setList(data);
-    } catch {
-      setList([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function doSearch(q: string) {
-    if (!jenjang) return;
-    setLoading(true);
-    try {
-      const res  = await fetch(`${BASE}/sekolah/s?sekolah=${encodeURIComponent(q)}&perPage=50`);
-      const json = await res.json();
-      const all  = mapData(json.dataSekolah || []);
-      setList(all.filter(s => s.bentuk.toUpperCase() === jenjang.toUpperCase()));
-    } catch {
-      setList([]);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   function mapData(raw: any[]): Sekolah[] {
     return raw.map(s => ({
@@ -143,6 +81,62 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
       isTarakanita:   s.npsn === NPSN_TARAKANITA,
     }));
   }
+
+  const loadDefault = useCallback(async (j: string, kk: string) => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${BASE}/sekolah/${j}?kab_kota=${kk}&perPage=100`);
+      const json = await res.json();
+      let data: Sekolah[] = mapData(json.dataSekolah || []);
+      if (data.length === 0) {
+        const res2  = await fetch(`${BASE}/sekolah/${j}?provinsi=030000&perPage=30`);
+        const json2 = await res2.json();
+        data = mapData(json2.dataSekolah || []);
+      }
+      setList(data);
+    } catch {
+      setList([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const doSearch = useCallback(async (q: string, j: string) => {
+    setLoading(true);
+    try {
+      const res  = await fetch(`${BASE}/sekolah/s?sekolah=${encodeURIComponent(q)}&perPage=50`);
+      const json = await res.json();
+      const all  = mapData(json.dataSekolah || []);
+      setList(all.filter(s => s.bentuk.toUpperCase() === j.toUpperCase()));
+    } catch {
+      setList([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Single effect handles all list-loading logic
+  useEffect(() => {
+    if (!open || !jenjang) return;
+    if (searchRef.current) clearTimeout(searchRef.current);
+    const q = query.trim();
+    if (q.length < 2) {
+      loadDefault(jenjang, kabKota);
+      return;
+    }
+    searchRef.current = setTimeout(() => doSearch(q, jenjang), 350);
+    return () => { if (searchRef.current) clearTimeout(searchRef.current); };
+  }, [open, query, jenjang, kabKota, loadDefault, doSearch]);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
 
   function handleOpen() {
     if (!jenjang) return;
