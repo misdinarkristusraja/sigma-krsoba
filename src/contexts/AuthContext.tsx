@@ -63,24 +63,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      if (session?.user) await fetchProfile();
-      setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // onAuthStateChange fires INITIAL_SESSION on mount — use it as single source of truth.
+    // Do NOT also call fetchProfile from getSession to avoid double-fetch race condition
+    // where the second call (via setTimeout) can land first with an error, setting
+    // profileError=true before the first call resolves with valid data.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setUser(session?.user ?? null);
       if (session?.user) {
-        // Delay singkat (150ms) dipertahankan untuk memberi waktu Supabase Auth
-        // menyelesaikan sinkronisasi session sebelum memanggil RPC get_my_profile.
-        // Tanpa ini, RPC kadang dipanggil sebelum JWT ter-propagate ke DB,
-        // menyebabkan RLS gagal dan profile null.
-        setTimeout(() => fetchProfile(), 150);
+        if (event === 'INITIAL_SESSION') {
+          // No delay needed — JWT is already propagated on page load
+          await fetchProfile();
+        } else {
+          // SIGNED_IN after login: small delay so JWT propagates to DB before RPC
+          setTimeout(() => fetchProfile(), 150);
+        }
       } else {
         setProfile(null);
         setProfileError(false);
       }
+      // Mark loading done after first event regardless of outcome
+      setLoading(false);
     });
 
     return () => subscription.unsubscribe();
