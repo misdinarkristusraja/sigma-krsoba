@@ -4,16 +4,9 @@ import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { toNickname, formatHP, PENDIDIKAN_OPTIONS } from '../lib/utils';
 import { LINGKUNGAN_LIST, getWilayah } from '../lib/wilayah';
-import { Church, Upload, CheckCircle, AlertCircle } from 'lucide-react';
+import { useSekolahSearch } from '../hooks/useSekolahSearch';
+import { Church, Upload, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-
-// Sekolah typeahead — sample data (dalam produksi, fetch dari API/DB sekolah Jawa Tengah)
-const SEKOLAH_SAMPLE = [
-  'SDK Tarakanita Solo Baru','SDN Grogol 01','SDN Grogol 02','SDN Madegondo 01',
-  'SMP Tarakanita Solo Baru','SMPN 1 Grogol','SMPN 2 Grogol','SMP Negeri 1 Sukoharjo',
-  'SMA Negeri 1 Sukoharjo','SMA Negeri 1 Grogol','SMA Tarakanita','SMKN 1 Sukoharjo',
-  'SMA Negeri 2 Sukoharjo','SMKN 2 Sukoharjo','SMA Kristen Surakarta',
-];
 
 export default function RegisterPage() {
   const [step, setStep] = useState(1);
@@ -40,9 +33,11 @@ export default function RegisterPage() {
     ? now >= regOpenDate && now <= regCloseDate
     : true; // default open jika belum ada config
   const [sekolahQuery, setSekolahQuery] = useState('');
-  const [sekolahSuggestions, setSekolahSuggestions] = useState<string[]>([]);
-  const [showSekolah, setShowSekolah] = useState(false);
+  const [showSekolah,  setShowSekolah]  = useState(false);
+  const { results: sekolahResults, loading: sekolahLoading, search: searchSekolah, clear: clearSekolah } = useSekolahSearch();
   const nicknameTimer = useRef<ReturnType<typeof setTimeout>|null>(null);
+  // track selected NPSN for is_tarakanita detection
+  const [selectedNpsn, setSelectedNpsn] = useState('');
 
   const [form, setForm] = useState<Record<string,any>>({
     nama_lengkap: '', nickname: '', tanggal_lahir: '', alamat: '',
@@ -76,22 +71,25 @@ export default function RegisterPage() {
     }, 400);
   }
 
-  function handleSekolahChange(val: any) {
+  function handleSekolahChange(val: string) {
     setSekolahQuery(val);
     setForm(f => ({ ...f, sekolah: val }));
-    if (val.length > 1) {
-      const filtered = SEKOLAH_SAMPLE.filter((s: any) => s.toLowerCase().includes(val.toLowerCase()));
-      setSekolahSuggestions(filtered.slice(0, 8));
+    setSelectedNpsn('');
+    if (val.length >= 2) {
+      searchSekolah(val);
       setShowSekolah(true);
     } else {
+      clearSekolah();
       setShowSekolah(false);
     }
   }
 
-  function selectSekolah(s: any) {
-    setSekolahQuery(s);
-    setForm(f => ({ ...f, sekolah: s }));
+  function selectSekolah(npsn: string, nama: string, isTarakanitaSoloBaru: boolean) {
+    setSekolahQuery(nama);
+    setSelectedNpsn(npsn);
+    setForm(f => ({ ...f, sekolah: nama, is_tarakanita: isTarakanitaSoloBaru }));
     setShowSekolah(false);
+    clearSekolah();
   }
 
   function validate() {
@@ -125,8 +123,8 @@ export default function RegisterPage() {
         suratUrl = path;
       }
 
-      // Determine is_tarakanita
-      const isTarakanita = form.sekolah.toLowerCase().includes('tarakanita');
+      // is_tarakanita: hanya SMP Tarakanita Solo Baru (NPSN 20310748)
+      const isTarakanita = form.is_tarakanita === true;
 
       // Tentukan wilayah dari lingkungan
       const wilayah = getWilayah(form.lingkungan) || null;
@@ -269,17 +267,54 @@ export default function RegisterPage() {
             </F>
           </div>
 
-          {/* Sekolah typeahead */}
-          <F name="sekolah" label="Sekolah" hint="Ketik nama sekolah untuk mencari">
+          {/* Sekolah typeahead — API sekolah Indonesia */}
+          <F name="sekolah" label="Sekolah" hint="Ketik minimal 2 huruf untuk mencari (SD/SMP/SMA/SMK)">
             <div className="relative">
-              <input className="input" value={sekolahQuery} onChange={e => handleSekolahChange(e.target.value)} placeholder="Cari nama sekolah..." />
-              {showSekolah && sekolahSuggestions.length > 0 && (
-                <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-48 overflow-y-auto">
-                  {sekolahSuggestions.map((s: any) => (
-                    <button key={s} type="button" className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50 border-b border-gray-50 last:border-0"
-                      onClick={() => selectSekolah(s)}>{s}</button>
+              <div className="relative">
+                <input
+                  className="input pr-8"
+                  value={sekolahQuery}
+                  onChange={e => handleSekolahChange(e.target.value)}
+                  onBlur={() => setTimeout(() => setShowSekolah(false), 200)}
+                  onFocus={() => sekolahResults.length > 0 && setShowSekolah(true)}
+                  placeholder="Cari nama sekolah..."
+                  autoComplete="off"
+                />
+                {sekolahLoading && (
+                  <Loader2 size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 animate-spin" />
+                )}
+              </div>
+              {showSekolah && sekolahResults.length > 0 && (
+                <div className="absolute z-20 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-56 overflow-y-auto">
+                  {sekolahResults.map(s => (
+                    <button
+                      key={s.npsn}
+                      type="button"
+                      className="w-full text-left px-3 py-2.5 text-sm hover:bg-gray-50 border-b border-gray-50 last:border-0 flex items-start gap-2"
+                      onMouseDown={() => selectSekolah(s.npsn, s.sekolah, s.isTarakanitaSoloBaru)}
+                    >
+                      <span className={`mt-0.5 shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                        s.bentuk === 'SD'  ? 'bg-green-100 text-green-700'  :
+                        s.bentuk === 'SMP' ? 'bg-blue-100 text-blue-700'   :
+                        s.bentuk === 'SMA' ? 'bg-purple-100 text-purple-700':
+                                             'bg-orange-100 text-orange-700'
+                      }`}>{s.bentuk}</span>
+                      <span className="flex-1 min-w-0">
+                        <span className="font-medium text-gray-800">{s.sekolah}</span>
+                        {s.isTarakanitaSoloBaru && (
+                          <span className="ml-1.5 text-[10px] bg-brand-100 text-brand-800 font-semibold px-1.5 py-0.5 rounded">Tarakanita ✓</span>
+                        )}
+                        <span className="block text-xs text-gray-400">{s.kabupaten_kota}</span>
+                      </span>
+                    </button>
                   ))}
                 </div>
+              )}
+              {selectedNpsn && (
+                <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                  <CheckCircle size={11} /> Sekolah dipilih dari database nasional
+                  {form.is_tarakanita && <span className="ml-1 font-semibold text-brand-800">· Status Tarakanita otomatis ✓</span>}
+                </p>
               )}
             </div>
           </F>
