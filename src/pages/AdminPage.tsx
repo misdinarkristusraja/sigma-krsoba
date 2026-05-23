@@ -36,7 +36,7 @@ const CONFIG_GROUPS = {
   'Pendaftaran Baru':    ['reg_open_date', 'reg_close_date'],
   'Daftar Ulang':        ['rereg_open_date', 'rereg_close_date', 'rereg_tahun'],
   'Opt-in Misa Harian':  ['window_optin_harian_start', 'window_optin_harian_end'],
-  'Penjadwalan':         ['prioritas_sma_smk_interval', 'max_hari_tanpa_jadwal'],
+  'Penjadwalan':         ['prioritas_sma_smk_interval', 'max_hari_tanpa_jadwal', 'latihan_jam_default'],
   'Tukar Jadwal':        ['swap_expire_hours'],
   'Suspend':             ['max_absen_before_suspend', 'suspend_duration_days'],
   'Liturgi':             ['gcatholic_url'],

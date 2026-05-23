@@ -14,75 +14,83 @@ import toast from 'react-hot-toast';
 const AUTO_RETURN_SEC  = 4;
 const SCAN_COOLDOWN_MS = 60 * 60 * 1000; // anti-duplikat 60 menit
 
-// Jam misa per slot (WIB, dalam menit dari tengah malam)
-// Dipakai untuk validasi window ±2 jam
 const SLOT_TIMES_MIN = {
-  latihan: 8 * 60,        // 08:00 (sabtu pagi)
-  slot1:   17 * 60 + 30,  // 17:30 sabtu sore
-  slot2:   6  * 60,       // 06:00 minggu
-  slot3:   8  * 60,       // 08:00 minggu
-  slot4:   17 * 60 + 30,  // 17:30 minggu
+  slot1: 17 * 60 + 30,  // 17:30 sabtu sore
+  slot2:  6 * 60,       // 06:00 minggu
+  slot3:  8 * 60,       // 08:00 minggu
+  slot4: 17 * 60 + 30,  // 17:30 minggu
 };
 const WINDOW_MIN = 2 * 60; // ±2 jam = 120 menit
+
+// Parse "HH:MM" atau "HH.MM" string → menit dari tengah malam
+function parseJamToMin(jam: string | null | undefined, fallback = 8 * 60): number {
+  if (!jam) return fallback;
+  const m = jam.match(/(\d{1,2})[.:](\d{2})/);
+  if (!m) return fallback;
+  return parseInt(m[1]) * 60 + parseInt(m[2]);
+}
 
 // ─── Helpers ────────────────────────────────────────────────
 function toLocalISO(date: any) {
   return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
 }
 
-// Jam sekarang dalam menit WIB (UTC+7)
 function nowMinutesWIB() {
   const now = new Date();
   const wib = new Date(now.getTime() + 7 * 60 * 60 * 1000);
   return wib.getUTCHours() * 60 + wib.getUTCMinutes();
 }
 
-// Cek apakah menit sekarang masuk window ±WINDOW_MIN dari salah satu slot
-function isInTimeWindow(slotMinutes: any) {
-  const now = nowMinutesWIB();
-  return Math.abs(now - slotMinutes) <= WINDOW_MIN;
+function isInTimeWindow(slotMinutes: number) {
+  return Math.abs(nowMinutesWIB() - slotMinutes) <= WINDOW_MIN;
 }
 
-// Cari window yang aktif sekarang dari daftar event hari ini
-function getActiveWindows(events: any, today: any) {
-  const activeWindows = [];
+// Ambil jam latihan dari event (latihan_times[0]) atau fallback ke default
+function getLatihanMin(ev: any, defaultMin: number): number {
+  if (ev.latihan_times?.length) return parseJamToMin(ev.latihan_times[0], defaultMin);
+  return defaultMin;
+}
 
+function getActiveWindows(events: any[], today: string, latihanDefaultMin: number) {
+  const activeWindows: string[] = [];
   for (const ev of events) {
     const isSaturday = ev.tanggal_latihan === today;
     const isSunday   = ev.tanggal_tugas   === today;
-
     if (isSaturday) {
-      if (isInTimeWindow(SLOT_TIMES_MIN.latihan)) activeWindows.push('Latihan (08:00)');
-      if (isInTimeWindow(SLOT_TIMES_MIN.slot1))   activeWindows.push('Sabtu 17:30');
+      const lMin = getLatihanMin(ev, latihanDefaultMin);
+      const lJamStr = `${String(Math.floor(lMin/60)).padStart(2,'0')}:${String(lMin%60).padStart(2,'0')}`;
+      if (isInTimeWindow(lMin))             activeWindows.push(`Latihan (${lJamStr})`);
+      if (isInTimeWindow(SLOT_TIMES_MIN.slot1)) activeWindows.push('Sabtu 17:30');
     }
     if (isSunday) {
       if (isInTimeWindow(SLOT_TIMES_MIN.slot2)) activeWindows.push('Minggu 06:00');
       if (isInTimeWindow(SLOT_TIMES_MIN.slot3)) activeWindows.push('Minggu 08:00');
       if (isInTimeWindow(SLOT_TIMES_MIN.slot4)) activeWindows.push('Minggu 17:30');
     }
-    // Misa Harian: window 06:00–09:00 (±2 jam dari 07:00)
     if (ev.tipe_event === 'Misa_Harian' && ev.tanggal_tugas === today) {
       if (isInTimeWindow(7 * 60)) activeWindows.push('Misa Harian (07:00)');
     }
-    // Misa Khusus: ambil jam dari draft_note jika ada, default 07:00
     if (ev.tipe_event === 'Misa_Khusus' && ev.tanggal_tugas === today) {
-      const match = ev.draft_note?.match(/(\d{2})\.(\d{2})/);
-      const mins  = match ? parseInt(match[1]) * 60 + parseInt(match[2]) : 7 * 60;
-      if (isInTimeWindow(mins)) activeWindows.push(`${ev.perayaan||'Misa Khusus'}`);
+      // Coba ambil dari draft_note per slot (format Slot N: HH.MM|date), ambil paling awal
+      const slotMatches = [...(ev.draft_note || '').matchAll(/Slot\s+\d+:\s*(\d{2})\.(\d{2})/gi)];
+      const mins = slotMatches.length
+        ? slotMatches.map((m: any) => parseInt(m[1]) * 60 + parseInt(m[2]))
+        : [7 * 60];
+      if (mins.some((m: number) => isInTimeWindow(m))) activeWindows.push(ev.perayaan || 'Misa Khusus');
     }
   }
-
-  return [...new Set(activeWindows)]; // dedup
+  return [...new Set(activeWindows)];
 }
 
-// Jam berikutnya yang masih valid hari ini
-function getNextWindowLabel(events: any, today: any) {
+function getNextWindowLabel(events: any[], today: string, latihanDefaultMin: number) {
   const now = nowMinutesWIB();
-  const all = [];
+  const all: { label: string; min: number }[] = [];
   for (const ev of events) {
     if (ev.tanggal_latihan === today) {
-      all.push({ label: 'Latihan 08:00',   min: SLOT_TIMES_MIN.latihan });
-      all.push({ label: 'Sabtu 17:30',     min: SLOT_TIMES_MIN.slot1 });
+      const lMin = getLatihanMin(ev, latihanDefaultMin);
+      const lJamStr = `${String(Math.floor(lMin/60)).padStart(2,'0')}:${String(lMin%60).padStart(2,'0')}`;
+      all.push({ label: `Latihan ${lJamStr}`, min: lMin });
+      all.push({ label: 'Sabtu 17:30', min: SLOT_TIMES_MIN.slot1 });
     }
     if (ev.tanggal_tugas === today && ev.tipe_event !== 'Misa_Harian') {
       all.push({ label: 'Minggu 06:00', min: SLOT_TIMES_MIN.slot2 });
@@ -90,10 +98,10 @@ function getNextWindowLabel(events: any, today: any) {
       all.push({ label: 'Minggu 17:30', min: SLOT_TIMES_MIN.slot4 });
     }
   }
-  const upcoming = all.filter((a: any) => a.min - WINDOW_MIN > now).sort((a: any,b: any) => a.min - b.min);
+  const upcoming = all.filter(a => a.min - WINDOW_MIN > now).sort((a, b) => a.min - b.min);
   if (!upcoming.length) return null;
-  const next  = upcoming[0];
-  const diff  = next.min - WINDOW_MIN - now;
+  const next = upcoming[0];
+  const diff = next.min - WINDOW_MIN - now;
   const hours = Math.floor(diff / 60);
   const mins  = diff % 60;
   return `${next.label} (lagi ${hours > 0 ? `${hours}j ` : ''}${mins}m)`;
@@ -107,6 +115,15 @@ export default function ScanPage() {
   const streamRef = useRef<MediaStream|null>(null);
   const animRef   = useRef<number|null>(null);
   const returnRef = useRef<ReturnType<typeof setInterval>|null>(null);
+
+  // Default jam latihan dari system_config (fallback 08:00 = 480 min)
+  const [latihanDefaultMin, setLatihanDefaultMin] = useState(8 * 60);
+  useEffect(() => {
+    supabase.from('system_config').select('value').eq('key', 'latihan_jam_default').maybeSingle()
+      .then(({ data }: { data: { value: string } | null }) => {
+        if (data?.value) setLatihanDefaultMin(parseJamToMin(data.value, 8 * 60));
+      });
+  }, []);
 
   const [scanning,  setScanning]  = useState(false);
   const [result,    setResult]    = useState<any>(null);
@@ -235,7 +252,7 @@ export default function ScanPage() {
     const today = toLocalISO(new Date());
     const { data: todayEvents } = await supabase
       .from('events')
-      .select('id, nama_event, tipe_event, tanggal_tugas, tanggal_latihan, perayaan, draft_note, status_event')
+      .select('id, nama_event, tipe_event, tanggal_tugas, tanggal_latihan, perayaan, draft_note, status_event, latihan_times')
       .or(`tanggal_tugas.eq.${today},tanggal_latihan.eq.${today}`)
       .in('status_event', ['Akan_Datang','Berlangsung'])
       .not('is_draft', 'eq', true);
@@ -255,9 +272,9 @@ export default function ScanPage() {
     }
 
     // 5. Validasi: cek window waktu ±2 jam
-    const activeWindows = getActiveWindows(todayEvents, today);
+    const activeWindows = getActiveWindows(todayEvents, today, latihanDefaultMin);
     if (activeWindows.length === 0) {
-      const nextWindow = getNextWindowLabel(todayEvents, today);
+      const nextWindow = getNextWindowLabel(todayEvents, today, latihanDefaultMin);
       const msg = nextWindow
         ? `Di luar window scan. Berikutnya: ${nextWindow}`
         : `Semua window scan hari ini sudah lewat.`;
