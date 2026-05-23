@@ -69,21 +69,19 @@ export default function SwapPage() {
       .eq('status','Active').order('nama_panggilan')
       .then(({ data }: any) => setAllMembers(data||[]));
 
-    // Query via events terlebih dahulu agar filter tanggal_tugas reliable.
-    // Filter embedded relation di PostgREST (e.g. .gte('events.tanggal_tugas')) tidak
-    // memfilter baris assignment — ia memfilter join result sehingga events bisa null.
-    // Solusi: query events mendatang dulu, lalu ambil assignments-nya.
+    // Admin form: ambil semua event (termasuk lama) agar bisa catat manual retroaktif.
+    // Tidak filter is_draft — admin mungkin perlu catat event draft juga.
+    // Tidak filter tanggal — admin butuh akses semua jadwal untuk rekap historis.
     (async () => {
       const { data: evData } = await supabase.from('events')
         .select('id, nama_event, perayaan, tanggal_tugas')
-        .gte('tanggal_tugas', today)
-        .eq('is_draft', false)
-        .order('tanggal_tugas')
-        .limit(60);
+        .order('tanggal_tugas', { ascending: false })
+        .limit(120);
       if (!evData?.length) { setAllAssignments([]); return; }
       const eventIds = evData.map((e: any) => e.id);
+      // PENTING: include event_id di select agar merge bisa match
       const { data: asgnData } = await supabase.from('assignments')
-        .select('id, slot_number, user_id, users(nama_panggilan)')
+        .select('id, slot_number, user_id, event_id, users(nama_panggilan)')
         .in('event_id', eventIds)
         .order('event_id');
       const evMap: Record<string, any> = {};
@@ -548,15 +546,18 @@ export default function SwapPage() {
                   <option value="">— Pilih jadwal —</option>
                   {allAssignments
                     .filter(a => !adminForm.requester_id || a.user_id === adminForm.requester_id)
-                    .map(a => (
-                      <option key={a.id} value={a.id}>
-                        {a.events?.perayaan||a.events?.nama_event} · {SLOT_LABELS[a.slot_number]} · {formatDate(a.events?.tanggal_tugas,'dd MMM')} — ({a.users?.nama_panggilan})
-                      </option>
-                    ))
+                    .map(a => {
+                      const isPast = a.events?.tanggal_tugas < new Date().toISOString().split('T')[0];
+                      return (
+                        <option key={a.id} value={a.id}>
+                          {isPast ? '↩ ' : ''}{a.events?.perayaan||a.events?.nama_event} · {SLOT_LABELS[a.slot_number]} · {formatDate(a.events?.tanggal_tugas,'dd MMM yyyy')}
+                        </option>
+                      );
+                    })
                   }
                 </select>
                 {adminForm.requester_id && allAssignments.filter(a => a.user_id === adminForm.requester_id).length === 0 && (
-                  <p className="text-xs text-orange-500 mt-1">Anggota ini tidak punya jadwal mendatang</p>
+                  <p className="text-xs text-orange-500 mt-1">Anggota ini tidak punya jadwal (coba refresh halaman)</p>
                 )}
               </div>
 
