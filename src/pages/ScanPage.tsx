@@ -272,7 +272,8 @@ export default function ScanPage() {
       .select('id, nama_event, tipe_event, tanggal_tugas, tanggal_latihan, perayaan, draft_note, status_event, latihan_times')
       .or(`tanggal_tugas.eq.${today},tanggal_latihan.eq.${today}`)
       .in('status_event', ['Akan_Datang','Berlangsung'])
-      .not('is_draft', 'eq', true);
+      .not('is_draft', 'eq', true)
+      .order('tanggal_tugas', { ascending: true });
 
     // 4. Validasi: ada event hari ini?
     if (!todayEvents || todayEvents.length === 0) {

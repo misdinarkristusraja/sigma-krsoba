@@ -396,6 +396,10 @@ export default function AdminPage() {
   useEffect(() => { loadConfigs(); }, [loadConfigs]);
 
   async function saveConfig(key: string, value: string) {
+    if (key.endsWith('_date') && value) {
+      const d = new Date(value);
+      if (isNaN(d.getTime())) { toast.error(`Nilai tanggal tidak valid: "${value}"`); return; }
+    }
     setSaving(true);
     const { error } = await supabase
       .from('system_config')

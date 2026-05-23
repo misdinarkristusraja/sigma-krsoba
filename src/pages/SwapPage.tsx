@@ -212,10 +212,11 @@ export default function SwapPage() {
     if (!f.requester_id || !f.assignment_id) {
       toast.error('Pilih anggota dan jadwal'); return;
     }
+    if (f.status === 'Replaced' && !f.pengganti_id) {
+      toast.error('Status "Tergantikan" membutuhkan pengganti — pilih anggota pengganti'); return;
+    }
 
-    const asgn = allAssignments.find(a => a.id === f.assignment_id);
-    const pengganti = f.pengganti_id ? allMembers.find(m => m.id === f.pengganti_id) : null;
-
+    const isTerminal = f.status === 'Replaced';
     const { error } = await supabase.from('swap_requests').insert({
       requester_id:  f.requester_id,
       assignment_id: f.assignment_id,
@@ -224,8 +225,9 @@ export default function SwapPage() {
       pic_wa_link:   '',
       status:        f.status,
       pengganti_id:  f.pengganti_id || null,
-      pic_approved_at: f.status === 'Replaced' ? new Date().toISOString() : null,
-      expires_at:    new Date(Date.now() + 24*60*60*1000).toISOString(),
+      pic_approved_at: isTerminal ? new Date().toISOString() : null,
+      // Retroactive / already-resolved entries should not show as "expiring soon"
+      expires_at:    isTerminal ? new Date().toISOString() : new Date(Date.now() + 24*60*60*1000).toISOString(),
     });
 
     if (error) { toast.error(error.message); return; }

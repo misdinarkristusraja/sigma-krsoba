@@ -18,6 +18,11 @@ const KONDISI_INFO: Record<string, { label: string; short: string; poin: string;
   K4a: { label: 'Hadir Latihan saja (tidak terjadwal)',short: 'Hadir Latihan',      poin: '+2', color: 'bg-teal-100 text-teal-800',      bar: '#14b8a6' },
   K4c: { label: 'Hadir Latihan saja (terjadwal, tidak hadir tugas)', short: 'Latihan (no Tugas)', poin: '0', color: 'bg-yellow-100 text-yellow-800', bar: '#eab308' },
   K6:  { label: 'Absen (terjadwal, tidak hadir)',     short: 'Absen',               poin: '-1', color: 'bg-red-100 text-red-800',        bar: '#ef4444' },
+  // Legacy codes from old 6-kondisi system — shown for historical rows until cron re-calculates
+  K2:  { label: 'Hadir Lengkap (lama)',               short: 'Hadir Lengkap',       poin: '+2', color: 'bg-green-100 text-green-800',    bar: '#16a34a' },
+  K3:  { label: 'Hadir Tugas saja (lama)',            short: 'Hadir Tugas',         poin: '+1', color: 'bg-blue-100 text-blue-800',      bar: '#3b82f6' },
+  K4:  { label: 'Mengganti saja (lama)',              short: 'Mengganti',           poin: '+2', color: 'bg-sky-100 text-sky-800',        bar: '#0ea5e9' },
+  K5:  { label: 'Hadir Latihan saja (lama)',          short: 'Hadir Latihan',       poin: '+1', color: 'bg-teal-100 text-teal-800',      bar: '#14b8a6' },
 };
 const MONTH_NAMES = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 

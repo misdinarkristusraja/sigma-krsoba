@@ -30,6 +30,11 @@ const KONDISI_LABELS: Record<string, { label: string; color: string; icon: strin
   K4a: { label: 'Hadir Latihan',              color: 'text-teal-600',    icon: '+'  },
   K4c: { label: 'Latihan (terjadwal, no tugas)', color: 'text-yellow-600', icon: '+' },
   K6:  { label: 'Absen (Penalti)',            color: 'text-red-600',     icon: '✗'  },
+  // Legacy codes from old 6-kondisi system — display until cron re-calculates all rows
+  K2:  { label: 'Hadir Lengkap (lama)',       color: 'text-green-600',   icon: '⭐' },
+  K3:  { label: 'Hadir Tugas (lama)',         color: 'text-blue-600',    icon: '✓'  },
+  K4:  { label: 'Mengganti (lama)',           color: 'text-sky-600',     icon: '↑'  },
+  K5:  { label: 'Hadir Latihan (lama)',       color: 'text-teal-600',    icon: '+'  },
 };
 
 export default function DashboardPage() {
@@ -69,6 +74,7 @@ export default function DashboardPage() {
     const now   = new Date();
     const open  = new Date(cfg.rereg_open_date);
     const close = new Date(cfg.rereg_close_date + 'T23:59:59');
+    if (isNaN(open.getTime()) || isNaN(close.getTime())) return;
     if (now < open || now > close) return;
 
     const tahun = parseInt(cfg.rereg_tahun || String(now.getFullYear()));

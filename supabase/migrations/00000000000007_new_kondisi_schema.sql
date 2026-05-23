@@ -211,12 +211,14 @@ LANGUAGE plpgsql SECURITY DEFINER
 SET search_path = public
 AS $$
 DECLARE
-  v_user   RECORD;
-  v_weeks  DATE[];
-  v_streak INTEGER;
+  v_user    RECORD;
+  v_weeks   DATE[];
+  v_streak  INTEGER;
   v_longest INTEGER;
+  v_cur     INTEGER;
   v_last_k1 DATE;
-  i        INTEGER;
+  i         INTEGER;
+  v_len     INTEGER;
 BEGIN
   FOR v_user IN SELECT id FROM users WHERE status = 'Active' LOOP
     SELECT ARRAY_AGG(week_start ORDER BY week_start)
@@ -229,11 +231,12 @@ BEGIN
     v_streak := 0; v_longest := 0; v_last_k1 := NULL;
 
     IF v_weeks IS NOT NULL AND array_length(v_weeks, 1) > 0 THEN
-      v_last_k1 := v_weeks[array_length(v_weeks, 1)];
+      v_len     := array_length(v_weeks, 1);
+      v_last_k1 := v_weeks[v_len];
 
-      -- Count current streak (consecutive weeks from latest)
+      -- Count current streak (consecutive weeks backwards from latest)
       v_streak := 1;
-      FOR i IN REVERSE array_length(v_weeks, 1) - 1 .. 1 LOOP
+      FOR i IN REVERSE v_len - 1 .. 1 LOOP
         IF v_weeks[i + 1] - v_weeks[i] = 7 THEN
           v_streak := v_streak + 1;
         ELSE
@@ -241,32 +244,30 @@ BEGIN
         END IF;
       END LOOP;
 
-      -- If latest week is not this week or last, reset streak
+      -- Reset streak if latest hadir week is older than 2 weeks ago
       IF v_last_k1 < CURRENT_DATE - 13 THEN
         v_streak := 0;
       END IF;
 
-      -- Count longest streak
+      -- Count longest streak (all-time)
       v_longest := 1;
-      DECLARE v_cur INTEGER := 1;
-      BEGIN
-        FOR i IN 2 .. array_length(v_weeks, 1) LOOP
-          IF v_weeks[i] - v_weeks[i-1] = 7 THEN
-            v_cur := v_cur + 1;
-            IF v_cur > v_longest THEN v_longest := v_cur; END IF;
-          ELSE
-            v_cur := 1;
-          END IF;
-        END LOOP;
-      END;
+      v_cur     := 1;
+      FOR i IN 2 .. v_len LOOP
+        IF v_weeks[i] - v_weeks[i-1] = 7 THEN
+          v_cur := v_cur + 1;
+          IF v_cur > v_longest THEN v_longest := v_cur; END IF;
+        ELSE
+          v_cur := 1;
+        END IF;
+      END LOOP;
     END IF;
 
-    INSERT INTO streaks (user_id, current_streak, longest_streak, last_hadir_date, updated_at)
+    INSERT INTO streaks (user_id, current_streak, longest_streak, last_k1_week, updated_at)
     VALUES (v_user.id, v_streak, v_longest, v_last_k1, NOW())
     ON CONFLICT (user_id) DO UPDATE SET
       current_streak = EXCLUDED.current_streak,
       longest_streak = GREATEST(streaks.longest_streak, EXCLUDED.longest_streak),
-      last_hadir_date = EXCLUDED.last_hadir_date,
+      last_k1_week   = EXCLUDED.last_k1_week,
       updated_at     = NOW();
   END LOOP;
 END;
