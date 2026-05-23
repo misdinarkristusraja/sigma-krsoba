@@ -22,7 +22,7 @@ const SLOT_TIMES_MIN = {
 };
 // Window scan: H-1 jam s/d H+2 jam
 const WINDOW_BEFORE_MIN = 1 * 60;  // boleh scan 1 jam sebelum
-const WINDOW_AFTER_MIN  = 2 * 60;  // boleh scan 2 jam sesudah
+const WINDOW_AFTER_MIN  = 3 * 60;  // boleh scan 3 jam sesudah
 
 // Parse "HH:MM" atau "HH.MM" string → menit dari tengah malam
 function parseJamToMin(jam: string | null | undefined, fallback = 8 * 60): number {
