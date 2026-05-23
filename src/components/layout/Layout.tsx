@@ -6,7 +6,7 @@ import {
   LayoutDashboard, Users, Calendar, CalendarDays, QrCode,
   ArrowLeftRight, BarChart2, CreditCard, Database,
   Settings, LogOut, Menu, X, Church, AlertTriangle,
-  ClipboardList, RefreshCw, ClipboardCheck, PartyPopper, ListChecks, BookUser, Star,
+  ClipboardList, RefreshCw, ClipboardCheck, PartyPopper, ListChecks, BookUser, Star, Microscope,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { cn, truncate } from '../../lib/utils';
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { icon: LayoutDashboard, label: 'Dashboard',       path: '/dashboard',       roles: null  },
   { icon: Users,           label: 'Anggota',         path: '/anggota',         roles: STAFF },
   { icon: BookUser,        label: 'Direktori',       path: '/direktori',       roles: PENG  },
+  { icon: Microscope,      label: 'Analisis Kualitas', path: '/analisis',       roles: PENG  },
   { icon: Calendar,        label: 'Jadwal Mingguan', path: '/jadwal-mingguan', roles: PENG  },
   { icon: CalendarDays,    label: 'Misa Harian',     path: '/jadwal-harian',   roles: null  },
   { icon: QrCode,          label: 'Scan QR',         path: '/scan-qr',         roles: STAFF },
