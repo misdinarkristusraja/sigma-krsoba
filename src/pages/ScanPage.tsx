@@ -20,7 +20,9 @@ const SLOT_TIMES_MIN = {
   slot3:  8 * 60,       // 08:00 minggu
   slot4: 17 * 60 + 30,  // 17:30 minggu
 };
-const WINDOW_MIN = 2 * 60; // ±2 jam = 120 menit
+// Window scan: H-1 jam s/d H+2 jam
+const WINDOW_BEFORE_MIN = 1 * 60;  // boleh scan 1 jam sebelum
+const WINDOW_AFTER_MIN  = 2 * 60;  // boleh scan 2 jam sesudah
 
 // Parse "HH:MM" atau "HH.MM" string → menit dari tengah malam
 function parseJamToMin(jam: string | null | undefined, fallback = 8 * 60): number {
@@ -41,8 +43,10 @@ function nowMinutesWIB() {
   return wib.getUTCHours() * 60 + wib.getUTCMinutes();
 }
 
+// H-1 s/d H+2: now >= slot-60 && now <= slot+120
 function isInTimeWindow(slotMinutes: number) {
-  return Math.abs(nowMinutesWIB() - slotMinutes) <= WINDOW_MIN;
+  const now = nowMinutesWIB();
+  return now >= slotMinutes - WINDOW_BEFORE_MIN && now <= slotMinutes + WINDOW_AFTER_MIN;
 }
 
 // Ambil jam latihan dari event (latihan_times[0]) atau fallback ke default
@@ -98,10 +102,11 @@ function getNextWindowLabel(events: any[], today: string, latihanDefaultMin: num
       all.push({ label: 'Minggu 17:30', min: SLOT_TIMES_MIN.slot4 });
     }
   }
-  const upcoming = all.filter(a => a.min - WINDOW_MIN > now).sort((a, b) => a.min - b.min);
+  // "belum masuk window" = slot - WINDOW_BEFORE_MIN masih di depan sekarang
+  const upcoming = all.filter(a => a.min - WINDOW_BEFORE_MIN > now).sort((a, b) => a.min - b.min);
   if (!upcoming.length) return null;
   const next = upcoming[0];
-  const diff = next.min - WINDOW_MIN - now;
+  const diff = next.min - WINDOW_BEFORE_MIN - now;
   const hours = Math.floor(diff / 60);
   const mins  = diff % 60;
   return `${next.label} (lagi ${hours > 0 ? `${hours}j ` : ''}${mins}m)`;
