@@ -21,12 +21,15 @@ import { supabase } from '../lib/supabase';
 import { useState, useEffect } from 'react';
 
 const KONDISI_LABELS: Record<string, { label: string; color: string; icon: string }> = {
-  K1: { label: 'Tugas + Latihan',   color: 'text-green-600',  icon: '⭐' },
-  K2: { label: 'Walk-in + Latihan', color: 'text-blue-600',   icon: '🌟' },
-  K3: { label: 'Tugas saja',        color: 'text-yellow-600', icon: '✓'  },
-  K4: { label: 'Walk-in saja',      color: 'text-orange-600', icon: '↑'  },
-  K5: { label: 'Latihan saja',      color: 'text-teal-600',   icon: '+'  },
-  K6: { label: 'Absen (Penalty)',   color: 'text-red-600',    icon: '✗'  },
+  K1:  { label: 'Mengganti + Latihan',        color: 'text-purple-600',  icon: '🌟' },
+  K2a: { label: 'Hadir Lengkap',              color: 'text-green-600',   icon: '⭐' },
+  K2b: { label: 'Hadir Lengkap (Pengganti)',  color: 'text-emerald-600', icon: '⭐' },
+  K3a: { label: 'Hadir Tugas (Terjadwal)',    color: 'text-blue-600',    icon: '✓'  },
+  K3b: { label: 'Mengganti Mendadak',         color: 'text-sky-600',     icon: '↑'  },
+  K3c: { label: 'Hadir Tugas (Pengganti)',    color: 'text-cyan-600',    icon: '✓'  },
+  K4a: { label: 'Hadir Latihan',              color: 'text-teal-600',    icon: '+'  },
+  K4c: { label: 'Latihan (terjadwal, no tugas)', color: 'text-yellow-600', icon: '+' },
+  K6:  { label: 'Absen (Penalti)',            color: 'text-red-600',     icon: '✗'  },
 };
 
 export default function DashboardPage() {

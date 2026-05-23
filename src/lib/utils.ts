@@ -183,21 +183,43 @@ export const STATUS_LABELS: Record<string, string> = {
   Suspended: 'Disuspend',
 };
 
-// ── Points formula (6 kondisi) ────────────────────────────
+// ── Points formula ────────────────────────────────────────
+// K1:  Mengganti mendadak + Latihan             +5
+// K2a: Hadir Lengkap (terjadwal normal)         +4
+// K2b: Hadir Lengkap (pengganti resmi/swap)     +3
+// K3a: Hadir Tugas saja (terjadwal)             +3
+// K3b: Mengganti mendadak saja (no latihan)     +3
+// K3c: Hadir Tugas saja (pengganti resmi/swap)  +2
+// K4a: Hadir Latihan saja (tidak terjadwal)     +2
+// K4c: Hadir Latihan saja (terjadwal, no tugas) +0
+// K6:  Absen (terjadwal, tidak hadir sama sekali) -1
 interface PoinInput {
-  isDijadwalkan:  boolean;
-  isHadirTugas:   boolean;
-  isHadirLatihan: boolean;
-  isWalkIn:       boolean;
+  isDijadwalkan:    boolean;
+  isHadirTugas:     boolean;
+  isHadirLatihan:   boolean;
+  isWalkIn:         boolean;
+  isSwapPengganti?: boolean;
 }
 
-export function hitungPoin({ isDijadwalkan, isHadirTugas, isHadirLatihan, isWalkIn }: PoinInput): { poin: number; kondisi: string | null } {
-  if (isDijadwalkan && isHadirTugas && isHadirLatihan)   return { poin:  2, kondisi: 'K1' };
-  if (!isDijadwalkan && isWalkIn && isHadirLatihan)      return { poin:  3, kondisi: 'K2' };
-  if (isDijadwalkan && isHadirTugas && !isHadirLatihan)  return { poin:  1, kondisi: 'K3' };
-  if (!isDijadwalkan && isWalkIn && !isHadirLatihan)     return { poin:  2, kondisi: 'K4' };
-  if (!isDijadwalkan && !isWalkIn && isHadirLatihan)     return { poin:  1, kondisi: 'K5' };
-  if (isDijadwalkan && !isHadirTugas && !isHadirLatihan) return { poin: -1, kondisi: 'K6' };
+export function hitungPoin({ isDijadwalkan, isHadirTugas, isHadirLatihan, isWalkIn, isSwapPengganti = false }: PoinInput): { poin: number; kondisi: string | null } {
+  // K1: mengganti mendadak + latihan (highest)
+  if (isWalkIn && isHadirLatihan)                                                     return { poin:  5, kondisi: 'K1'  };
+  // K2a: terjadwal, hadir lengkap, bukan pengganti swap
+  if (isDijadwalkan && isHadirTugas && isHadirLatihan && !isSwapPengganti)            return { poin:  4, kondisi: 'K2a' };
+  // K2b: pengganti swap resmi, hadir lengkap
+  if (isSwapPengganti && isHadirTugas && isHadirLatihan)                              return { poin:  3, kondisi: 'K2b' };
+  // K3a: terjadwal, hadir tugas saja, bukan pengganti
+  if (isDijadwalkan && isHadirTugas && !isHadirLatihan && !isSwapPengganti)           return { poin:  3, kondisi: 'K3a' };
+  // K3b: mengganti mendadak saja (no latihan)
+  if (isWalkIn && !isHadirLatihan)                                                    return { poin:  3, kondisi: 'K3b' };
+  // K3c: pengganti swap, hadir tugas saja
+  if (isSwapPengganti && isHadirTugas && !isHadirLatihan)                             return { poin:  2, kondisi: 'K3c' };
+  // K4a: tidak terjadwal, hadir latihan saja (tidak walkin tugas)
+  if (!isDijadwalkan && !isWalkIn && !isSwapPengganti && isHadirLatihan)              return { poin:  2, kondisi: 'K4a' };
+  // K4c: terjadwal, tidak hadir tugas, tapi hadir latihan
+  if (isDijadwalkan && !isHadirTugas && isHadirLatihan)                               return { poin:  0, kondisi: 'K4c' };
+  // K6: terjadwal, absen total
+  if (isDijadwalkan && !isHadirTugas && !isHadirLatihan)                              return { poin: -1, kondisi: 'K6'  };
   return { poin: 0, kondisi: null };
 }
 

@@ -155,11 +155,11 @@ export default function StreakPage() {
             <div className="grid sm:grid-cols-2 gap-2 text-xs text-gray-600">
               <div className="bg-white rounded-xl p-3">
                 <p className="font-semibold text-green-700">✅ Menambah streak:</p>
-                <p>K1 (Hadir Tugas + Latihan) atau K3 (Hadir Tugas) tiap minggu berturut-turut</p>
+                <p>K2a/K2b (Hadir Lengkap), K3a/K3b/K3c (Hadir Tugas), atau K1 (Mengganti + Latihan) tiap minggu berturut-turut</p>
               </div>
               <div className="bg-white rounded-xl p-3">
                 <p className="font-semibold text-red-700">❌ Memutus streak:</p>
-                <p>Melewatkan 1 minggu tanpa hadir tugas (K5, K6, atau tidak dijadwalkan)</p>
+                <p>Melewatkan 1 minggu tanpa hadir tugas (K4a, K4c, K6, atau tidak dijadwalkan)</p>
               </div>
               <div className="bg-white rounded-xl p-3">
                 <p className="font-semibold text-blue-700">🔄 Kapan dihitung:</p>

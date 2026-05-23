@@ -389,7 +389,7 @@ export default function ScanPage() {
         : (isAnomaly && !forceNoAnomaly)
         ? `✓ Scan disimpan (anomali MyID) — ${member.nama_panggilan}`
         : scanType === 'walkin_latihan'
-        ? `✓ ${member.nama_panggilan} — Walk-in Latihan`
+        ? `✓ ${member.nama_panggilan} — Mengganti Latihan`
         : `✓ ${member.nama_panggilan} — ${scanType === 'latihan' ? 'Latihan' : 'Tugas'}`,
       member, scanType,
       isLegacy: parsed.version === 'legacy',

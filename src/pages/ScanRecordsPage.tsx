@@ -9,8 +9,8 @@ import { Search, Download, RefreshCw, AlertTriangle, CheckCircle, Filter, Edit2,
 const SCAN_TYPE_LABELS: Record<string, { label: string; color: string }> = {
   tugas:          { label: 'Tugas',         color: 'badge-green' },
   latihan:        { label: 'Latihan',       color: 'badge-blue' },
-  walkin_tugas:   { label: 'Walk-in Tugas', color: 'badge-yellow' },
-  walkin_latihan: { label: 'Walk-in Lat.',  color: 'badge-purple' },
+  walkin_tugas:   { label: 'Mengganti Tugas', color: 'badge-yellow' },
+  walkin_latihan: { label: 'Mengganti Lat.', color: 'badge-purple' },
 };
 
 export default function ScanRecordsPage() {
@@ -82,7 +82,7 @@ export default function ScanRecordsPage() {
       { key: 'scan_type',   label: 'Tipe Scan' },
       { key: 'event',       label: 'Event' },
       { key: 'scanner',     label: 'Scanner' },
-      { key: 'walk_in',     label: 'Walk-in' },
+      { key: 'walk_in',     label: 'Mengganti' },
       { key: 'anomaly',     label: 'Anomali' },
       { key: 'qr_version',  label: 'QR Version' },
     ];
@@ -208,7 +208,7 @@ export default function ScanRecordsPage() {
                     </td>
                     <td>
                       <span className={`badge ${sl.color}`}>{sl.label}</span>
-                      {r.is_walk_in && <span className="badge-yellow ml-1 text-xs">Walk-in</span>}
+                      {r.is_walk_in && <span className="badge-yellow ml-1 text-xs">Mengganti</span>}
                     </td>
                     <td className="text-xs text-gray-600 max-w-40 truncate">
                       {r.event?.perayaan || r.event?.nama_event || '—'}
@@ -282,12 +282,12 @@ export default function ScanRecordsPage() {
                   onChange={e => setEditRecord((r: any) => ({...r, scan_type: e.target.value, is_walk_in: e.target.value.includes('walkin')}))}>
                   <option value="tugas">Tugas</option>
                   <option value="latihan">Latihan</option>
-                  <option value="walkin_tugas">Walk-in Tugas</option>
-                  <option value="walkin_latihan">Walk-in Latihan</option>
+                  <option value="walkin_tugas">Mengganti Tugas</option>
+                  <option value="walkin_latihan">Mengganti Latihan</option>
                 </select>
               </div>
               <div>
-                <label className="label text-xs">Alasan Walk-in (opsional)</label>
+                <label className="label text-xs">Alasan Mengganti (opsional)</label>
                 <input className="input" value={editRecord.walkin_reason || ''}
                   placeholder="Menggantikan / Sukarela / Lainnya"
                   onChange={e => setEditRecord((r: any) => ({...r, walkin_reason: e.target.value}))}/>

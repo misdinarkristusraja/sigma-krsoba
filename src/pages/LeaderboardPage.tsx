@@ -72,7 +72,12 @@ function buildLeaderboard({ members, assigns, scans, swaps, dateFrom, dateTo }: 
     // Pass 3 — poin
     let totalPoin = 0, hadirCount = 0, absenCount = 0;
     Object.values(weeks).forEach((w: any) => {
-      const { poin, kondisi } = hitungPoin(w);
+      const { poin, kondisi } = hitungPoin({
+        isDijadwalkan:  w.is_dijadwalkan,
+        isHadirTugas:   w.is_hadir_tugas,
+        isHadirLatihan: w.is_hadir_latihan,
+        isWalkIn:       w.is_walk_in,
+      });
       if (kondisi !== null) {
         totalPoin += poin || 0;
         if (w.is_hadir_tugas || w.is_hadir_latihan) hadirCount++;

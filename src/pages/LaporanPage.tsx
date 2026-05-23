@@ -82,11 +82,16 @@ export default function LaporanPage() {
         if (t?.includes('walkin') || (s.event_id && !activeEventIds.has(s.event_id))) weeks[ws].is_walk_in=true;
       });
       const kCounts: Record<string,any> = {};
-      ['K1','K2','K3','K4','K5','K6'].forEach((k: any) => { kCounts[k] = 0; });
+      ['K1','K2a','K2b','K3a','K3b','K3c','K4a','K4c','K6'].forEach((k: any) => { kCounts[k] = 0; });
       let totalPoin = 0;
       Object.values(weeks).forEach((w: any) => {
-        const { poin, kondisi } = hitungPoin(w);
-        if (kondisi) { kCounts[kondisi]++; totalPoin += poin||0; }
+        const { poin, kondisi } = hitungPoin({
+          isDijadwalkan:  w.is_dijadwalkan,
+          isHadirTugas:   w.is_hadir_tugas,
+          isHadirLatihan: w.is_hadir_latihan,
+          isWalkIn:       w.is_walk_in,
+        });
+        if (kondisi) { kCounts[kondisi] = (kCounts[kondisi]||0) + 1; totalPoin += poin||0; }
       });
 
       return { ...m, jadwalBulanIni, tugasScans, latihanScans, walkIns, totalPoin, kCounts, minggu: Object.keys(weeks).length };
@@ -106,11 +111,13 @@ export default function LaporanPage() {
 
   function exportCSV() {
     if (!data) return;
-    const headers = ['Nama','Lingkungan','Poin','Jadwal','Tugas','Latihan','Walk-in','K1','K2','K3','K4','K5','K6'];
+    const headers = ['Nama','Lingkungan','Poin','Jadwal','Tugas','Latihan','Mengganti','K1','K2a','K2b','K3a','K3b','K3c','K4a','K4c','K6'];
     const rows    = data.rows.map((r: any) => [
       r.nama_panggilan, r.lingkungan, r.totalPoin, r.jadwalBulanIni,
       r.tugasScans, r.latihanScans, r.walkIns,
-      r.kCounts.K1, r.kCounts.K2, r.kCounts.K3, r.kCounts.K4, r.kCounts.K5, r.kCounts.K6,
+      r.kCounts.K1, r.kCounts.K2a, r.kCounts.K2b,
+      r.kCounts.K3a, r.kCounts.K3b, r.kCounts.K3c,
+      r.kCounts.K4a, r.kCounts.K4c, r.kCounts.K6,
     ]);
     const esc = (v: any) => `"${String(v||'').replace(/"/g,'""')}"`;
     const csv = [headers.map(esc), ...rows.map((r: any)=>r.map(esc))].map((r: any)=>r.join(',')).join('\n');
@@ -167,7 +174,7 @@ export default function LaporanPage() {
               { label:'Total Anggota',   val: data.totalAnggota,          color:'bg-brand-50 text-brand-800',    icon:'👥' },
               { label:'Rata-rata Poin',  val: `+${data.avgPoin}`,         color:'bg-green-50 text-green-700',   icon:'⭐' },
               { label:'Total Absen (K6)',val: data.totalAbsen,            color:'bg-red-50 text-red-700',       icon:'❌' },
-              { label:'Walk-in Bulan Ini',val: data.totalWalkIn,          color:'bg-purple-50 text-purple-700', icon:'🚶' },
+              { label:'Mengganti Bulan Ini',val: data.totalWalkIn,          color:'bg-purple-50 text-purple-700', icon:'🚶' },
             ].map(c => (
               <div key={c.label} className={`${c.color} rounded-2xl p-4 text-center`}>
                 <div className="text-2xl">{c.icon}</div>
@@ -202,13 +209,16 @@ export default function LaporanPage() {
                 <thead>
                   <tr>
                     <th>#</th><th>Nama</th><th>Lingkungan</th>
-                    <th>Poin</th><th>Jadwal</th><th>Tugas</th><th>Latihan</th><th>Walk-in</th>
-                    <th className="text-green-600">K1</th>
-                    <th className="text-blue-600">K2</th>
-                    <th className="text-yellow-600">K3</th>
-                    <th className="text-orange-500">K4</th>
-                    <th className="text-teal-600">K5</th>
-                    <th className="text-red-600">K6</th>
+                    <th>Poin</th><th>Jadwal</th><th>Tugas</th><th>Latihan</th><th>Mengganti</th>
+                    <th className="text-purple-600" title="Mengganti mendadak + Latihan (+5)">K1</th>
+                    <th className="text-green-600" title="Hadir Lengkap terjadwal (+4)">K2a</th>
+                    <th className="text-emerald-600" title="Hadir Lengkap swap (+3)">K2b</th>
+                    <th className="text-blue-600" title="Hadir Tugas terjadwal (+3)">K3a</th>
+                    <th className="text-sky-600" title="Mengganti mendadak (+3)">K3b</th>
+                    <th className="text-cyan-600" title="Hadir Tugas swap (+2)">K3c</th>
+                    <th className="text-teal-600" title="Hadir Latihan tidak terjadwal (+2)">K4a</th>
+                    <th className="text-yellow-600" title="Hadir Latihan terjadwal (0)">K4c</th>
+                    <th className="text-red-600" title="Absen (-1)">K6</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -222,12 +232,15 @@ export default function LaporanPage() {
                       <td className="text-center">{r.tugasScans||'—'}</td>
                       <td className="text-center">{r.latihanScans||'—'}</td>
                       <td className="text-center">{r.walkIns>0?<span className="text-purple-600 font-bold">{r.walkIns}</span>:'—'}</td>
-                      <td className="text-center">{r.kCounts.K1>0?<span className="text-green-600 font-bold">{r.kCounts.K1}</span>:'—'}</td>
-                      <td className="text-center">{r.kCounts.K2>0?<span className="text-blue-600 font-bold">{r.kCounts.K2}</span>:'—'}</td>
-                      <td className="text-center">{r.kCounts.K3>0?<span className="text-yellow-600 font-bold">{r.kCounts.K3}</span>:'—'}</td>
-                      <td className="text-center">{r.kCounts.K4>0?<span className="text-orange-500 font-bold">{r.kCounts.K4}</span>:'—'}</td>
-                      <td className="text-center">{r.kCounts.K5>0?<span className="text-teal-600 font-bold">{r.kCounts.K5}</span>:'—'}</td>
-                      <td className="text-center">{r.kCounts.K6>0?<span className="text-red-600 font-bold">{r.kCounts.K6}</span>:'—'}</td>
+                      <td className="text-center">{(r.kCounts.K1||0)>0?<span className="text-purple-600 font-bold">{r.kCounts.K1}</span>:'—'}</td>
+                      <td className="text-center">{(r.kCounts.K2a||0)>0?<span className="text-green-600 font-bold">{r.kCounts.K2a}</span>:'—'}</td>
+                      <td className="text-center">{(r.kCounts.K2b||0)>0?<span className="text-emerald-600 font-bold">{r.kCounts.K2b}</span>:'—'}</td>
+                      <td className="text-center">{(r.kCounts.K3a||0)>0?<span className="text-blue-600 font-bold">{r.kCounts.K3a}</span>:'—'}</td>
+                      <td className="text-center">{(r.kCounts.K3b||0)>0?<span className="text-sky-600 font-bold">{r.kCounts.K3b}</span>:'—'}</td>
+                      <td className="text-center">{(r.kCounts.K3c||0)>0?<span className="text-cyan-600 font-bold">{r.kCounts.K3c}</span>:'—'}</td>
+                      <td className="text-center">{(r.kCounts.K4a||0)>0?<span className="text-teal-600 font-bold">{r.kCounts.K4a}</span>:'—'}</td>
+                      <td className="text-center">{(r.kCounts.K4c||0)>0?<span className="text-yellow-600 font-bold">{r.kCounts.K4c}</span>:'—'}</td>
+                      <td className="text-center">{(r.kCounts.K6||0)>0?<span className="text-red-600 font-bold">{r.kCounts.K6}</span>:'—'}</td>
                     </tr>
                   ))}
                 </tbody>

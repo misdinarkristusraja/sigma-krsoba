@@ -5,12 +5,15 @@ import { formatDate, downloadCSV } from '../lib/utils';
 import { BarChart2, Search, Download, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 
 const KONDISI_INFO: Record<string, { label: string; poin: string; color: string; dot: string }> = {
-  K1: { label: 'Dijadwal + Tugas + Latihan', poin: '+2', color: 'bg-green-100 text-green-800',  dot: 'bg-green-500'  },
-  K2: { label: 'Walk-in + Latihan',          poin: '+3', color: 'bg-blue-100 text-blue-800',    dot: 'bg-blue-500'   },
-  K3: { label: 'Dijadwal + Tugas saja',      poin: '+1', color: 'bg-yellow-100 text-yellow-800',dot: 'bg-yellow-500' },
-  K4: { label: 'Walk-in saja',               poin: '+1', color: 'bg-orange-100 text-orange-800',dot: 'bg-orange-500' },
-  K5: { label: 'Dijadwal + Latihan saja',    poin: '+1', color: 'bg-teal-100 text-teal-800',    dot: 'bg-teal-500'   },
-  K6: { label: 'Absen (tidak hadir)',        poin: '-1', color: 'bg-red-100 text-red-800',      dot: 'bg-red-500'    },
+  K1:  { label: 'Mengganti mendadak + Latihan',       poin: '+5', color: 'bg-purple-100 text-purple-800',  dot: 'bg-purple-500'  },
+  K2a: { label: 'Hadir Lengkap (terjadwal normal)',   poin: '+4', color: 'bg-green-100 text-green-800',    dot: 'bg-green-500'   },
+  K2b: { label: 'Hadir Lengkap (pengganti swap)',     poin: '+3', color: 'bg-emerald-100 text-emerald-800',dot: 'bg-emerald-500' },
+  K3a: { label: 'Hadir Tugas saja (terjadwal)',       poin: '+3', color: 'bg-blue-100 text-blue-800',      dot: 'bg-blue-500'    },
+  K3b: { label: 'Mengganti mendadak saja',            poin: '+3', color: 'bg-sky-100 text-sky-800',        dot: 'bg-sky-500'     },
+  K3c: { label: 'Hadir Tugas saja (pengganti swap)',  poin: '+2', color: 'bg-cyan-100 text-cyan-800',      dot: 'bg-cyan-500'    },
+  K4a: { label: 'Hadir Latihan saja (tidak terjadwal)',poin: '+2',color: 'bg-teal-100 text-teal-800',      dot: 'bg-teal-500'    },
+  K4c: { label: 'Hadir Latihan saja (terjadwal)',     poin: '0',  color: 'bg-yellow-100 text-yellow-800',  dot: 'bg-yellow-500'  },
+  K6:  { label: 'Absen (tidak hadir)',                poin: '-1', color: 'bg-red-100 text-red-800',        dot: 'bg-red-500'     },
 };
 
 function pct(val: any, total: any) {
@@ -63,7 +66,7 @@ export default function StatistikPage() {
       const penggantiOf = (swaps    || []).filter((s: any) => s.pengganti_id === u.id);
 
       const totalPoin  = userRekap.reduce((s: any, r: any) => s + (r.poin || 0), 0);
-      const kondisiCounts: Record<string,number> = { K1:0, K2:0, K3:0, K4:0, K5:0, K6:0 };
+      const kondisiCounts: Record<string,number> = { K1:0, K2a:0, K2b:0, K3a:0, K3b:0, K3c:0, K4a:0, K4c:0, K6:0 };
       userRekap.forEach((r: any) => { if (kondisiCounts[r.kondisi] !== undefined) kondisiCounts[r.kondisi]++; });
 
       const totalMinggu      = userRekap.length;
@@ -161,8 +164,11 @@ export default function StatistikPage() {
         'Total Poin': s.totalPoin,
         'Total Minggu': s.totalMinggu, 'Dijadwalkan': s.dijadwalkan,
         '% Dijadwalkan': s.pctDijadwalkan + '%', '% Hadir Tugas': s.pctHadirTugas + '%',
-        'K1': s.kondisiCounts?.K1, 'K2': s.kondisiCounts?.K2, 'K3': s.kondisiCounts?.K3,
-        'K4': s.kondisiCounts?.K4, 'K5': s.kondisiCounts?.K5, 'K6 (Absen)': s.kondisiCounts?.K6,
+        'K1': s.kondisiCounts?.K1,
+        'K2a': s.kondisiCounts?.K2a, 'K2b': s.kondisiCounts?.K2b,
+        'K3a': s.kondisiCounts?.K3a, 'K3b': s.kondisiCounts?.K3b, 'K3c': s.kondisiCounts?.K3c,
+        'K4a': s.kondisiCounts?.K4a, 'K4c': s.kondisiCounts?.K4c,
+        'K6 (Absen)': s.kondisiCounts?.K6,
         'Tukar Jadwal': s.swapCount, 'Berhasil Tukar': s.swapReplaced,
         'Jadi Pengganti': s.penggantiCount,
       };
@@ -188,7 +194,7 @@ export default function StatistikPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="page-title flex items-center gap-2"><BarChart2 size={22} className="text-brand-800"/> Statistik Misdinar</h1>
-          <p className="page-subtitle">Rekap K1–K6 · Kehadiran · Rotasi Slot · Tukar Jadwal</p>
+          <p className="page-subtitle">Rekap Kondisi Poin · Kehadiran · Rotasi Slot · Tukar Jadwal</p>
         </div>
         <div className="flex gap-2">
           <button onClick={load} className="btn-ghost p-2"><RefreshCw size={16}/></button>
@@ -236,7 +242,14 @@ export default function StatistikPage() {
               <tr>
                 <th className="cursor-pointer" onClick={() => toggleSort('nama')}>Anggota <SortIcon col="nama"/></th>
                 <th className="cursor-pointer" onClick={() => toggleSort('poin')}>Total Poin <SortIcon col="poin"/></th>
-                <th>K1</th><th>K2</th><th>K3</th><th>K4</th><th>K5</th>
+                <th title="Mengganti+Latihan (+5)">K1</th>
+                <th title="Hadir Lengkap terjadwal (+4)">K2a</th>
+                <th title="Hadir Lengkap swap (+3)">K2b</th>
+                <th title="Hadir Tugas terjadwal (+3)">K3a</th>
+                <th title="Mengganti mendadak (+3)">K3b</th>
+                <th title="Hadir Tugas swap (+2)">K3c</th>
+                <th title="Hadir Latihan tidak terjadwal (+2)">K4a</th>
+                <th title="Hadir Latihan terjadwal (0)">K4c</th>
                 <th className="cursor-pointer text-red-600" onClick={() => toggleSort('absen')}>K6 <SortIcon col="absen"/></th>
                 <th className="cursor-pointer" onClick={() => toggleSort('dijadwalkan')}>% Dijadwal <SortIcon col="dijadwalkan"/></th>
                 <th className="cursor-pointer" onClick={() => toggleSort('hadir')}>% Hadir <SortIcon col="hadir"/></th>
@@ -260,13 +273,13 @@ export default function StatistikPage() {
                       <td className={`font-black text-base ${s.totalPoin > 0 ? 'text-green-600' : s.totalPoin < 0 ? 'text-red-600' : 'text-gray-400'}`}>
                         {s.totalPoin > 0 ? '+' : ''}{s.totalPoin}
                       </td>
-                      {['K1','K2','K3','K4','K5'].map(k => (
+                      {['K1','K2a','K2b','K3a','K3b','K3c','K4a','K4c'].map(k => (
                         <td key={k} className="text-center font-semibold">
-                          {s.kondisiCounts[k] > 0 ? <span className={`inline-block px-1.5 rounded ${KONDISI_INFO[k].color}`}>{s.kondisiCounts[k]}</span> : <span className="text-gray-300">0</span>}
+                          {(s.kondisiCounts[k]||0) > 0 ? <span className={`inline-block px-1.5 rounded ${KONDISI_INFO[k]?.color||''}`}>{s.kondisiCounts[k]}</span> : <span className="text-gray-300">0</span>}
                         </td>
                       ))}
                       <td className="text-center font-semibold">
-                        {s.kondisiCounts.K6 > 0 ? <span className="inline-block px-1.5 rounded bg-red-100 text-red-700">{s.kondisiCounts.K6}</span> : <span className="text-gray-300">0</span>}
+                        {(s.kondisiCounts.K6||0) > 0 ? <span className="inline-block px-1.5 rounded bg-red-100 text-red-700">{s.kondisiCounts.K6}</span> : <span className="text-gray-300">0</span>}
                       </td>
                       <td className="text-center">
                         <div className="font-semibold">{s.pctDijadwalkan}%</div>
@@ -294,7 +307,7 @@ export default function StatistikPage() {
                     {/* Expanded detail row */}
                     {isOpen && detail[u.id] && (
                       <tr>
-                        <td colSpan={13} className="bg-brand-50 px-4 py-3">
+                        <td colSpan={15} className="bg-brand-50 px-4 py-3">
                           <div className="grid sm:grid-cols-2 gap-4">
                             {/* Scan history */}
                             <div>
@@ -303,8 +316,8 @@ export default function StatistikPage() {
                                 ? <p className="text-xs text-gray-400">Belum ada scan</p>
                                 : detail[u.id].scans.slice(0,8).map((sc: any, i: any) => (
                                   <div key={i} className="flex items-center gap-2 text-xs text-gray-600 mb-1">
-                                    <span className={`w-16 text-center rounded px-1 ${sc.is_walk_in ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
-                                      {sc.scan_type}
+                                    <span className={`w-20 text-center rounded px-1 ${sc.is_walk_in ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}`}>
+                                      {sc.scan_type.replace('walkin_','mengganti_')}
                                     </span>
                                     <span>{formatDate(sc.timestamp, 'dd MMM HH:mm')}</span>
                                     {sc.is_anomaly && <span className="text-red-500">⚠️ anomali</span>}

@@ -18,7 +18,7 @@ export function PriorityMonitor({ data, loading, onRefresh }: PriorityMonitorPro
         <h3 className="font-bold text-blue-900 text-sm">Cara Rumus Prioritas Bekerja</h3>
         <div className="text-xs text-blue-800 space-y-1 leading-relaxed">
           <p><strong>Skor</strong> = hari sejak tugas terakhir + bonus/penalti K1–K6</p>
-          <p>→ K1 +3, K2 +5, K3 +1, K4 +1, K5 -2, K6 -10</p>
+          <p>→ K1 +5, K2a +4, K2b/K3a/K3b +3, K3c/K4a +2, K4c -2, K6 -10</p>
           <p>→ Belum pernah dijadwalkan = skor <strong>∞</strong> (prioritas tertinggi)</p>
           <p><strong>Persentase</strong> = min-max scaling dari distribusi skor nyata</p>
         </div>
@@ -115,7 +115,7 @@ export function PriorityMonitor({ data, loading, onRefresh }: PriorityMonitorPro
                   <th>Jadwal Terakhir</th>
                   <th>Hari Sejak</th>
                   <th>K6 Penalti</th>
-                  <th>K5</th>
+                  <th title="Latihan terjadwal tanpa tugas (K4c)">K4c</th>
                   <th>Skor</th>
                   <th>Bln Ini</th>
                   <th>Prioritas</th>
@@ -162,7 +162,7 @@ export function PriorityMonitor({ data, loading, onRefresh }: PriorityMonitorPro
                       </td>
                       <td className="text-center">
                         {u.k5Count > 0
-                          ? <span className="text-teal-600 font-bold bg-teal-50 px-1.5 rounded text-xs">K5 ×{u.k5Count}</span>
+                          ? <span className="text-yellow-600 font-bold bg-yellow-50 px-1.5 rounded text-xs">K4c ×{u.k5Count}</span>
                           : <span className="text-gray-300">—</span>}
                       </td>
                       <td className="text-center font-bold text-sm text-gray-700">

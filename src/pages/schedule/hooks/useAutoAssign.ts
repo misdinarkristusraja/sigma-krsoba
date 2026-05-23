@@ -243,7 +243,11 @@ export function useAutoAssign(year: number, month: number, onDone: () => void) {
       .select('user_id, kondisi, poin')
       .gte('week_start', since30).lte('week_start', todayStr);
 
-    const KONDISI_DELTA: Record<string, number> = { K1:+3, K2:+5, K3:+1, K4:+1, K5:-2, K6:-10 };
+    // Priority delta: K1/K2a/K2b (hadir lengkap) boost, K6 big penalty, K4c slight penalty
+    const KONDISI_DELTA: Record<string, number> = {
+      K1:+5, K2a:+4, K2b:+3, K3a:+3, K3b:+3, K3c:+2,
+      K4a:+2, K4c:-2, K6:-10,
+    };
     const kondisiBonus: Record<string, number> = {};
     const kondisiCount: Record<string, Record<string, number>> = {};
     (pool as any[]).forEach(u => { kondisiBonus[u.id] = 0; kondisiCount[u.id] = {}; });
@@ -259,7 +263,7 @@ export function useAutoAssign(year: number, month: number, onDone: () => void) {
       const bonus     = kondisiBonus[u.id] || 0;
       const score     = daysSince >= 9999 ? 9999 : Math.max(1, daysSince + bonus);
       return { ...u, daysSince, score, count180: countMap[u.id],
-        k6Count: kondisiCount[u.id]?.K6||0, k5Count: kondisiCount[u.id]?.K5||0,
+        k6Count: kondisiCount[u.id]?.K6||0, k5Count: kondisiCount[u.id]?.K4c||0,
         kondisiCount: kondisiCount[u.id]||{}, bonus, lastDate: lastEventDate[u.id] };
     }).sort((a: any, b: any) => b.score - a.score);
 
