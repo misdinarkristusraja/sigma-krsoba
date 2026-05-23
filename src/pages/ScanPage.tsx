@@ -265,7 +265,6 @@ export default function ScanPage() {
     // 4. Validasi: ada event hari ini?
     if (!todayEvents || todayEvents.length === 0) {
       const msg = `Tidak ada event hari ini (${today}).`;
-      // Semua Pengurus+ bisa override, cari event 7 hari terakhir sebagai kandidat
       const { data: recentEvents } = await supabase
         .from('events')
         .select('id, nama_event, perayaan, tipe_event, tanggal_tugas, tanggal_latihan')
@@ -276,19 +275,46 @@ export default function ScanPage() {
       return;
     }
 
-    // 5. Validasi: cek window waktu ±2 jam
+    // 5. Cek apakah ini window latihan (hari = tanggal_latihan salah satu event)
+    const latihanEvents = (todayEvents as any[]).filter((ev: any) => ev.tanggal_latihan === today);
+    const isLatihanWindow = latihanEvents.length > 0 &&
+      latihanEvents.some((ev: any) => isInTimeWindow(getLatihanMin(ev, latihanDefaultMin)));
+    const isLatihanScan = parsed.type === 'latihan' || isLatihanWindow;
+
+    if (isLatihanScan && latihanEvents.length > 0) {
+      // ── JALUR LATIHAN: tidak perlu override, tidak perlu window ketat ──
+      const targetLatihanEv = latihanEvents.find((ev: any) =>
+        isInTimeWindow(getLatihanMin(ev, latihanDefaultMin))
+      ) || latihanEvents[0];
+
+      // Cek apakah user dijadwalkan di event ini
+      const { data: asgn } = await supabase.from('assignments')
+        .select('id').eq('user_id', member.id).eq('event_id', targetLatihanEv.id).maybeSingle();
+
+      const isScheduled = !!asgn;
+      await saveScanRecord({
+        member, parsed, eventId: targetLatihanEv.id, assignmentId: asgn?.id || null,
+        isAnomaly, isWalkIn: !isScheduled,
+        walkInReason: isScheduled ? null : 'Hadir latihan (tidak dijadwalkan minggu ini)',
+        raw, activeWindows: [`Latihan`],
+        forceScanType: isScheduled ? 'latihan' : 'walkin_latihan',
+        forceNoAnomaly: !isScheduled, // walk-in latihan bukan anomali
+      });
+      return;
+    }
+
+    // 6. Validasi window waktu untuk scan TUGAS
     const activeWindows = getActiveWindows(todayEvents, today, latihanDefaultMin);
     if (activeWindows.length === 0) {
       const nextWindow = getNextWindowLabel(todayEvents, today, latihanDefaultMin);
       const msg = nextWindow
         ? `Di luar window scan. Berikutnya: ${nextWindow}`
         : `Semua window scan hari ini sudah lewat.`;
-      // Pengurus+ bisa override dengan input waktu mundur
       openOverride({ member, parsed, raw, isAnomaly, events: todayEvents, reason: msg });
       return;
     }
 
-    // 6. Cari event yang paling relevan (tempat user dijadwalkan)
+    // 7. Cari event yang paling relevan (tempat user dijadwalkan)
     let targetEvent  = null;
     let assignmentId = null;
 
@@ -298,17 +324,17 @@ export default function ScanPage() {
       if (asgn) { targetEvent = ev; assignmentId = asgn.id; break; }
     }
 
-    // 7. User tidak ada di jadwal hari ini → Walk-in / override
+    // 8. User tidak ada di jadwal hari ini → Walk-in / override
     if (!targetEvent) {
       openOverride({
         member, parsed, raw, isAnomaly, events: todayEvents,
         reason: `${member.nama_panggilan} tidak ada di jadwal hari ini.`,
-        scanTypeHint: parsed.type === 'latihan' ? 'latihan' : 'tugas',
+        scanTypeHint: 'tugas',
       });
       return;
     }
 
-    // ✅ Semua validasi lulus — simpan
+    // ✅ Semua validasi lulus — simpan tugas
     await saveScanRecord({
       member, parsed, eventId: targetEvent.id, assignmentId,
       isAnomaly, isWalkIn: false, walkInReason: null,
@@ -317,10 +343,14 @@ export default function ScanPage() {
   }
 
   // ── Simpan scan record ─────────────────────────────────────
-  async function saveScanRecord({ member, parsed, eventId, assignmentId, isAnomaly, isWalkIn, walkInReason, raw, activeWindows, isAdminOverride }: any) {
-    const scanType = parsed.type === 'latihan'
-      ? (isWalkIn ? 'walkin_latihan' : 'latihan')
-      : (isWalkIn ? 'walkin_tugas'   : 'tugas');
+  async function saveScanRecord({ member, parsed, eventId, assignmentId, isAnomaly, isWalkIn, walkInReason, raw, activeWindows, isAdminOverride, forceScanType, forceNoAnomaly }: any) {
+    const scanType = forceScanType ?? (
+      parsed.type === 'latihan'
+        ? (isWalkIn ? 'walkin_latihan' : 'latihan')
+        : (isWalkIn ? 'walkin_tugas'   : 'tugas')
+    );
+    // forceNoAnomaly: walk-in latihan tidak dianggap anomali
+    const effectiveAnomaly = forceNoAnomaly ? false : (isAnomaly || isAdminOverride);
 
     const { error } = await supabase.from('scan_records').insert({
       user_id:         member.id,
@@ -332,20 +362,22 @@ export default function ScanPage() {
       timestamp:       new Date().toISOString(),
       qr_version:      parsed.version || 'new',
       raw_qr_value:    raw,
-      is_anomaly:      isAnomaly || isAdminOverride,
+      is_anomaly:      effectiveAnomaly,
       anomaly_reason:  isAdminOverride
         ? `Admin override: ${walkInReason||'manual'}`
-        : isAnomaly ? 'MyID tidak cocok' : null,
+        : (isAnomaly && !forceNoAnomaly) ? 'MyID tidak cocok' : null,
     });
 
     if (error) { showResult({ status:'error', message:'Gagal simpan: '+error.message }); return; }
 
     showResult({
-      status: (isAnomaly && !isAdminOverride) ? 'warning' : 'success',
+      status: (effectiveAnomaly && !isAdminOverride) ? 'warning' : 'success',
       message: isAdminOverride
         ? `✓ Override admin — ${member.nama_panggilan} (dicatat manual)`
-        : isAnomaly
+        : (isAnomaly && !forceNoAnomaly)
         ? `✓ Scan disimpan (anomali MyID) — ${member.nama_panggilan}`
+        : scanType === 'walkin_latihan'
+        ? `✓ ${member.nama_panggilan} — Walk-in Latihan`
         : `✓ ${member.nama_panggilan} — ${scanType === 'latihan' ? 'Latihan' : 'Tugas'}`,
       member, scanType,
       isLegacy: parsed.version === 'legacy',
