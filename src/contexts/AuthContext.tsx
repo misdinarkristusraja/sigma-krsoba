@@ -34,9 +34,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profileError, setProfileError] = useState(false);
 
   const fetchProfile = useCallback(async () => {
-    // Retry up to 3x with backoff — handles JWT propagation delay and
-    // race conditions where onAuthStateChange fires before DB is ready.
-    const delays = [0, 300, 800];
+    // Retry up to 5x with progressive backoff — handles JWT propagation delay,
+    // slow networks, and cold-start Supabase instances where RLS may not be
+    // ready immediately after onAuthStateChange fires.
+    const delays = [0, 400, 1000, 2000, 3500];
     for (let attempt = 0; attempt < delays.length; attempt++) {
       if (delays[attempt] > 0) {
         await new Promise(res => setTimeout(res, delays[attempt]));
@@ -58,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // null data — profile not found or JWT not yet propagated, retry
         console.warn(`fetchProfile attempt ${attempt + 1}: null data`);
         if (attempt < delays.length - 1) continue;
-        // Final attempt still null — account not approved or genuinely missing
+        // All attempts failed — account genuinely missing or not approved
         setProfileError(true);
         setProfile(null);
       } catch (err) {

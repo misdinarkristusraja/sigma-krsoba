@@ -68,12 +68,32 @@ export default function SwapPage() {
     supabase.from('users').select('id, nickname, nama_panggilan, lingkungan')
       .eq('status','Active').order('nama_panggilan')
       .then(({ data }: any) => setAllMembers(data||[]));
-    supabase.from('assignments')
-      .select('id, slot_number, user_id, users(nama_panggilan), events(id, nama_event, perayaan, tanggal_tugas)')
-      .gte('events.tanggal_tugas', today)
-      .order('events.tanggal_tugas')
-      .limit(100)
-      .then(({ data }: any) => setAllAssignments((data||[]).filter((a: any) => a.events)));
+
+    // Query via events terlebih dahulu agar filter tanggal_tugas reliable.
+    // Filter embedded relation di PostgREST (e.g. .gte('events.tanggal_tugas')) tidak
+    // memfilter baris assignment — ia memfilter join result sehingga events bisa null.
+    // Solusi: query events mendatang dulu, lalu ambil assignments-nya.
+    (async () => {
+      const { data: evData } = await supabase.from('events')
+        .select('id, nama_event, perayaan, tanggal_tugas')
+        .gte('tanggal_tugas', today)
+        .eq('is_draft', false)
+        .order('tanggal_tugas')
+        .limit(60);
+      if (!evData?.length) { setAllAssignments([]); return; }
+      const eventIds = evData.map((e: any) => e.id);
+      const { data: asgnData } = await supabase.from('assignments')
+        .select('id, slot_number, user_id, users(nama_panggilan)')
+        .in('event_id', eventIds)
+        .order('event_id');
+      const evMap: Record<string, any> = {};
+      evData.forEach((e: any) => { evMap[e.id] = e; });
+      const merged = (asgnData || []).map((a: any) => ({
+        ...a,
+        events: evMap[a.event_id] || null,
+      })).filter((a: any) => a.events);
+      setAllAssignments(merged);
+    })();
   }, [isPengurus]);
 
   async function loadMyRequests() {
@@ -102,15 +122,29 @@ export default function SwapPage() {
 
   async function loadMySchedule() {
     const today = new Date().toISOString().split('T')[0];
-    const { data } = await supabase
+    // Query events mendatang user ini dulu, lalu ambil assignments-nya.
+    // Filter .gte('events.tanggal_tugas') di embedded relation tidak reliable di PostgREST.
+    const { data: evData } = await supabase
+      .from('events')
+      .select('id, nama_event, tanggal_tugas, perayaan, event_pics(slot, nama, hp, urutan)')
+      .gte('tanggal_tugas', today)
+      .eq('is_draft', false)
+      .order('tanggal_tugas')
+      .limit(20);
+    if (!evData?.length) { setMySched([]); return; }
+    const eventIds = evData.map((e: any) => e.id);
+    const { data: asgnData } = await supabase
       .from('assignments')
-      .select(`id, slot_number,
-        events(id, nama_event, tanggal_tugas, perayaan,
-          event_pics(slot, nama, hp, urutan))`)
+      .select('id, slot_number, event_id')
       .eq('user_id', profile!.id)
-      .gte('events.tanggal_tugas', today)
-      .order('events.tanggal_tugas').limit(10);
-    setMySched((data||[]).filter((d: any) => d.events));
+      .in('event_id', eventIds);
+    const evMap: Record<string, any> = {};
+    evData.forEach((e: any) => { evMap[e.id] = e; });
+    const merged = (asgnData || [])
+      .map((a: any) => ({ ...a, events: evMap[a.event_id] || null }))
+      .filter((a: any) => a.events)
+      .sort((a: any, b: any) => a.events.tanggal_tugas.localeCompare(b.events.tanggal_tugas));
+    setMySched(merged);
   }
 
   async function loadAllRequests() {
