@@ -14,12 +14,18 @@ import toast from 'react-hot-toast';
 
 function parseSlotSchedule(draftNote: string | null, fallback: string) {
   if (!draftNote) return [];
-  const raw = draftNote.replace(/^Jam:\s*/i, '');
-  return raw.split('|').map(part => {
-    const m = part.trim().match(/Slot\s+(\d+):\s*([\d.]+)(?:\|(\d{4}-\d{2}-\d{2}))?/i);
-    if (!m) return null;
-    return { slot: Number(m[1]), jam: m[2] || '07.00', tanggal: m[3] || fallback || '' };
-  }).filter(Boolean) as { slot: number; jam: string; tanggal: string }[];
+  const results: { slot: number; jam: string; tanggal: string }[] = [];
+  const re = /Slot\s+(\d+):\s*([\d.]+)\|(\d{4}-\d{2}-\d{2})/gi;
+  for (const m of draftNote.matchAll(re)) {
+    results.push({ slot: Number(m[1]), jam: m[2] || '07.00', tanggal: m[3] || fallback || '' });
+  }
+  if (!results.length) {
+    const re2 = /Slot\s+(\d+):\s*([\d.]+)/gi;
+    for (const m of draftNote.matchAll(re2)) {
+      results.push({ slot: Number(m[1]), jam: m[2] || '07.00', tanggal: fallback || '' });
+    }
+  }
+  return results;
 }
 
 const SLOT_INFO: Record<number, { time: string }> = {

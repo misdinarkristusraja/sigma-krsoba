@@ -659,6 +659,20 @@ export default function AdminPage() {
                   Misdinar Aktif yang belum daftar ulang setelah <code>rereg_close_date</code> otomatis di-set Retired.
                   Hanya jalan jika close date sudah lewat.
                 </p>
+                {configs['rereg_close_date'] ? (
+                  <p className={`text-xs mt-1 font-medium ${
+                    new Date(configs['rereg_close_date']) < new Date()
+                      ? 'text-orange-600'
+                      : 'text-blue-600'
+                  }`}>
+                    Close date: {configs['rereg_close_date']}
+                    {new Date(configs['rereg_close_date']) < new Date()
+                      ? ' — sudah lewat, Auto-Retire akan berjalan'
+                      : ' — belum lewat, Auto-Retire tidak akan jalan'}
+                  </p>
+                ) : (
+                  <p className="text-xs mt-1 text-red-500">rereg_close_date belum diset di Konfigurasi Sistem</p>
+                )}
               </div>
               <button
                 onClick={autoRetireNonRereg}

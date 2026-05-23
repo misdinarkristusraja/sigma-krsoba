@@ -20,7 +20,7 @@ const SLOT_TIMES_MIN = {
   slot3:  8 * 60,       // 08:00 minggu
   slot4: 17 * 60 + 30,  // 17:30 minggu
 };
-// Window scan: H-1 jam s/d H+2 jam
+// Window scan: H-1 jam s/d H+3 jam
 const WINDOW_BEFORE_MIN = 1 * 60;  // boleh scan 1 jam sebelum
 const WINDOW_AFTER_MIN  = 3 * 60;  // boleh scan 3 jam sesudah
 
@@ -96,10 +96,21 @@ function getNextWindowLabel(events: any[], today: string, latihanDefaultMin: num
       all.push({ label: `Latihan ${lJamStr}`, min: lMin });
       all.push({ label: 'Sabtu 17:30', min: SLOT_TIMES_MIN.slot1 });
     }
-    if (ev.tanggal_tugas === today && ev.tipe_event !== 'Misa_Harian') {
-      all.push({ label: 'Minggu 06:00', min: SLOT_TIMES_MIN.slot2 });
-      all.push({ label: 'Minggu 08:00', min: SLOT_TIMES_MIN.slot3 });
-      all.push({ label: 'Minggu 17:30', min: SLOT_TIMES_MIN.slot4 });
+    if (ev.tanggal_tugas === today) {
+      if (ev.tipe_event === 'Misa_Harian') {
+        all.push({ label: 'Misa Harian (07:00)', min: 7 * 60 });
+      } else if (ev.tipe_event === 'Misa_Khusus') {
+        const slotMatches = [...(ev.draft_note || '').matchAll(/Slot\s+\d+:\s*(\d{2})\.(\d{2})/gi)];
+        const mins = slotMatches.length
+          ? slotMatches.map((m: any) => parseInt(m[1]) * 60 + parseInt(m[2]))
+          : [7 * 60];
+        const earliest = Math.min(...mins);
+        all.push({ label: ev.perayaan || 'Misa Khusus', min: earliest });
+      } else {
+        all.push({ label: 'Minggu 06:00', min: SLOT_TIMES_MIN.slot2 });
+        all.push({ label: 'Minggu 08:00', min: SLOT_TIMES_MIN.slot3 });
+        all.push({ label: 'Minggu 17:30', min: SLOT_TIMES_MIN.slot4 });
+      }
     }
   }
   // "belum masuk window" = slot - WINDOW_BEFORE_MIN masih di depan sekarang
@@ -239,18 +250,19 @@ export default function ScanPage() {
 
     const isAnomaly = member.myid !== parsed.myid?.toUpperCase();
 
-    // 2. Anti-duplikat (60 menit) — cek per tipe scan (latihan vs tugas)
+    // 2. Anti-duplikat (60 menit) — cek SEMUA tipe scan (latihan maupun tugas)
+    // Cek keduanya sekaligus: seseorang tidak bisa scan latihan+tugas dalam 60 menit,
+    // dan QR tugas yang discan saat window latihan tetap ter-detect sebagai duplikat.
     const since = new Date(Date.now() - SCAN_COOLDOWN_MS).toISOString();
-    const scanCategory = parsed.type === 'latihan' ? ['latihan','walkin_latihan'] : ['tugas','walkin_tugas'];
     const { data: dupe } = await supabase.from('scan_records')
-      .select('id, timestamp, scanner_user_id, users!scanner_user_id(nama_panggilan)')
+      .select('id, timestamp, scan_type')
       .eq('user_id', member.id)
-      .in('scan_type', scanCategory)
+      .in('scan_type', ['latihan','walkin_latihan','tugas','walkin_tugas'])
       .gte('timestamp', since)
       .order('timestamp', { ascending:false }).limit(1).maybeSingle();
     if (dupe) {
       const minsAgo = Math.floor((Date.now() - new Date(dupe.timestamp).getTime()) / 60000);
-      showResult({ status:'warning', message:`${member.nama_panggilan} sudah discan ${parsed.type} ${minsAgo} menit lalu.`, member }); return;
+      showResult({ status:'warning', message:`${member.nama_panggilan} sudah discan (${dupe.scan_type}) ${minsAgo} menit lalu.`, member }); return;
     }
 
     // 3. Cari semua event hari ini (tanggal_tugas atau tanggal_latihan = hari ini)

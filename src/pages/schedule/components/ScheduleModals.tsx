@@ -15,11 +15,21 @@ const WARNA_OPTIONS  = ['Hijau','Merah','Putih','Ungu','MerahMuda','Hitam'];
 
 function parseMKSchedule(draftNote: string | null, fallback: string) {
   if (!draftNote) return [];
-  return draftNote.replace(/^Jam:\s*/i, '').split('|').map(part => {
-    const m = part.trim().match(/Slot\s+(\d+):\s*([\d.]+)(?:\|(\d{4}-\d{2}-\d{2}))?/i);
-    if (!m) return null;
-    return { slot: Number(m[1]), jam: m[2] || '07.00', tanggal: m[3] || fallback };
-  }).filter(Boolean) as { slot: number; jam: string; tanggal: string }[];
+  // Format: "Jam: Slot 1: 07.00|2026-12-25 | Slot 2: 07.00|2026-12-25"
+  // Use matchAll on whole string to capture slot+jam+tanggal in one pass
+  const results: { slot: number; jam: string; tanggal: string }[] = [];
+  const re = /Slot\s+(\d+):\s*([\d.]+)\|(\d{4}-\d{2}-\d{2})/gi;
+  for (const m of draftNote.matchAll(re)) {
+    results.push({ slot: Number(m[1]), jam: m[2] || '07.00', tanggal: m[3] || fallback });
+  }
+  // Fallback: slots without date
+  if (!results.length) {
+    const re2 = /Slot\s+(\d+):\s*([\d.]+)/gi;
+    for (const m of draftNote.matchAll(re2)) {
+      results.push({ slot: Number(m[1]), jam: m[2] || '07.00', tanggal: fallback });
+    }
+  }
+  return results;
 }
 
 // --- Komponen EditPetugasSection dari file asli ---
@@ -238,7 +248,8 @@ function LatihanEditor({ eventId }: { eventId: string }) {
   const [saving,  setSaving]  = useState(false);
 
   React.useEffect(() => {
-    if (!eventId || loaded) return;
+    if (!eventId) return;
+    setLoaded(false);
     supabase.from('event_latihan')
       .select('id, tanggal, jam, lokasi, catatan')
       .eq('event_id', eventId)
@@ -342,19 +353,22 @@ export function EditEventModal({ editEvent, setEditEvent, picOptions, loadEvents
   async function handleSaveAll() {
     setSavingPics(true);
     try {
-      await saveEditEvent();
-      await supabase.from('event_pics').delete().eq('event_id', editEvent.id);
+      // Save PICs first (before saveEditEvent unmounts modal via setEditEvent(null))
+      const eventId = editEvent.id;
+      await supabase.from('event_pics').delete().eq('event_id', eventId);
       const toInsert = localPics.filter(p => p.nama && p.nama.trim());
       if (toInsert.length) {
-        await supabase.from('event_pics').insert(
-          toInsert.map(p => ({ event_id: editEvent.id, slot: p.slot, nama: p.nama, hp: p.hp || null, urutan: p.urutan }))
+        const { error: picErr } = await supabase.from('event_pics').insert(
+          toInsert.map(p => ({ event_id: eventId, slot: p.slot, nama: p.nama, hp: p.hp || null, urutan: p.urutan }))
         );
+        if (picErr) throw picErr;
       }
-      toast.success('PIC disimpan!');
+      // Then save event fields + close modal
+      await saveEditEvent();
+      toast.success('Disimpan!');
     } catch (e: any) {
-      toast.error('Gagal simpan PIC: ' + e.message);
-    } finally {
       setSavingPics(false);
+      toast.error('Gagal simpan: ' + e.message);
     }
   }
 
