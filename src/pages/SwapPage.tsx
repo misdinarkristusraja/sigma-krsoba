@@ -273,10 +273,11 @@ export default function SwapPage() {
   }
 
   async function claimFromBoard(req: any) {
-    if (!confirm(`Konfirmasi: kamu sudah deal dengan ${req.requester?.nama_panggilan}?`)) return;
-    await supabase.from('swap_requests').update({ status:'Replaced', pengganti_id:profile!.id }).eq('id', req.id);
-    await supabase.from('assignments').update({ user_id: profile!.id }).eq('id', req.assignment_id);
-    toast.success('Berhasil ambil tugas!');
+    if (!confirm(`Konfirmasi: kamu bersedia menggantikan ${req.requester?.nama_panggilan} untuk tugas ini?`)) return;
+    const { data, error } = await supabase.rpc('claim_swap_request', { p_request_id: req.id });
+    if (error) { toast.error('Gagal: ' + error.message); return; }
+    if (!data?.ok) { toast.error(data?.error || 'Gagal mengklaim tugas'); return; }
+    toast.success('Berhasil! Jadwal sudah dipindahkan ke kamu.');
     loadData();
   }
 

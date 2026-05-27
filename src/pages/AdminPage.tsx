@@ -299,6 +299,10 @@ export default function AdminPage() {
   const [autoRetiring,   setAutoRetiring]   = useState(false);
   const [retireResult,   setRetireResult]   = useState<number | null>(null);
 
+  // State untuk Recalculate Rekap
+  const [recalcRunning,  setRecalcRunning]  = useState(false);
+  const [recalcResult,   setRecalcResult]   = useState<{ processed: number } | null>(null);
+
   // ── Fungsi: Load users (tidak berubah) ──────────────────────────────────
   const loadUsers = useCallback(async () => {
     const { data, error } = await supabase
@@ -539,6 +543,19 @@ export default function AdminPage() {
     if (error) { toast.error('Gagal reset: ' + error.message); return; }
     toast.success(`Data daftar ulang ${reregYear} berhasil direset`);
     loadReregStats(reregYear);
+  }
+
+  async function recalculateRekap() {
+    if (!confirm('Hitung ulang semua rekap poin dari data scan? Proses ini bisa memakan waktu beberapa detik.')) return;
+    setRecalcRunning(true);
+    setRecalcResult(null);
+    const { data, error } = await supabase.rpc('admin_recalc_rekap');
+    setRecalcRunning(false);
+    if (error) { toast.error('Gagal: ' + error.message); return; }
+    if (!data?.ok) { toast.error(data?.error || 'Gagal'); return; }
+    const processed = Number(data?.processed ?? 0);
+    setRecalcResult({ processed });
+    toast.success(`Rekap dihitung ulang — ${processed} minggu diproses`);
   }
 
   async function autoRetireNonRereg() {
@@ -855,6 +872,33 @@ export default function AdminPage() {
                 {retireResult > 0
                   ? `✓ ${retireResult} anggota berhasil di-retire.`
                   : '✓ Tidak ada yang perlu di-retire (close date belum lewat atau semua sudah rereg).'}
+              </div>
+            )}
+          </div>
+
+          {/* Recalculate Rekap */}
+          <div className="border-t border-gray-100 pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Hitung Ulang Rekap Poin</p>
+                <p className="text-xs text-gray-500">
+                  Recalculate semua rekap poin dari data scan. Jalankan jika Papan Poin kosong atau datanya terlihat salah.
+                </p>
+              </div>
+              <button
+                onClick={recalculateRekap}
+                disabled={recalcRunning}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-brand-800 hover:bg-brand-900 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {recalcRunning
+                  ? <><Loader2 size={14} className="animate-spin" /> Menghitung...</>
+                  : '📊 Hitung Ulang Rekap'
+                }
+              </button>
+            </div>
+            {recalcResult && (
+              <div className="mt-3 rounded-xl px-4 py-3 text-sm font-medium bg-green-50 text-green-700">
+                ✓ {recalcResult.processed} minggu berhasil dihitung ulang.
               </div>
             )}
           </div>
