@@ -62,7 +62,7 @@ export default function JadwalSayaPage() {
     setLoading(true);
     try {
       const today = new Date().toISOString().split('T')[0];
-      let q = supabase
+      const { data, error } = await supabase
         .from('assignments')
         .select(`
           id, slot_number,
@@ -75,12 +75,6 @@ export default function JadwalSayaPage() {
         `)
         .eq('user_id', user.id)
         .order('id');
-
-      if (filter === 'mendatang') {
-        q = q.gte('events.tanggal_tugas', today);
-      }
-
-      const { data, error } = await q;
       if (error) throw error;
 
       const filtered = (data || [])
