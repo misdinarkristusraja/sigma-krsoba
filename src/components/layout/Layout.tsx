@@ -38,11 +38,11 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Jadwal',
     icon: CalendarDays,
     items: [
-      { icon: Globe,          label: 'Cek Jadwal Semua', path: '/jadwal-misa',     roles: null },
-      { icon: Calendar,       label: 'Buat Mingguan',    path: '/jadwal-mingguan', roles: PENG },
-      { icon: CalendarDays,   label: 'Buat Harian',      path: '/jadwal-harian',   roles: null },
-      { icon: ListChecks,     label: 'Cek Jadwal Saya',  path: '/jadwal-saya',     roles: null },
-      { icon: ArrowLeftRight, label: 'Tukar Jadwal',     path: '/tukar-jadwal',    roles: null },
+      { icon: Globe,          label: 'Cek Jadwal Semua',  path: '/jadwal-misa',     roles: null },
+      { icon: ListChecks,     label: 'Cek Jadwal Saya',   path: '/jadwal-saya',     roles: null },
+      { icon: CalendarDays,   label: 'Cek Jadwal Harian', path: '/jadwal-harian',   roles: null },
+      { icon: Calendar,       label: 'Buat Mingguan',     path: '/jadwal-mingguan', roles: PENG },
+      { icon: ArrowLeftRight, label: 'Tukar Jadwal',      path: '/tukar-jadwal',    roles: null },
     ],
   },
   {

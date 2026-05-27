@@ -352,6 +352,15 @@ serve(async (req: Request) => {
         .update({ must_change_password: true })
         .eq("id", targetId);
 
+      // Invalidate all active sessions — forces immediate logout
+      await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${targetId}/logout`, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${SERVICE_KEY}`,
+          "apikey": SERVICE_KEY,
+        },
+      }).catch(e => console.warn("[reset_single] Session invalidation failed (non-fatal):", e.message));
+
       return reply({ ok: true, target_id: targetId, password: newPw });
     }
 

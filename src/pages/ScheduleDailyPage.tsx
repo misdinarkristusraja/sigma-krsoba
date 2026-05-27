@@ -12,6 +12,8 @@ import {
   AlertTriangle, FileEdit, Globe, Check, X, Edit2, Search, Church,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { usePagination } from '../hooks/usePagination';
+import { Pagination } from '../components/ui/Pagination';
 
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 const HARI   = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
@@ -272,6 +274,7 @@ export function ScheduleDailyPage() {
     u.nickname?.toLowerCase().includes(searchOptin.toLowerCase()) ||
     u.lingkungan?.toLowerCase().includes(searchOptin.toLowerCase())
   );
+  const pgOptin = usePagination(filteredOptin, 20);
 
   return (
     <div className="space-y-5">
@@ -500,7 +503,7 @@ export function ScheduleDailyPage() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto max-h-[60vh]">
+              <div className="overflow-x-auto">
                 {loadingOpt ? (
                   <div className="p-8 text-center text-gray-400">Memuat...</div>
                 ) : (
@@ -512,7 +515,7 @@ export function ScheduleDailyPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredOptin.map(u => {
+                      {pgOptin.paged.map((u: any) => {
                         const optin = u.optin;
                         const isEditing = editOptinId === u.id;
                         return (
@@ -571,6 +574,11 @@ export function ScheduleDailyPage() {
                   </table>
                 )}
               </div>
+              {!loadingOpt && filteredOptin.length > 0 && (
+                <div className="px-4">
+                  <Pagination {...pgOptin} onPage={pgOptin.goTo} label="anggota" />
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -609,20 +617,13 @@ export function PublicSchedulePage({ internal = false }: { internal?: boolean })
   const [loading, setLoad]  = useState(true);
 
   useEffect(() => {
-    supabase.from('events')
-      .select(`
-        id, perayaan, nama_event, tanggal_tugas, tanggal_latihan, tanpa_latihan,
-        tipe_event, jumlah_misa, warna_liturgi, latihan_times, latihan_notes, draft_note,
-        assignments(slot_number, users(nama_panggilan, lingkungan)),
-        event_pics(slot, nama, hp, urutan),
-        event_pelatih(nama, urutan)
-      `)
-      .gte('tanggal_tugas', toLocalISO(new Date()))
-      .not('tipe_event', 'eq', 'Misa_Harian')
-      .eq('is_draft', false)
-      .order('tanggal_tugas')
-      .limit(10)
-      .then(({ data }: any) => { setEvents(data || []); setLoad(false); });
+    // Use SECURITY DEFINER RPC so member names show for unauthenticated (mobile) visitors
+    supabase.rpc('get_public_schedule')
+      .then(({ data, error }: any) => {
+        if (!error && Array.isArray(data)) setEvents(data);
+        else if (!error && data) setEvents(data as any[]);
+        setLoad(false);
+      });
   }, []);
 
   const HARI_PUB = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];

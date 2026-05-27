@@ -7,7 +7,18 @@ const PROXY_HEADERS = {
   'apikey':        import.meta.env.VITE_SUPABASE_ANON_KEY as string,
   'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY as string}`,
 };
-const NPSN_TARAKANITA = '20310748';
+// NPSNs confirmed Tarakanita; fallback: school name contains 'tarakanita'
+const TARAKANITA_NPSNS = new Set(['20310748']);
+function isTarakanitaSchool(npsn: string, nama: string): boolean {
+  return TARAKANITA_NPSNS.has(npsn) || nama.toLowerCase().includes('tarakanita');
+}
+
+// Schools not in API — prepended per jenjang (key = lowercase jenjang code)
+const MANUAL_SCHOOLS: Record<string, Array<{ npsn: string; sekolah: string; bentuk: string; kabupaten_kota: string }>> = {
+  sd: [
+    { npsn: 'MANUAL_SD_TARA', sekolah: 'SDK Tarakanita Solo Baru', bentuk: 'SD', kabupaten_kota: 'KAB. SUKOHARJO' },
+  ],
+};
 
 const JENJANG_MAP: Record<string, string> = {
   SD: 'sd', SMP: 'smp', SMA: 'sma', SMK: 'smk',
@@ -84,7 +95,14 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
       sekolah:        s.sekolah,
       bentuk:         s.bentuk,
       kabupaten_kota: s.kabupaten_kota?.trim() ?? '',
-      isTarakanita:   s.npsn === NPSN_TARAKANITA,
+      isTarakanita:   isTarakanitaSchool(s.npsn, s.sekolah),
+    }));
+  }
+
+  function getManualEntries(j: string): Sekolah[] {
+    return (MANUAL_SCHOOLS[j.toLowerCase()] || []).map(s => ({
+      ...s,
+      isTarakanita: isTarakanitaSchool(s.npsn, s.sekolah),
     }));
   }
 
@@ -100,7 +118,8 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       if (signal?.aborted) return;
-      const data: Sekolah[] = mapData(json.data || []);
+      const manual = getManualEntries(j);
+      const data: Sekolah[] = [...manual, ...mapData(json.data || [])];
       setFullList(data);
     } catch (err: any) {
       if (err?.name === 'AbortError') return;

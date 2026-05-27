@@ -8,6 +8,7 @@ import {
   Search, CheckCircle, XCircle, Eye,
   Download, RefreshCw, AlertTriangle, Users,
   ShieldAlert, ShieldCheck, ChevronDown, Edit2, MessageCircle,
+  KeyRound, Copy,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { usePagination } from '../hooks/usePagination';
@@ -31,6 +32,8 @@ export default function MembersPage() {
   const [total,    setTotal]   = useState(0);
   const [filter,   setFilter]  = useState({ pendidikan: '' });
   const [quickEdit, setQuickEdit] = useState<any>(null); // { id, field } — baris yang sedang diedit
+  const [resettingId,   setResettingId]   = useState<string | null>(null);
+  const [resetResult,   setResetResult]   = useState<{ nickname: string; password: string } | null>(null);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -148,6 +151,35 @@ export default function MembersPage() {
     loadData();
   }
 
+  // Reset password satu user
+  async function resetSinglePassword(member: any) {
+    if (!confirm(`Reset password ${member.nama_panggilan || member.nickname}?\nPassword baru akan ditampilkan setelah proses selesai.`)) return;
+    setResettingId(member.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/admin-reset-password`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+          body: JSON.stringify({ mode: 'reset_single', target_id: member.id }),
+        }
+      );
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.message || 'Reset gagal');
+      setResetResult({ nickname: member.nama_panggilan || member.nickname, password: json.password });
+    } catch (err: any) {
+      toast.error('Reset gagal: ' + err.message);
+    } finally {
+      setResettingId(null);
+    }
+  }
+
   // Export CSV
   function exportCSV() {
     const rows = filtered.map(m => [
@@ -258,6 +290,37 @@ export default function MembersPage() {
       )}
 
       {/* Members list */}
+      {/* Reset password result modal */}
+      {resetResult && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm space-y-4">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <KeyRound size={22} className="text-green-600"/>
+              </div>
+              <h3 className="font-bold text-gray-900">Password Berhasil Direset</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                Password baru untuk <strong>{resetResult.nickname}</strong>:
+              </p>
+            </div>
+            <div className="bg-gray-100 rounded-xl p-3 flex items-center justify-between gap-2">
+              <code className="font-mono text-lg font-bold text-gray-800 tracking-wider">
+                {resetResult.password}
+              </code>
+              <button
+                onClick={() => { navigator.clipboard.writeText(resetResult!.password); toast.success('Disalin!'); }}
+                className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors" title="Salin">
+                <Copy size={15} className="text-gray-500"/>
+              </button>
+            </div>
+            <p className="text-xs text-amber-700 bg-amber-50 rounded-lg p-2">
+              Pengguna sudah di-logout otomatis dan akan diminta membuat password baru saat login kembali.
+            </p>
+            <button onClick={() => setResetResult(null)} className="btn-primary w-full">Tutup</button>
+          </div>
+        </div>
+      )}
+
       {tab !== 'pending' && (
         <>
           {/* Search & filter */}
@@ -416,6 +479,18 @@ export default function MembersPage() {
                               }}
                               className="btn-ghost p-1.5 text-green-600 hover:bg-green-50">
                               <MessageCircle size={14}/>
+                            </button>
+                          )}
+                          {isAdmin && (
+                            <button
+                              onClick={() => resetSinglePassword(m)}
+                              disabled={resettingId === m.id}
+                              className="btn-ghost p-1.5 text-yellow-600 hover:bg-yellow-50"
+                              title="Reset password">
+                              {resettingId === m.id
+                                ? <div className="w-3.5 h-3.5 border-2 border-yellow-400/40 border-t-yellow-500 rounded-full animate-spin"/>
+                                : <KeyRound size={14}/>
+                              }
                             </button>
                           )}
                           {isPengurus && (

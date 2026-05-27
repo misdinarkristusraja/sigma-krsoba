@@ -26,10 +26,12 @@ import { useAuth } from '../contexts/AuthContext';
 import {
   Settings, Save, Database, KeyRound, MessageCircle,
   CheckCircle2, XCircle, AlertTriangle, Loader2, Eye, EyeOff,
-  RefreshCw, ClipboardCopy, SkipForward, Users, Download, RotateCcw,
+  RefreshCw, ClipboardCopy, SkipForward, Users, Download, RotateCcw, Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
+import { usePagination } from '../hooks/usePagination';
+import { Pagination } from '../components/ui/Pagination';
 
 // ── Konstanta ────────────────────────────────────────────────────────────────
 const CONFIG_GROUPS = {
@@ -269,6 +271,22 @@ export default function AdminPage() {
   const [massResults, setMassResults]   = useState<any[]>([]);
   const [massProgress, setMassProgress] = useState<{ status: string; total?: number; success?: number; skipped?: number; failed?: number; error?: string; hint?: string } | null>(null);
 
+  // GitHub-style confirmation modal for mass reset
+  const [showMassResetConfirm, setShowMassResetConfirm] = useState(false);
+  const [massResetInput,       setMassResetInput]       = useState('');
+
+  // Per-user reset password
+  const [resettingUserId,  setResettingUserId]  = useState<string | null>(null);
+  const [singleResetResult, setSingleResetResult] = useState<{ userId: string; password: string } | null>(null);
+
+  // Delete account
+  const [deletingUserId,   setDeletingUserId]   = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<{ user: any } | null>(null);
+  const [deleteInput,       setDeleteInput]      = useState('');
+
+  // User search (Kelola Akun section)
+  const [userSearch,       setUserSearch]       = useState('');
+
   // State untuk Reset Daftar Ulang
   const [reregYear,      setReregYear]      = useState<string>('');
   const [reregStats,     setReregStats]     = useState<{ done: number; total: number } | null>(null);
@@ -310,16 +328,9 @@ export default function AdminPage() {
       return;
     }
 
-    const confirmed = window.confirm(
-      `⚠️ KONFIRMASI MASS RESET PASSWORD\n\n` +
-      `Akan mereset password ${targetCount} anggota (Active + Pending).\n` +
-      `Administrator tidak termasuk.\n\n` +
-      `Password baru di-generate secara acak oleh server.\n` +
-      `Kamu bisa kirim password baru via WhatsApp setelah proses selesai.\n\n` +
-      `Lanjutkan?`
-    );
-    if (!confirmed) return;
-
+    // Confirmation handled by modal — this function is called after user types phrase
+    setShowMassResetConfirm(false);
+    setMassResetInput('');
     setMassLoading(true);
     setMassResults([]);
     setMassProgress({ status: 'running', total: targetCount });
@@ -379,6 +390,72 @@ export default function AdminPage() {
       toast.error('Terjadi kesalahan: ' + msg);
     } finally {
       setMassLoading(false);
+    }
+  }
+
+  // ── Per-user reset password ───────────────────────────────────────────────
+  async function resetSinglePassword(userId: string) {
+    setResettingUserId(userId);
+    setSingleResetResult(null);
+    try {
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      const token = refreshed?.session?.access_token;
+      if (!token) { toast.error('Sesi expired, login ulang'); return; }
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      const res = await fetch(`${supabaseUrl}/functions/v1/admin-reset-password`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ user_ids: [userId] }),
+      });
+      const json = await res.json();
+      if (!res.ok) { toast.error(json?.error || 'Gagal reset'); return; }
+      const result = json?.results?.[0] || json;
+      if (result?.password) {
+        setSingleResetResult({ userId, password: result.password });
+        toast.success('Password berhasil direset');
+      } else {
+        toast.error('Reset berhasil tapi password tidak tersedia');
+      }
+    } catch (err: any) {
+      toast.error('Error: ' + err.message);
+    } finally {
+      setResettingUserId(null);
+    }
+  }
+
+  // ── Delete account ────────────────────────────────────────────────────────
+  async function deleteUserAccount(userId: string) {
+    setDeletingUserId(userId);
+    setShowDeleteConfirm(null);
+    setDeleteInput('');
+    try {
+      const { data: refreshed } = await supabase.auth.refreshSession();
+      const token = refreshed?.session?.access_token;
+      if (!token) { toast.error('Sesi expired, login ulang'); return; }
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
+      // Try edge function first; fallback to direct delete from users table
+      const res = await fetch(`${supabaseUrl}/functions/v1/admin-delete-user`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ user_id: userId }),
+      });
+      if (res.ok) {
+        toast.success('Akun berhasil dihapus');
+        setUsers(prev => prev.filter(u => u.id !== userId));
+        return;
+      }
+      // Fallback: soft delete (set status = Deleted)
+      const { error } = await supabase.from('users').update({ status: 'Deleted' }).eq('id', userId);
+      if (error) { toast.error('Gagal hapus: ' + error.message); return; }
+      toast.success('Akun di-nonaktifkan (status Deleted)');
+      setUsers(prev => prev.filter(u => u.id !== userId));
+    } catch (err: any) {
+      toast.error('Error: ' + err.message);
+    } finally {
+      setDeletingUserId(null);
     }
   }
 
@@ -480,6 +557,9 @@ export default function AdminPage() {
     if (reregYear) loadReregStats(reregYear);
   }
 
+  // ── Pagination ────────────────────────────────────────────────────────────
+  const pgRereg = usePagination(reregList, 10);
+
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
@@ -509,7 +589,7 @@ export default function AdminPage() {
           </div>
 
           <button
-            onClick={massResetAllPasswords}
+            onClick={() => { setMassResetInput(''); setShowMassResetConfirm(true); }}
             disabled={massLoading}
             className={[
               'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all',
@@ -687,10 +767,11 @@ export default function AdminPage() {
                 </span>
                 {reregListLoading && <span className="text-xs text-gray-400">Memuat...</span>}
               </div>
-              <div className="max-h-64 overflow-y-auto">
+              <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-gray-50 text-xs text-gray-500">
                     <tr>
+                      <th className="px-4 py-2 text-left font-medium">#</th>
                       <th className="px-4 py-2 text-left font-medium">Nama</th>
                       <th className="px-4 py-2 text-left font-medium">Lingkungan</th>
                       <th className="px-4 py-2 text-left font-medium">Tgl Submit</th>
@@ -698,10 +779,13 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {reregList.map(r => (
+                    {pgRereg.paged.map((r: any, i: number) => (
                       <tr key={r.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-2.5 text-xs text-gray-400">
+                          {(pgRereg.page - 1) * pgRereg.pageSize + i + 1}
+                        </td>
                         <td className="px-4 py-2.5">
-                          <span className="font-medium text-gray-900">{r.users?.nama_panggilan}</span>
+                          <span className="font-medium text-gray-900">{r.users?.nama_panggilan || '—'}</span>
                           <span className="text-gray-400 text-xs ml-1.5">@{r.users?.nickname}</span>
                         </td>
                         <td className="px-4 py-2.5 text-gray-500 text-xs">{r.users?.lingkungan || '—'}</td>
@@ -722,6 +806,11 @@ export default function AdminPage() {
                   </tbody>
                 </table>
               </div>
+              {reregList.length > 0 && (
+                <div className="px-4">
+                  <Pagination {...pgRereg} onPage={pgRereg.goTo} label="pendaftar" />
+                </div>
+              )}
             </div>
           )}
 
@@ -771,6 +860,92 @@ export default function AdminPage() {
         </div>
       </section>
 
+      {/* ── Section: Kelola Akun Anggota ── */}
+      {(() => {
+        const filteredUsers = users.filter(u =>
+          !userSearch ||
+          u.nama_panggilan?.toLowerCase().includes(userSearch.toLowerCase()) ||
+          u.nickname?.toLowerCase().includes(userSearch.toLowerCase())
+        );
+        return (
+          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-gray-50">
+              <div className="p-2 bg-slate-100 rounded-lg"><Users className="text-slate-600" size={20}/></div>
+              <div>
+                <h2 className="font-semibold text-gray-900">Kelola Akun Anggota</h2>
+                <p className="text-xs text-gray-500">Reset password individual atau hapus akun</p>
+              </div>
+            </div>
+            <div className="px-6 py-4 space-y-3">
+              <div className="relative">
+                <input className="input pl-9 w-full text-sm" placeholder="Cari nama / nickname..."
+                  value={userSearch} onChange={e => setUserSearch(e.target.value)}/>
+                <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-xs text-gray-500">
+                    <tr>
+                      <th className="px-3 py-2 text-left">Nama</th>
+                      <th className="px-3 py-2 text-left">Lingkungan</th>
+                      <th className="px-3 py-2 text-left">Role</th>
+                      <th className="px-3 py-2 text-left">Status</th>
+                      <th className="px-3 py-2 text-right">Aksi</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredUsers.slice(0, 50).map((u: any) => (
+                      <tr key={u.id} className="hover:bg-gray-50">
+                        <td className="px-3 py-2.5">
+                          <div className="font-medium text-gray-900">{u.nama_panggilan}</div>
+                          <div className="text-xs text-gray-400">@{u.nickname}</div>
+                        </td>
+                        <td className="px-3 py-2.5 text-gray-500 text-xs">{u.lingkungan}</td>
+                        <td className="px-3 py-2.5 text-xs text-gray-500">{u.role?.replace('_',' ')}</td>
+                        <td className="px-3 py-2.5">
+                          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                            u.status === 'Active' ? 'bg-green-100 text-green-700' :
+                            u.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
+                            'bg-red-100 text-red-700'
+                          }`}>{u.status}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-right">
+                          <div className="flex items-center gap-1.5 justify-end">
+                            {u.role !== 'Administrator' && (
+                              <button
+                                onClick={() => resetSinglePassword(u.id)}
+                                disabled={resettingUserId === u.id}
+                                className="text-xs px-2 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors disabled:opacity-40"
+                                title="Reset password"
+                              >
+                                {resettingUserId === u.id ? <Loader2 size={11} className="animate-spin"/> : <><KeyRound size={11} className="inline mr-0.5"/>Reset PW</>}
+                              </button>
+                            )}
+                            {u.role !== 'Administrator' && (
+                              <button
+                                onClick={() => { setDeleteInput(''); setShowDeleteConfirm({ user: u }); }}
+                                disabled={deletingUserId === u.id}
+                                className="text-xs px-2 py-1 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors disabled:opacity-40"
+                                title="Hapus akun"
+                              >
+                                {deletingUserId === u.id ? <Loader2 size={11} className="animate-spin"/> : <><Trash2 size={11} className="inline mr-0.5"/>Hapus</>}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {filteredUsers.length > 50 && (
+                <p className="text-xs text-gray-400 text-center">Tampil 50 dari {filteredUsers.length} — gunakan pencarian untuk menyaring</p>
+              )}
+            </div>
+          </section>
+        );
+      })()}
+
       {/* ── Section: Konfigurasi Sistem ── */}
       <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
         <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-blue-50">
@@ -816,6 +991,103 @@ export default function AdminPage() {
           ))}
         </div>
       </section>
+
+      {/* ── Mass Reset Confirm Modal ── */}
+      {showMassResetConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-lg"><KeyRound size={20} className="text-red-600"/></div>
+              <h3 className="font-bold text-lg text-gray-900">Konfirmasi Mass Reset Password</h3>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-sm text-red-700">
+              ⚠️ Tindakan ini akan mereset password SEMUA anggota (Active + Pending).
+              Mereka perlu login ulang dengan password baru.
+            </div>
+            <p className="text-sm text-gray-600 mb-2">
+              Ketik <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono font-bold text-red-700">RESET SEMUA</code> untuk konfirmasi:
+            </p>
+            <input
+              type="text"
+              className="input w-full mb-4 font-mono"
+              placeholder="RESET SEMUA"
+              value={massResetInput}
+              onChange={e => setMassResetInput(e.target.value)}
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={massResetAllPasswords}
+                disabled={massResetInput !== 'RESET SEMUA'}
+                className="btn-primary flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40"
+              >
+                Ya, Reset Semua Password
+              </button>
+              <button onClick={() => setShowMassResetConfirm(false)} className="btn-secondary">Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Account Confirm Modal ── */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-red-100 rounded-lg"><Trash2 size={20} className="text-red-600"/></div>
+              <h3 className="font-bold text-lg text-gray-900">Hapus Akun</h3>
+            </div>
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-sm text-red-700">
+              ⚠️ Akun <strong>{showDeleteConfirm.user?.nama_panggilan}</strong> (@{showDeleteConfirm.user?.nickname}) akan dihapus/dinonaktifkan permanen.
+            </div>
+            <p className="text-sm text-gray-600 mb-2">
+              Ketik <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono font-bold text-red-700">hapus {showDeleteConfirm.user?.nickname}</code> untuk konfirmasi:
+            </p>
+            <input
+              type="text"
+              className="input w-full mb-4 font-mono"
+              placeholder={`hapus ${showDeleteConfirm.user?.nickname}`}
+              value={deleteInput}
+              onChange={e => setDeleteInput(e.target.value)}
+              autoFocus
+            />
+            <div className="flex gap-2">
+              <button
+                onClick={() => deleteUserAccount(showDeleteConfirm.user.id)}
+                disabled={deleteInput !== `hapus ${showDeleteConfirm.user?.nickname}`}
+                className="btn-primary flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-40"
+              >
+                Hapus Akun
+              </button>
+              <button onClick={() => { setShowDeleteConfirm(null); setDeleteInput(''); }} className="btn-secondary">Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Per-user Reset Result ── */}
+      {singleResetResult && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+            <CheckCircle2 size={36} className="text-green-500 mx-auto mb-3"/>
+            <h3 className="font-bold text-center text-lg mb-1">Password Berhasil Direset</h3>
+            <p className="text-center text-sm text-gray-500 mb-4">Password baru:</p>
+            <div className="bg-gray-100 rounded-xl px-4 py-3 font-mono text-center text-xl font-bold tracking-widest text-gray-800 mb-4">
+              {singleResetResult.password}
+            </div>
+            <p className="text-xs text-gray-400 text-center mb-4">Salin dan kirim ke anggota via WhatsApp sebelum menutup jendela ini.</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { navigator.clipboard.writeText(singleResetResult.password); toast.success('Disalin!'); }}
+                className="btn-outline flex-1 gap-1"
+              >
+                <ClipboardCopy size={14}/> Salin
+              </button>
+              <button onClick={() => setSingleResetResult(null)} className="btn-secondary">Tutup</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

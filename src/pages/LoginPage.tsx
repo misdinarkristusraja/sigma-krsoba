@@ -26,7 +26,26 @@ export default function LoginPage() {
       // Context Auth yang diperbarui akan memicu router App.jsx (<Route path="/login">)
       // untuk mendeteksi user ? <Navigate to="/dashboard"/> secara otomatis dan aman berbarengan state rutenya.
     } catch (err: any) {
-      toast.error(err.message || 'Login gagal. Cek kembali username/password.');
+      const msg: string = err.message || '';
+      let friendly = msg;
+      if (msg.includes('tidak ditemukan')) {
+        friendly = msg; // RPC message — already Indonesian
+      } else if (/invalid.*(login|credentials)/i.test(msg)) {
+        friendly = 'Password salah. Cek kembali atau hubungi admin.';
+      } else if (/email.*not.*confirm/i.test(msg)) {
+        friendly = 'Akun belum dikonfirmasi. Hubungi admin untuk diaktifkan.';
+      } else if (/user.*ban/i.test(msg) || /banned/i.test(msg)) {
+        friendly = 'Akunmu sedang disuspend. Hubungi Pengurus.';
+      } else if (/too.*many.*request/i.test(msg) || /rate.?limit/i.test(msg)) {
+        friendly = 'Terlalu banyak percobaan login. Coba lagi beberapa menit.';
+      } else if (/network|fetch|failed to fetch/i.test(msg)) {
+        friendly = 'Tidak ada koneksi internet. Periksa jaringanmu.';
+      } else if (msg) {
+        friendly = msg;
+      } else {
+        friendly = 'Login gagal. Cek kembali username dan password.';
+      }
+      toast.error(friendly);
     } finally {
       setLoading(false);
     }
