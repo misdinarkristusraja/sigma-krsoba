@@ -506,11 +506,12 @@ export default function AdminPage() {
   async function loadReregList(year: string) {
     if (!year) return;
     setReregListLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('reregistrations')
-      .select('id, tahun, submitted_at, users(nama_panggilan, nickname, lingkungan, pendidikan)')
+      .select('id, tahun, submitted_at, users!user_id(nama_panggilan, nickname, lingkungan, pendidikan)')
       .eq('tahun', parseInt(year))
       .order('submitted_at', { ascending: false });
+    if (error) console.error('[loadReregList]', error.message);
     setReregList(data || []);
     setReregListLoading(false);
   }
