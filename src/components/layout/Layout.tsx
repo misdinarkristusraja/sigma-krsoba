@@ -110,9 +110,15 @@ export default function Layout() {
   const location  = useLocation();
   const [open,       setOpen]      = useState(false);
   const [hiddenKeys, setHiddenKeys]= useState<Record<string, boolean>>({});
-  const [openGroups, setOpenGroups]= useState<Set<string>>(
-    () => new Set(NAV_GROUPS.map(g => g.key))
-  );
+  // Default tertutup; auto-buka grup yang mengandung path aktif saat ini
+  const [openGroups, setOpenGroups]= useState<Set<string>>(() => {
+    const active = new Set<string>();
+    const path = window.location.pathname;
+    NAV_GROUPS.forEach(g => {
+      if (g.items.some(i => i.path === path)) active.add(g.key);
+    });
+    return active;
+  });
 
   useEffect(() => {
     supabase
