@@ -54,7 +54,7 @@ function VigiliSection({ vigili, picOptions, onEdit, onDelete, onPublish, onUnpu
       {(vPicA || vPicB) && (
         <p className="text-[11px] text-purple-600 flex items-center gap-1 mb-2">
           <UserCheck size={10}/>PIC: {[vPicA, vPicB].filter(Boolean).join(' & ')}
-          {vHpA && <span className="text-purple-400">· 📱 {vHpA}</span>}
+          {vHpA && <span className="text-purple-400">· 📱 <a href={`https://wa.me/${vHpA.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="text-green-600 hover:underline">{vHpA}</a></span>}
         </p>
       )}
       {va.length > 0 && (
@@ -143,7 +143,7 @@ export function EventCard({ ev, vigili, picOptions, onEdit, onDelete, onPublish,
               return (
                 <div key={nick} className="text-xs bg-teal-50 text-teal-800 px-2.5 py-1 rounded-xl border border-teal-100">
                   <span className="font-semibold">{p?.nama_panggilan || nick}</span>
-                  {hp && <span className="ml-1.5 text-teal-500 text-[10px]">📱 {hp}</span>}
+                  {hp && <span className="ml-1.5 text-teal-500 text-[10px]">📱 <a href={`https://wa.me/${hp.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="text-green-600 hover:underline">{hp}</a></span>}
                 </div>
               );
             })}

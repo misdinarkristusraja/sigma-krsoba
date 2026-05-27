@@ -66,7 +66,7 @@ export function AssignmentMatrix({ ev }: AssignmentMatrixProps) {
                   <p className="text-[11px] text-brand-700 flex items-center gap-1">
                     <UserCheck size={11} />PIC: {picNames}
                   </p>
-                  {hpA && <p className="text-[10px] text-gray-400 ml-3.5">📱 {hpA}</p>}
+                  {hpA && <p className="text-[10px] text-gray-400 ml-3.5">📱 <a href={`https://wa.me/${hpA.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="text-green-600 hover:underline">{hpA}</a></p>}
                 </div>
               ) : (
                 <p className="text-[11px] text-red-400 flex items-center gap-1 mt-0.5">

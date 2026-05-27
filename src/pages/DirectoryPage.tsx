@@ -210,16 +210,16 @@ export default function DirectoryPage() {
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           {m.hp_anak ? (
-                            <a href={`tel:${m.hp_anak}`} onClick={e => e.stopPropagation()}
-                              className="text-blue-600 hover:underline flex items-center gap-1 text-xs">
+                            <a href={`https://wa.me/${m.hp_anak.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+                              className="text-green-600 hover:underline flex items-center gap-1 text-xs">
                               <Phone size={11} />{m.hp_anak}
                             </a>
                           ) : <span className="text-gray-300 italic text-xs">—</span>}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           {m.hp_ortu ? (
-                            <a href={`tel:${m.hp_ortu}`} onClick={e => e.stopPropagation()}
-                              className="text-blue-600 hover:underline flex items-center gap-1 text-xs">
+                            <a href={`https://wa.me/${m.hp_ortu.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+                              className="text-green-600 hover:underline flex items-center gap-1 text-xs">
                               <Phone size={11} />{m.hp_ortu}
                             </a>
                           ) : <span className="text-gray-300 italic text-xs">—</span>}

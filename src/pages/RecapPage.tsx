@@ -118,6 +118,15 @@ function buildRekap({ assignments, scans, swaps, penggantiSwaps, dateFrom, dateT
     is_swap_pengganti:   false,
   });
 
+  // event_id → week_start map (from all assignments, not just active)
+  const eventIdToWeekStart: Record<string, string> = {};
+  (assignments || []).forEach((a: any) => {
+    if (a?.event_id && a?.tanggal_tugas) {
+      const ws = getWeekStartFromDate(a.tanggal_tugas);
+      if (ws) eventIdToWeekStart[a.event_id] = ws;
+    }
+  });
+
   // Pass 1 — weeks from active assignments
   Object.values(assignmentByEventId).forEach((a: any) => {
     const tgl = a.tanggal_tugas || a.tanggal_latihan;
@@ -137,12 +146,20 @@ function buildRekap({ assignments, scans, swaps, penggantiSwaps, dateFrom, dateT
     if (!dateStr) return;
     if (dateFrom && dateStr < dateFrom) return;
     if (dateTo   && dateStr > dateTo)   return;
-    const ws = getWeekStartFromDate(dateStr);
+
+    const t = s.scan_type;
+    const isLatihan = t === 'latihan' || t === 'walkin_latihan';
+
+    // For latihan scans: use the event's tanggal_tugas week if event_id is known.
+    // This handles cases where latihan is on a different day (e.g. Friday) than
+    // the event's misa (e.g. Sunday) — the scan date would otherwise map to the
+    // wrong week under the Sabtu-07:00 boundary rule.
+    const wsFromEvent = isLatihan && s.event_id ? eventIdToWeekStart[s.event_id] : null;
+    const ws = wsFromEvent || getWeekStartFromDate(dateStr);
     if (!ws) return;
     if (!weeks[ws]) weeks[ws] = mkWeek(ws);
 
-    const t = s.scan_type;
-    if (t === 'latihan' || t === 'walkin_latihan') weeks[ws].is_hadir_latihan = true;
+    if (isLatihan) weeks[ws].is_hadir_latihan = true;
     if (t === 'tugas'   || t === 'walkin_tugas')   weeks[ws].is_hadir_tugas   = true;
 
     // Walk-in (mengganti mendadak): scan tugas at event not in active assignments

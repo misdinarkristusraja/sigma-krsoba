@@ -9,7 +9,7 @@ import { EventCard } from './components/EventCard';
 import { PriorityMonitor } from './components/PriorityMonitor';
 import { EditEventModal, DeleteEventModal } from './components/ScheduleModals';
 import { AddMisaModal } from './components/AddMisaModal';
-import { Zap, FileEdit, Globe, Check } from 'lucide-react';
+import { Zap, FileEdit, Globe, Check, Pencil, Trash2, Plus, X as XIcon } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 function parseSlotSchedule(draftNote: string | null, fallback: string) {
@@ -44,10 +44,15 @@ export default function ScheduleWeeklyPage() {
   const [deleteConf, setDeleteConf] = useState<any>(null);
   const [showAddMisa,setShowAddMisa]= useState(false);
   const [picOptions, setPicOptions] = useState<any[]>([]);
+  const [editPicEventId, setEditPicEventId] = useState<string | null>(null);
+  const [editPicSlots, setEditPicSlots]     = useState<any[]>([]);
+  const [savingPic, setSavingPic]           = useState(false);
 
   // Pelatih batch state
   const [pelatihBatch,    setPelatihBatch]    = useState<Record<string, any>>({});
   const [latihanJamBatch, setLatihanJamBatch] = useState<Record<string, string>>({});
+  const [latihanTglBatch, setLatihanTglBatch] = useState<Record<string, string>>({});
+  const [latihanAltBatch, setLatihanAltBatch] = useState<Record<string, string>>({});
   const [savingPelatih,   setSavingPelatih]   = useState(false);
 
   const INIT_MISA_FORM = {
@@ -91,6 +96,14 @@ export default function ScheduleWeeklyPage() {
     if (ev.latihan_notes) return ev.latihan_notes;
     return '';
   }
+  function getLatihanTgl(ev: any) {
+    if (latihanTglBatch[ev.id] !== undefined) return latihanTglBatch[ev.id];
+    return ev.tanggal_latihan || '';
+  }
+  function getLatihanAlt(ev: any) {
+    if (latihanAltBatch[ev.id] !== undefined) return latihanAltBatch[ev.id];
+    return ev.latihan_hari_alt || '';
+  }
 
   async function savePelatihBatch() {
     setSavingPelatih(true);
@@ -98,12 +111,15 @@ export default function ScheduleWeeklyPage() {
     const allIds = new Set([
       ...Object.keys(pelatihBatch),
       ...Object.keys(latihanJamBatch),
+      ...Object.keys(latihanTglBatch),
+      ...Object.keys(latihanAltBatch),
     ]);
     for (const eventId of allIds) {
       const pelatih = pelatihBatch[eventId] || {};
       const jam     = latihanJamBatch[eventId];
+      const tgl     = latihanTglBatch[eventId];
+      const alt     = latihanAltBatch[eventId];
 
-      // Update event_pelatih rows (delete all for event then re-insert)
       if (Object.keys(pelatih).length) {
         await supabase.from('event_pelatih').delete().eq('event_id', eventId);
         const rows = Object.entries(pelatih)
@@ -112,15 +128,20 @@ export default function ScheduleWeeklyPage() {
         if (rows.length) await supabase.from('event_pelatih').insert(rows);
       }
 
-      // Update latihan_times on events table
-      if (jam !== undefined) {
-        await supabase.from('events').update({ latihan_times: jam ? [jam] : [] }).eq('id', eventId);
+      const evUpdate: Record<string, any> = {};
+      if (jam !== undefined) evUpdate.latihan_times = jam ? [jam] : [];
+      if (tgl !== undefined) evUpdate.tanggal_latihan = tgl || null;
+      if (alt !== undefined) evUpdate.latihan_hari_alt = alt || null;
+      if (Object.keys(evUpdate).length) {
+        await supabase.from('events').update(evUpdate).eq('id', eventId);
       }
       saved++;
     }
     await loadEvents();
     setPelatihBatch({});
     setLatihanJamBatch({});
+    setLatihanTglBatch({});
+    setLatihanAltBatch({});
     setSavingPelatih(false);
     toast.success(`Pelatih piket disimpan untuk ${saved} jadwal!`);
   }
@@ -256,6 +277,55 @@ export default function ScheduleWeeklyPage() {
     if (assigns.length) await supabase.from('assignments').insert(assigns);
   }
 
+  // ── Inline PIC editing (PIC tab) ──────────────────────────
+  const staffOptions = picOptions.filter(p => ['Administrator','Pengurus'].includes(p.role));
+
+  function startEditPic(ev: any) {
+    setEditPicEventId(ev.id);
+    setEditPicSlots(JSON.parse(JSON.stringify(ev.event_pics || [])));
+  }
+  function cancelEditPic() { setEditPicEventId(null); setEditPicSlots([]); }
+  function addPicInline(slot: number) {
+    const maxU = editPicSlots.filter(p => p.slot === slot).reduce((m, p) => Math.max(m, p.urutan), 0);
+    setEditPicSlots(prev => [...prev, { slot, nama: '', hp: '', urutan: maxU + 1 }]);
+  }
+  function removePicInline(slot: number, urutan: number) {
+    setEditPicSlots(prev => {
+      const filtered = prev.filter(p => !(p.slot === slot && p.urutan === urutan));
+      let idx = 1;
+      return filtered.map(p => p.slot === slot ? { ...p, urutan: idx++ } : p);
+    });
+  }
+  function updatePicInline(slot: number, urutan: number, nick: string) {
+    const found = staffOptions.find((o: any) => o.nickname === nick);
+    const hp   = found ? (found.hp_anak || found.hp_ortu || '') : '';
+    const nama = found ? (found.nama_panggilan || nick) : nick;
+    setEditPicSlots(prev => prev.map(p =>
+      p.slot === slot && p.urutan === urutan ? { ...p, nama, hp } : p
+    ));
+  }
+  async function savePicInline(eventId: string) {
+    setSavingPic(true);
+    try {
+      await supabase.from('event_pics').delete().eq('event_id', eventId);
+      const toInsert = editPicSlots.filter(p => p.nama?.trim());
+      if (toInsert.length) {
+        const { error } = await supabase.from('event_pics').insert(
+          toInsert.map(p => ({ event_id: eventId, slot: p.slot, nama: p.nama, hp: p.hp || null, urutan: p.urutan }))
+        );
+        if (error) throw error;
+      }
+      await loadEvents();
+      setEditPicEventId(null);
+      setEditPicSlots([]);
+      toast.success('PIC disimpan!');
+    } catch (e: any) {
+      toast.error('Gagal: ' + e.message);
+    } finally {
+      setSavingPic(false);
+    }
+  }
+
   // ── Group vigili with parent ───────────────────────────────
   const vigiliEvents = events.filter((e: any) =>
     e.tipe_event === 'Misa_Khusus' &&
@@ -347,47 +417,88 @@ export default function ScheduleWeeklyPage() {
       {/* ── TAB: PIC ── */}
       {activeTab === 'pic' && (
         <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <p className="text-sm font-semibold text-blue-800 mb-1">PIC Dinamis</p>
-            <p className="text-sm text-blue-700">
-              PIC sekarang bisa lebih dari 2 per slot. Klik <strong>Edit</strong> pada event di tab Jadwal,
-              lalu tambah/hapus PIC sesuai kebutuhan.
-            </p>
-          </div>
           {events.length === 0
             ? <div className="card text-center py-10 text-gray-400">Belum ada jadwal bulan ini</div>
             : events.map((ev: any) => {
-              const lc     = getLiturgyClass(ev.warna_liturgi);
-              const isMK   = ev.tipe_event === 'Misa_Khusus';
-              const nSlots = isMK ? (ev.jumlah_misa || 1) : 4;
+              const lc      = getLiturgyClass(ev.warna_liturgi);
+              const isMK    = ev.tipe_event === 'Misa_Khusus';
+              const nSlots  = isMK ? (ev.jumlah_misa || 1) : 4;
+              const isEditing = editPicEventId === ev.id;
               return (
                 <div key={ev.id} className={`card border-l-4 ${ev.is_draft ? 'border-yellow-400' : 'border-green-400'}`}>
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className={`w-3 h-3 rounded-full ${lc.dot}`}/>
-                    <div>
-                      <p className="font-bold text-gray-900">{ev.perayaan || ev.nama_event}</p>
-                      <p className="text-xs text-gray-500">
-                        {formatDate(ev.tanggal_latihan,'dd MMM')} – {formatDate(ev.tanggal_tugas,'dd MMM yyyy')}
-                        {ev.is_draft ? ' · Draft' : ' · Published'}
-                      </p>
+                  <div className="flex items-center justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-3 h-3 rounded-full ${lc.dot}`}/>
+                      <div>
+                        <p className="font-bold text-gray-900">{ev.perayaan || ev.nama_event}</p>
+                        <p className="text-xs text-gray-500">
+                          {formatDate(ev.tanggal_latihan,'dd MMM')} – {formatDate(ev.tanggal_tugas,'dd MMM yyyy')}
+                          {ev.is_draft ? ' · Draft' : ' · Published'}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <div className={`grid gap-3 ${nSlots <= 2 ? 'grid-cols-2' : nSlots === 3 ? 'grid-cols-3' : 'grid-cols-2 xl:grid-cols-4'}`}>
-                    {Array.from({ length: nSlots }, (_,i) => i+1).map(slot => {
-                      const slotPics = (ev.event_pics || []).filter((p: any) => p.slot === slot).sort((a: any, b: any) => a.urutan - b.urutan);
-                      return (
-                        <div key={slot} className="p-3 bg-gray-50 rounded-xl space-y-1">
-                          <p className="text-xs font-bold text-gray-700">{SLOT_INFO[slot]?.time || `Slot ${slot}`}</p>
-                          {slotPics.length === 0
-                            ? <p className="text-[11px] text-red-400">PIC belum diisi</p>
-                            : slotPics.map((p: any, i: number) => (
-                              <p key={i} className="text-[11px] text-brand-700 font-medium">✓ {p.nama}{p.hp ? ` · ${p.hp}` : ''}</p>
-                            ))
-                          }
+                    {!isEditing
+                      ? <button onClick={() => startEditPic(ev)} className="btn-outline btn-sm gap-1"><Pencil size={13}/> Edit PIC</button>
+                      : <div className="flex gap-2">
+                          <button onClick={() => savePicInline(ev.id)} disabled={savingPic} className="btn-primary btn-sm gap-1"><Check size={13}/> {savingPic ? '...' : 'Simpan'}</button>
+                          <button onClick={cancelEditPic} className="btn-secondary btn-sm"><XIcon size={13}/></button>
                         </div>
-                      );
-                    })}
+                    }
                   </div>
+
+                  {!isEditing ? (
+                    <div className={`grid gap-3 ${nSlots <= 2 ? 'grid-cols-2' : nSlots === 3 ? 'grid-cols-3' : 'grid-cols-2 xl:grid-cols-4'}`}>
+                      {Array.from({ length: nSlots }, (_,i) => i+1).map(slot => {
+                        const slotPics = (ev.event_pics || []).filter((p: any) => p.slot === slot).sort((a: any, b: any) => a.urutan - b.urutan);
+                        return (
+                          <div key={slot} className="p-3 bg-gray-50 rounded-xl space-y-1">
+                            <p className="text-xs font-bold text-gray-700">{SLOT_INFO[slot]?.time || `Slot ${slot}`}</p>
+                            {slotPics.length === 0
+                              ? <p className="text-[11px] text-red-400">PIC belum diisi</p>
+                              : slotPics.map((p: any, i: number) => (
+                                <p key={i} className="text-[11px] text-brand-700 font-medium">
+                                  ✓ {p.nama}{p.hp ? <> · <a href={`https://wa.me/${p.hp.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="text-green-600 hover:underline">{p.hp}</a></> : ''}
+                                </p>
+                              ))
+                            }
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className={`grid gap-3 ${nSlots <= 2 ? 'grid-cols-2' : nSlots === 3 ? 'grid-cols-3' : 'grid-cols-2 xl:grid-cols-4'}`}>
+                      {Array.from({ length: nSlots }, (_,i) => i+1).map(slot => {
+                        const slotPics = editPicSlots.filter(p => p.slot === slot).sort((a: any, b: any) => a.urutan - b.urutan);
+                        return (
+                          <div key={slot} className="p-3 bg-blue-50 rounded-xl space-y-2">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-bold text-gray-700">{SLOT_INFO[slot]?.time || `Slot ${slot}`}</p>
+                              <button type="button" onClick={() => addPicInline(slot)} className="text-[11px] text-brand-800 hover:text-brand-600 flex items-center gap-0.5 font-medium">
+                                <Plus size={11}/> Tambah
+                              </button>
+                            </div>
+                            {slotPics.length === 0 && <p className="text-[11px] text-gray-400 italic">Belum ada PIC</p>}
+                            {slotPics.map((p, i) => (
+                              <div key={p.urutan} className="flex items-center gap-1.5">
+                                <span className="text-[10px] text-gray-400 w-4 shrink-0">{i+1}.</span>
+                                <select className="input text-xs flex-1"
+                                  value={staffOptions.find((o: any) => o.nama_panggilan === p.nama || o.nickname === p.nama)?.nickname || ''}
+                                  onChange={e => updatePicInline(slot, p.urutan, e.target.value)}>
+                                  <option value="">— Pilih PIC —</option>
+                                  {staffOptions.map((o: any) => (
+                                    <option key={o.id} value={o.nickname}>{o.nama_panggilan} (@{o.nickname})</option>
+                                  ))}
+                                </select>
+                                <button type="button" onClick={() => removePicInline(slot, p.urutan)} className="text-red-400 hover:text-red-600 shrink-0">
+                                  <Trash2 size={13}/>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               );
             })
@@ -403,8 +514,8 @@ export default function ScheduleWeeklyPage() {
               <p className="text-sm text-teal-700 font-semibold">Kelola Pelatih Piket per Event</p>
               <p className="text-xs text-teal-600 mt-0.5">Maks 3 pelatih per minggu. Tampil di kartu jadwal dan PNG export.</p>
             </div>
-            <button onClick={savePelatihBatch} disabled={savingPelatih || (Object.keys(pelatihBatch).length === 0 && Object.keys(latihanJamBatch).length === 0)} className="btn-primary btn-sm gap-1 whitespace-nowrap">
-              {savingPelatih ? 'Menyimpan...' : `Simpan (${new Set([...Object.keys(pelatihBatch),...Object.keys(latihanJamBatch)]).size})`}
+            <button onClick={savePelatihBatch} disabled={savingPelatih || (Object.keys(pelatihBatch).length === 0 && Object.keys(latihanJamBatch).length === 0 && Object.keys(latihanTglBatch).length === 0 && Object.keys(latihanAltBatch).length === 0)} className="btn-primary btn-sm gap-1 whitespace-nowrap">
+              {savingPelatih ? 'Menyimpan...' : `Simpan (${new Set([...Object.keys(pelatihBatch),...Object.keys(latihanJamBatch),...Object.keys(latihanTglBatch),...Object.keys(latihanAltBatch)]).size})`}
             </button>
           </div>
           {events.length === 0
@@ -442,15 +553,39 @@ export default function ScheduleWeeklyPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="max-w-xs">
-                    <label className="label text-xs">Jam Latihan (muncul di PNG export)</label>
-                    <input
-                      type="time"
-                      className={`input text-sm ${latihanJamBatch[ev.id] !== undefined ? 'border-teal-400 bg-teal-50' : ''}`}
-                      value={getLatihanJam(ev)}
-                      onChange={e => setLatihanJamBatch(b => ({ ...b, [ev.id]: e.target.value }))}
-                      placeholder="cth. 16:00"
-                    />
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div>
+                        <label className="label text-xs">Tanggal Latihan</label>
+                        <input
+                          type="date"
+                          className={`input text-sm ${latihanTglBatch[ev.id] !== undefined ? 'border-teal-400 bg-teal-50' : ''}`}
+                          value={getLatihanTgl(ev)}
+                          onChange={e => setLatihanTglBatch(b => ({ ...b, [ev.id]: e.target.value }))}
+                        />
+                        <p className="text-[10px] text-gray-400 mt-0.5">Default Sabtu, bisa pilih hari lain</p>
+                      </div>
+                      <div>
+                        <label className="label text-xs">Jam Latihan (muncul di PNG export)</label>
+                        <input
+                          type="time"
+                          className={`input text-sm ${latihanJamBatch[ev.id] !== undefined ? 'border-teal-400 bg-teal-50' : ''}`}
+                          value={getLatihanJam(ev)}
+                          onChange={e => setLatihanJamBatch(b => ({ ...b, [ev.id]: e.target.value }))}
+                          placeholder="cth. 16:00"
+                        />
+                      </div>
+                      <div>
+                        <label className="label text-xs">Tanggal Latihan Alternatif</label>
+                        <input
+                          type="date"
+                          className={`input text-sm ${latihanAltBatch[ev.id] !== undefined ? 'border-teal-400 bg-teal-50' : ''}`}
+                          value={getLatihanAlt(ev)}
+                          onChange={e => setLatihanAltBatch(b => ({ ...b, [ev.id]: e.target.value }))}
+                        />
+                        <p className="text-[10px] text-gray-400 mt-0.5">Opsional — hadir di salah satu cukup</p>
+                      </div>
+                    </div>
                   </div>
                 )}
                 {(ev.event_pelatih?.length > 0) && (

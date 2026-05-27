@@ -23,9 +23,9 @@ export function useWeeklySchedule() {
     const { data, error } = await supabase
       .from('events')
       .select(`
-        id, nama_event, tipe_event, tanggal_tugas, tanggal_latihan,
-        perayaan, warna_liturgi, jumlah_misa, status_event, is_draft,
-        published_at, draft_note, is_misa_besar, latihan_times,
+        id, nama_event, tipe_event, tanggal_tugas, tanggal_latihan, latihan_hari_alt,
+        perayaan, warna_liturgi, jumlah_misa, jumlah_petugas, tanpa_latihan,
+        status_event, is_draft, published_at, draft_note, is_misa_besar, latihan_times,
         event_pics(id, slot, nama, hp, urutan),
         event_pelatih(id, nama, urutan),
         event_latihan(id, tanggal, jam, lokasi, catatan),
