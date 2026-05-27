@@ -9,8 +9,9 @@ import { EventCard } from './components/EventCard';
 import { PriorityMonitor } from './components/PriorityMonitor';
 import { EditEventModal, DeleteEventModal } from './components/ScheduleModals';
 import { AddMisaModal } from './components/AddMisaModal';
-import { Zap, FileEdit, Globe, Check, Pencil, Trash2, Plus, X as XIcon } from 'lucide-react';
+import { Zap, FileEdit, Globe, Check, Pencil, Trash2, Plus, X as XIcon, ImageDown } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { exportCombinedPNG } from './components/ExportToolbar';
 
 function parseSlotSchedule(draftNote: string | null, fallback: string) {
   if (!draftNote) return [];
@@ -47,6 +48,25 @@ export default function ScheduleWeeklyPage() {
   const [editPicEventId, setEditPicEventId] = useState<string | null>(null);
   const [editPicSlots, setEditPicSlots]     = useState<any[]>([]);
   const [savingPic, setSavingPic]           = useState(false);
+
+  // Multi-select export
+  const [selectedExportIds, setSelectedExportIds] = useState<Set<string>>(new Set());
+  const [exportingCombined, setExportingCombined] = useState(false);
+
+  function toggleExportSelect(id: string) {
+    setSelectedExportIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+  async function handleExportCombined() {
+    const selected = events.filter(ev => selectedExportIds.has(ev.id));
+    if (!selected.length) return;
+    setExportingCombined(true);
+    await exportCombinedPNG(selected, picOptions);
+    setExportingCombined(false);
+  }
 
   // Pelatih batch state
   const [pelatihBatch,    setPelatihBatch]    = useState<Record<string, any>>({});
@@ -393,19 +413,55 @@ export default function ScheduleWeeklyPage() {
               </button>
             </div>
           ) : (
+            <>
+            {/* Floating export bar */}
+            {selectedExportIds.size > 0 && (
+              <div className="sticky top-2 z-20 flex items-center gap-3 bg-brand-800 text-white px-4 py-2.5 rounded-xl shadow-lg">
+                <span className="text-sm font-semibold">{selectedExportIds.size} jadwal dipilih</span>
+                <button
+                  onClick={handleExportCombined}
+                  disabled={exportingCombined}
+                  className="ml-auto flex items-center gap-1.5 bg-white text-brand-800 px-3 py-1.5 rounded-lg text-sm font-semibold hover:bg-gray-100 disabled:opacity-60 transition-colors"
+                >
+                  <ImageDown size={15}/>
+                  {exportingCombined ? 'Exporting...' : 'Export Gabungan PNG'}
+                </button>
+                <button
+                  onClick={() => setSelectedExportIds(new Set())}
+                  className="text-white/70 hover:text-white"
+                  title="Batal pilih semua"
+                >
+                  <XIcon size={16}/>
+                </button>
+              </div>
+            )}
+
             <div className="space-y-6">
               {mainEvents.map((ev: any) => {
                 const [ey,em,ed] = ev.tanggal_tugas?.split('-').map(Number) || [0,0,0];
                 const dayBefore  = ey ? `${ey}-${String(em).padStart(2,'0')}-${String(ed-1).padStart(2,'0')}` : null;
                 const vigili     = vigiliEvents.find((v: any) => v.tanggal_tugas === dayBefore) || null;
+                const isSelected = selectedExportIds.has(ev.id);
                 return (
-                  <EventCard key={ev.id} ev={ev} vigili={vigili} picOptions={picOptions}
-                    onEdit={setEditEvent} onDelete={setDeleteConf}
-                    onPublish={publishEvent} onUnpublish={unpublishEvent}
-                  />
+                  <div key={ev.id} className={`relative rounded-2xl transition-all ${isSelected ? 'ring-2 ring-brand-500 ring-offset-2' : ''}`}>
+                    <label className="absolute top-3 left-3 z-10 flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleExportSelect(ev.id)}
+                        className="w-4 h-4 accent-brand-700 rounded"
+                      />
+                      <span className="text-xs font-medium text-gray-600 bg-white/80 px-1 rounded">pilih</span>
+                    </label>
+                    <EventCard ev={ev} vigili={vigili} picOptions={picOptions}
+                      onEdit={setEditEvent} onDelete={setDeleteConf}
+                      onPublish={publishEvent} onUnpublish={unpublishEvent}
+                    />
+                  </div>
                 );
               })}
             </div>
+            </>
           )}
 
           <EditEventModal editEvent={editEvent} setEditEvent={setEditEvent} picOptions={picOptions} loadEvents={loadEvents} saveEditEvent={saveEditEvent}/>

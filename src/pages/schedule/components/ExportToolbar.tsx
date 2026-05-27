@@ -320,6 +320,197 @@ async function buildMonthlyPDF(year: number, month: number, pelatihOptions: any[
   };
 }
 
+// ── Combined multi-event HTML builder ───────────────────────────────────────
+function buildCombinedHTML(eventsWithAssignments: Array<{ ev: any; assignments: any[] }>, pelatihOptions: any[] = []) {
+  const BORDER_SEP = '5px solid #111'; // pemisah antar-event
+
+  const headerNames = eventsWithAssignments
+    .map(({ ev }) => (ev.perayaan || ev.nama_event || '').toUpperCase())
+    .join('\n');
+
+  // Subtitle: rentang tanggal gabungan
+  const allDates = eventsWithAssignments.map(({ ev }) => ev.tanggal_tugas).filter(Boolean).sort();
+  const firstDate = allDates[0] || '';
+  const lastDate  = allDates[allDates.length - 1] || '';
+  const subtitleTgl = firstDate === lastDate
+    ? fmtTglIndo(firstDate)
+    : `${fmtTglIndo(firstDate)} — ${fmtTglIndo(lastDate)}`;
+
+  let allRows = '';
+
+  eventsWithAssignments.forEach(({ ev, assignments }, evIdx) => {
+    const isMisaKhusus = ev.tipe_event === 'Misa_Khusus';
+    const schedule     = isMisaKhusus ? parseSlotSchedule(ev.draft_note, ev.tanggal_tugas) : [];
+    const nSlots       = isMisaKhusus ? Math.max(ev.jumlah_misa || 1, schedule.length) : 4;
+    const bySlot: Record<number, any[]> = {};
+    for (let s = 1; s <= nSlots; s++) bySlot[s] = assignments.filter(a => a.slot_number === s);
+
+    function slotPics(slot: number) {
+      return ((ev.event_pics || []) as any[])
+        .filter(p => p.slot === slot)
+        .sort((a: any, b: any) => a.urutan - b.urutan);
+    }
+
+    // Event separator row (except before first event)
+    const evName = (ev.perayaan || ev.nama_event || '').toUpperCase();
+    const evTgl  = ev.tanggal_latihan
+      ? `${fmtTglIndo(ev.tanggal_latihan)} s/d ${fmtTglIndo(ev.tanggal_tugas)}`
+      : fmtTglIndo(ev.tanggal_tugas);
+
+    const sepBorderTop = evIdx === 0 ? '' : `border-top:${BORDER_SEP};`;
+    allRows += `
+      <tr>
+        <td colspan="4" style="
+          ${sepBorderTop}border-bottom:${BORDER_SLOT};border-left:${BORDER_OUTER};border-right:${BORDER_OUTER};
+          padding:8px 14px;text-align:center;background:#1a3a5c;
+          font-family:${FONT};font-size:${FS_SUB};font-weight:bold;color:#fff;letter-spacing:0.5px;">
+          ${evName}
+          <span style="font-weight:normal;font-size:14px;color:#c8d8e8;margin-left:12px;">${evTgl}</span>
+        </td>
+      </tr>`;
+
+    for (let slot = 1; slot <= nSlots; slot++) {
+      const info    = SLOT_INFO[slot] || SLOT_INFO[1];
+      const people  = bySlot[slot] || [];
+      const pics    = slotPics(slot);
+      const picA    = (pics[0]?.nama || '').toUpperCase();
+      const picB    = (pics[1]?.nama || '').toUpperCase();
+      const hpA     = pics[0]?.hp || '';
+      const sc      = schedule.find(s => s.slot === slot);
+      const tglSlot = isMisaKhusus
+        ? fmtTglIndo(sc?.tanggal || ev.tanggal_tugas)
+        : (slot === 1 && ev.tanggal_latihan ? fmtTglIndo(ev.tanggal_latihan) : fmtTglIndo(ev.tanggal_tugas));
+      const rowspan = Math.max(people.length, 1);
+
+      const jamLabel = isMisaKhusus ? `MISA ${slot} (${sc?.jam || '07.00'})` : info.label;
+      const jamValue = isMisaKhusus ? '' : `JAM (${sc?.jam || info.jam})`;
+      const picLine  = picA && picB ? `PIC: ${picA} &amp; <b>${picB}</b>`
+                     : picA         ? `PIC: <b>${picA}</b>`
+                     : picB         ? `PIC: <b>${picB}</b>` : '';
+      const hpLine   = hpA ? `(${hpA})` : '';
+
+      const slotTopBorder = `border-top:${BORDER_SLOT};`;
+
+      const leftCell = `
+        <td rowspan="${rowspan}" style="
+          border:${BORDER};${slotTopBorder}border-left:${BORDER_OUTER};
+          padding:6px 10px;vertical-align:middle;text-align:center;
+          font-family:${FONT};font-size:${FS_TGL};font-weight:bold;line-height:1.75;
+          min-width:200px;max-width:200px;background:#f9f9f9;">
+          ${jamLabel}<br>
+          ${tglSlot}<br>
+          ${jamValue ? jamValue + '<br>' : ''}
+          ${picLine}<br>
+          <span style="font-weight:normal;font-size:14px;color:#444;">${hpLine}</span>
+        </td>`;
+
+      const firstRowStyle = `border:${BORDER};${slotTopBorder}padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};`;
+      const normRowStyle  = `border:${BORDER};padding:3px 10px;font-family:${FONT};font-size:${FS_ROW};`;
+
+      if (people.length === 0) {
+        allRows += `<tr>${leftCell}
+          <td style="${firstRowStyle}">—</td>
+          <td style="${firstRowStyle}">—</td>
+          <td style="${firstRowStyle}border-right:${BORDER_OUTER};">—</td>
+        </tr>`;
+      } else {
+        people.forEach((a, i) => {
+          const u   = a.users || {};
+          const cst = i === 0 ? firstRowStyle : normRowStyle;
+          allRows += `<tr>${i === 0 ? leftCell : ''}
+            <td style="${cst}">${u.nama_lengkap || '—'}</td>
+            <td style="${cst}">${u.nama_panggilan || '—'}</td>
+            <td style="${cst}border-right:${BORDER_OUTER};">${u.lingkungan || '—'}</td>
+          </tr>`;
+        });
+      }
+    }
+
+    // Latihan footer per event
+    const pelatihNicks: string[] = ((ev.event_pelatih || []) as any[])
+      .sort((a: any, b: any) => a.urutan - b.urutan)
+      .map((p: any) => p.nama)
+      .filter(Boolean);
+    const latihanJam = ev.latihan_times?.length ? ev.latihan_times.join(', ')
+                     : ev.latihan_notes?.trim() || '';
+    const latihanHari = ev.tanggal_latihan
+      ? (() => { const dt = new Date(ev.tanggal_latihan); return ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][dt.getDay()]; })()
+      : 'Sabtu';
+
+    const pelatihStr = pelatihNicks.length
+      ? ` | PELATIH: ${pelatihNicks.map(n => { const f = pelatihOptions.find(p => p.nickname === n); return (f?.nama_panggilan || n).toUpperCase(); }).join(', ')}`
+      : '';
+
+    allRows += `
+      <tr>
+        <td colspan="4" style="
+          border:${BORDER};border-left:${BORDER_OUTER};border-right:${BORDER_OUTER};
+          padding:8px 12px;text-align:center;
+          font-family:${FONT};font-size:${FS_FTR};font-weight:bold;
+          background:#fff;letter-spacing:0.5px;">
+          LATIHAN : ${latihanHari.toUpperCase()}${latihanJam ? ' (' + latihanJam + ')' : ''}${pelatihStr}
+        </td>
+      </tr>`;
+  });
+
+  return `
+    <div style="font-family:${FONT};width:960px;padding:4px;background:white;">
+      <table style="width:100%;border-collapse:collapse;border:${BORDER_OUTER};">
+        <thead>
+          <tr>
+            <th colspan="4" style="
+              border:${BORDER_OUTER};padding:14px 14px;text-align:center;
+              font-family:${FONT};font-size:${FS_HDR};font-weight:bold;letter-spacing:1px;
+              white-space:pre-line;">
+              ${headerNames}
+              <div style="font-size:${FS_SUB};font-weight:normal;color:#555;margin-top:4px;">${subtitleTgl}</div>
+            </th>
+          </tr>
+          <tr>
+            <th style="border:${BORDER_SLOT};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;min-width:200px;text-align:center;">TANGGAL</th>
+            <th style="border:${BORDER_SLOT};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">NAMA LENGKAP</th>
+            <th style="border:${BORDER_SLOT};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">PANGGILAN</th>
+            <th style="border:${BORDER_SLOT};padding:5px 10px;font-family:${FONT};font-size:${FS_TH};font-weight:bold;background:#eee;text-align:center;">LINGKUNGAN</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${allRows}
+          <tr><td colspan="4" style="border:${BORDER_OUTER};height:0;padding:0;font-size:0;"></td></tr>
+        </tbody>
+      </table>
+    </div>`;
+}
+
+export async function exportCombinedPNG(
+  selectedEvents: any[],
+  pelatihOptions: any[],
+) {
+  if (!selectedEvents.length) return;
+  const eventsWithAssignments = selectedEvents.map(ev => ({
+    ev,
+    assignments: ev.assignments || [],
+  }));
+  const html = buildCombinedHTML(eventsWithAssignments, pelatihOptions);
+  const container = document.createElement('div');
+  container.style.cssText = 'position:fixed;top:-9999px;left:-9999px;';
+  container.innerHTML = html;
+  document.body.appendChild(container);
+  try {
+    const inner = container.firstElementChild as HTMLElement;
+    const png   = await toPng(inner, { pixelRatio: 3, backgroundColor: '#ffffff' });
+    const a     = document.createElement('a');
+    const names = selectedEvents.map(ev => (ev.perayaan || ev.id).replace(/\s+/g, '-')).join('_');
+    a.href     = png;
+    a.download = `jadwal-gabungan-${names}.png`;
+    a.click();
+    toast.success('PNG gabungan berhasil diunduh!');
+  } catch (err: any) {
+    toast.error('Gagal export PNG: ' + err.message);
+  } finally {
+    document.body.removeChild(container);
+  }
+}
+
 // ── Props ────────────────────────────────────────────────────────────────────
 interface ExportToolbarProps {
   ev: any;
