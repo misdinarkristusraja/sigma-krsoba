@@ -61,14 +61,15 @@ type Props = {
 };
 
 export default function SekolahDropdown({ pendidikan, value, onChange }: Props) {
-  const [open,     setOpen]     = useState(false);
-  const [query,    setQuery]    = useState('');
-  const [list,     setList]     = useState<Sekolah[]>([]);
-  const [loading,  setLoading]  = useState(false);
-  const [kabKota,  setKabKota]  = useState('031100'); // default Sukoharjo
-  const searchRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputRef    = useRef<HTMLInputElement>(null);
-  const containerRef= useRef<HTMLDivElement>(null);
+  const [open,      setOpen]     = useState(false);
+  const [query,     setQuery]    = useState('');
+  const [fullList,  setFullList] = useState<Sekolah[]>([]);
+  const [list,      setList]     = useState<Sekolah[]>([]);
+  const [loading,   setLoading]  = useState(false);
+  const [kabKota,   setKabKota]  = useState('031100'); // default Sukoharjo
+  const [error,     setError]    = useState(false);
+  const inputRef     = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const jenjang = JENJANG_MAP[pendidikan] ?? null;
 
@@ -82,52 +83,44 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
     }));
   }
 
-  const loadDefault = useCallback(async (j: string, kk: string) => {
+  // Load all schools for selected kab/kota + jenjang (client-side filtering after)
+  const loadForKabKota = useCallback(async (j: string, kk: string) => {
     setLoading(true);
+    setError(false);
     try {
-      const res  = await fetch(`${BASE}/sekolah/${j}?kab_kota=${kk}&perPage=100`);
+      const res  = await fetch(`${BASE}/sekolah/${j}?kab_kota=${kk}&perPage=200`);
+      if (!res.ok) throw new Error('API error');
       const json = await res.json();
       let data: Sekolah[] = mapData(json.dataSekolah || []);
+      // Fallback: jika kab/kota kosong, coba provinsi Jawa Tengah
       if (data.length === 0) {
-        const res2  = await fetch(`${BASE}/sekolah/${j}?provinsi=030000&perPage=30`);
+        const res2  = await fetch(`${BASE}/sekolah/${j}?provinsi=030000&perPage=50`);
         const json2 = await res2.json();
         data = mapData(json2.dataSekolah || []);
       }
-      setList(data);
+      setFullList(data);
     } catch {
-      setList([]);
+      setError(true);
+      setFullList([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  const doSearch = useCallback(async (q: string, j: string) => {
-    setLoading(true);
-    try {
-      const res  = await fetch(`${BASE}/sekolah/s?sekolah=${encodeURIComponent(q)}&perPage=50`);
-      const json = await res.json();
-      const all  = mapData(json.dataSekolah || []);
-      setList(all.filter(s => s.bentuk.toUpperCase() === j.toUpperCase()));
-    } catch {
-      setList([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Single effect handles all list-loading logic
+  // Reload when dropdown opens or kab/kota or jenjang changes
   useEffect(() => {
     if (!open || !jenjang) return;
-    if (searchRef.current) clearTimeout(searchRef.current);
-    const q = query.trim();
-    if (q.length < 2) {
-      loadDefault(jenjang, kabKota);
-      return;
-    }
-    searchRef.current = setTimeout(() => doSearch(q, jenjang), 350);
-    return () => { if (searchRef.current) clearTimeout(searchRef.current); };
-  }, [open, query, jenjang, kabKota, loadDefault, doSearch]);
+    setQuery('');
+    loadForKabKota(jenjang, kabKota);
+  }, [open, jenjang, kabKota, loadForKabKota]);
 
+  // Client-side filter — instant, no debounce needed
+  useEffect(() => {
+    const q = query.trim().toLowerCase();
+    setList(q ? fullList.filter(s => s.sekolah.toLowerCase().includes(q)) : fullList);
+  }, [query, fullList]);
+
+  // Close on outside click
   useEffect(() => {
     function handler(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -161,6 +154,9 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
     );
   }
 
+  const selectedIsTarakanita = list.find(s => s.sekolah === value)?.isTarakanita
+    ?? fullList.find(s => s.sekolah === value)?.isTarakanita;
+
   return (
     <div ref={containerRef} className="relative">
       <button
@@ -180,7 +176,7 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
             <select
               className="flex-1 text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:border-brand-400 bg-white"
               value={kabKota}
-              onChange={e => { setKabKota(e.target.value); setQuery(''); }}
+              onChange={e => setKabKota(e.target.value)}
             >
               {KAB_KOTA_JATENG.map(k => (
                 <option key={k.kode} value={k.kode}>{k.nama}</option>
@@ -205,12 +201,22 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
 
           {/* List */}
           <div className="max-h-52 overflow-y-auto">
-            {loading && list.length === 0 && (
-              <div className="py-6 text-center text-sm text-gray-400">Memuat...</div>
+            {loading && fullList.length === 0 && (
+              <div className="py-6 text-center text-sm text-gray-400">Memuat daftar sekolah...</div>
             )}
-            {!loading && list.length === 0 && (
+            {error && !loading && (
+              <div className="py-6 text-center text-sm text-red-400">
+                Gagal memuat data. Periksa koneksi internet.
+              </div>
+            )}
+            {!loading && !error && list.length === 0 && fullList.length > 0 && (
               <div className="py-6 text-center text-sm text-gray-400">
-                {query.length >= 2 ? 'Sekolah tidak ditemukan' : 'Ketik nama sekolah untuk mencari'}
+                Sekolah tidak ditemukan di {KAB_KOTA_JATENG.find(k => k.kode === kabKota)?.nama ?? 'daerah ini'}
+              </div>
+            )}
+            {!loading && !error && fullList.length === 0 && !loading && (
+              <div className="py-6 text-center text-sm text-gray-400">
+                Tidak ada sekolah {pendidikan} ditemukan di daerah ini
               </div>
             )}
             {list.map(s => (
@@ -240,15 +246,16 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
             ))}
           </div>
 
-          {query.length >= 2 && (
-            <div className="px-3 py-2 text-xs text-gray-400 border-t border-gray-100">
-              Data dari database nasional KEMDIKBUD
-            </div>
-          )}
+          <div className="px-3 py-2 text-xs text-gray-400 border-t border-gray-100 flex items-center justify-between">
+            <span>Data dari database nasional KEMDIKBUD</span>
+            {!loading && fullList.length > 0 && (
+              <span>{list.length} sekolah</span>
+            )}
+          </div>
         </div>
       )}
 
-      {value && list.find(s => s.sekolah === value)?.isTarakanita && (
+      {value && selectedIsTarakanita && (
         <p className="text-xs text-brand-800 font-semibold mt-1 flex items-center gap-1">
           <CheckCircle size={11} /> Status Tarakanita otomatis aktif
         </p>
