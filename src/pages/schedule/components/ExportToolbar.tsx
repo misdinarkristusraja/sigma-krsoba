@@ -154,8 +154,8 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
       })()
     : 'Sabtu';
 
-  // Footer: LATIHAN row (selalu tampil di bawah tabel utama)
-  const latihanFooter = `
+  // Footer: LATIHAN row — hanya tampil jika event punya latihan
+  const latihanFooter = ev.tanpa_latihan ? '' : `
     <tr>
       <td colspan="4" style="
         border:${BORDER_OUTER};border-top:${BORDER_SLOT};padding:10px 12px;text-align:center;
@@ -441,16 +441,18 @@ function buildCombinedHTML(eventsWithAssignments: Array<{ ev: any; assignments: 
       ? ` | PELATIH: ${pelatihNicks.map(n => { const f = pelatihOptions.find(p => p.nickname === n); return (f?.nama_panggilan || n).toUpperCase(); }).join(', ')}`
       : '';
 
-    allRows += `
-      <tr>
-        <td colspan="4" style="
-          border:${BORDER};border-left:${BORDER_OUTER};border-right:${BORDER_OUTER};
-          padding:8px 12px;text-align:center;
-          font-family:${FONT};font-size:${FS_FTR};font-weight:bold;
-          background:#fff;letter-spacing:0.5px;">
-          LATIHAN : ${latihanHari.toUpperCase()}${latihanJam ? ' (' + latihanJam + ')' : ''}${pelatihStr}
-        </td>
-      </tr>`;
+    if (!ev.tanpa_latihan) {
+      allRows += `
+        <tr>
+          <td colspan="4" style="
+            border:${BORDER};border-left:${BORDER_OUTER};border-right:${BORDER_OUTER};
+            padding:8px 12px;text-align:center;
+            font-family:${FONT};font-size:${FS_FTR};font-weight:bold;
+            background:#fff;letter-spacing:0.5px;">
+            LATIHAN : ${latihanHari.toUpperCase()}${latihanJam ? ' (' + latihanJam + ')' : ''}${pelatihStr}
+          </td>
+        </tr>`;
+    }
   });
 
   return `

@@ -50,8 +50,12 @@ export default function ScheduleWeeklyPage() {
   const [savingPic, setSavingPic]           = useState(false);
 
   // Multi-select export
+  const [selectMode,        setSelectMode]        = useState(false);
   const [selectedExportIds, setSelectedExportIds] = useState<Set<string>>(new Set());
   const [exportingCombined, setExportingCombined] = useState(false);
+
+  function enterSelectMode() { setSelectMode(true); }
+  function exitSelectMode()  { setSelectMode(false); setSelectedExportIds(new Set()); }
 
   function toggleExportSelect(id: string) {
     setSelectedExportIds(prev => {
@@ -66,6 +70,7 @@ export default function ScheduleWeeklyPage() {
     setExportingCombined(true);
     await exportCombinedPNG(selected, picOptions);
     setExportingCombined(false);
+    exitSelectMode();
   }
 
   // Pelatih batch state
@@ -379,6 +384,13 @@ export default function ScheduleWeeklyPage() {
           <button onClick={() => setShowAddMisa(true)} className="btn-outline gap-2">
             + Misa Khusus
           </button>
+          <button
+            onClick={selectMode ? exitSelectMode : enterSelectMode}
+            className={`btn-outline gap-2 ${selectMode ? 'ring-2 ring-brand-500 bg-brand-50' : ''}`}
+          >
+            <ImageDown size={16}/>
+            {selectMode ? 'Batal Pilih' : 'Export Gabungan'}
+          </button>
         </div>
       </div>
 
@@ -414,8 +426,8 @@ export default function ScheduleWeeklyPage() {
             </div>
           ) : (
             <>
-            {/* Floating export bar */}
-            {selectedExportIds.size > 0 && (
+            {/* Floating export bar — hanya muncul saat ada yang dipilih */}
+            {selectMode && selectedExportIds.size > 0 && (
               <div className="sticky top-2 z-20 flex items-center gap-3 bg-brand-800 text-white px-4 py-2.5 rounded-xl shadow-lg">
                 <span className="text-sm font-semibold">{selectedExportIds.size} jadwal dipilih</span>
                 <button
@@ -427,12 +439,20 @@ export default function ScheduleWeeklyPage() {
                   {exportingCombined ? 'Exporting...' : 'Export Gabungan PNG'}
                 </button>
                 <button
-                  onClick={() => setSelectedExportIds(new Set())}
+                  onClick={exitSelectMode}
                   className="text-white/70 hover:text-white"
                   title="Batal pilih semua"
                 >
                   <XIcon size={16}/>
                 </button>
+              </div>
+            )}
+
+            {/* Hint bar saat selectMode aktif tapi belum pilih */}
+            {selectMode && selectedExportIds.size === 0 && (
+              <div className="sticky top-2 z-20 flex items-center gap-3 bg-gray-700 text-white px-4 py-2.5 rounded-xl shadow-lg">
+                <span className="text-sm">Centang jadwal yang ingin digabung...</span>
+                <button onClick={exitSelectMode} className="ml-auto text-white/70 hover:text-white"><XIcon size={16}/></button>
               </div>
             )}
 
@@ -443,16 +463,18 @@ export default function ScheduleWeeklyPage() {
                 const vigili     = vigiliEvents.find((v: any) => v.tanggal_tugas === dayBefore) || null;
                 const isSelected = selectedExportIds.has(ev.id);
                 return (
-                  <div key={ev.id} className={`relative rounded-2xl transition-all ${isSelected ? 'ring-2 ring-brand-500 ring-offset-2' : ''}`}>
-                    <label className="absolute top-3 left-3 z-10 flex items-center gap-1.5 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleExportSelect(ev.id)}
-                        className="w-4 h-4 accent-brand-700 rounded"
-                      />
-                      <span className="text-xs font-medium text-gray-600 bg-white/80 px-1 rounded">pilih</span>
-                    </label>
+                  <div key={ev.id} className={`relative rounded-2xl transition-all ${selectMode && isSelected ? 'ring-2 ring-brand-500 ring-offset-2' : ''}`}>
+                    {selectMode && (
+                      <label className="absolute top-3 left-3 z-10 flex items-center gap-1.5 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleExportSelect(ev.id)}
+                          className="w-4 h-4 accent-brand-700 rounded"
+                        />
+                        <span className="text-xs font-medium text-gray-600 bg-white/80 px-1 rounded">pilih</span>
+                      </label>
+                    )}
                     <EventCard ev={ev} vigili={vigili} picOptions={picOptions}
                       onEdit={setEditEvent} onDelete={setDeleteConf}
                       onPublish={publishEvent} onUnpublish={unpublishEvent}
