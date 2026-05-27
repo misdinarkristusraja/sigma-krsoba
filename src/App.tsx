@@ -31,6 +31,7 @@ const JadwalSayaPage     = lazy(() => import('./pages/JadwalSayaPage'));
 const DirectoryPage      = lazy(() => import('./pages/DirectoryPage'));
 const AnalisisPage       = lazy(() => import('./pages/AnalisisPage'));
 const PublicSchedule     = lazy(() => import('./pages/ScheduleDailyPage').then(m => ({ default: m.PublicSchedulePage })));
+const JadwalMisa         = lazy(() => import('./pages/ScheduleDailyPage').then(m => ({ default: m.InternalSchedulePage })));
 const NotFound           = lazy(() => import('./pages/ScheduleDailyPage').then(m => ({ default: m.NotFoundPage })));
 
 const ADMIN = ['Administrator'];
@@ -124,6 +125,7 @@ function AppRoutes() {
 
             <Route path="/jadwal-mingguan" element={<ProtectedRoute roles={PENG}><ErrorBoundary><ScheduleWeekly/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/jadwal-harian"   element={<ErrorBoundary><ScheduleDaily/></ErrorBoundary>}/>
+            <Route path="/jadwal-misa"    element={<ErrorBoundary><JadwalMisa/></ErrorBoundary>}/>
             <Route path="/scan-qr"         element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanPage/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/scan-latihan"   element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanLatihanPage/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/presensi"        element={<ProtectedRoute roles={STAFF}><ErrorBoundary><AttendancePage/></ErrorBoundary></ProtectedRoute>}/>

@@ -15,7 +15,7 @@ import {
 } from 'recharts';
 import {
   Calendar, Clock, Trophy, ArrowLeftRight, QrCode,
-  CheckCircle, AlertTriangle, ChevronRight, Star, Zap, Bell,
+  CheckCircle, AlertTriangle, ChevronRight, Star, Zap, Bell, PlayCircle,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useState, useEffect } from 'react';
@@ -398,6 +398,12 @@ export default function DashboardPage() {
                 <span className="text-sm font-medium text-gray-700">Kartu Anggota</span>
                 <ChevronRight size={16} className="ml-auto text-gray-400" />
               </Link>
+              {/* TODO: ganti href="#" dengan URL video tutorial dari pengurus */}
+              <a href="#" target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
+                <PlayCircle size={18} className="text-brand-800" />
+                <span className="text-sm font-medium text-gray-700">Video Tutorial</span>
+                <ChevronRight size={16} className="ml-auto text-gray-400" />
+              </a>
             </div>
           </div>
 

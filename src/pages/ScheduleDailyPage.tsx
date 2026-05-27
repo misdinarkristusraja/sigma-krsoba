@@ -4,6 +4,7 @@ const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate, getLiturgyClass } from '../lib/utils';
 import { getLiturgiByDate, getLiturgiByMonth, HARI_RAYA_NO_HARIAN } from '../lib/liturgiData2026';
+import { LiturgyBadge } from '../components/ui/LiturgyBadge';
 import { toPng } from 'html-to-image';
 import {
   CalendarDays, Download, Zap, ChevronLeft, ChevronRight,
@@ -578,19 +579,125 @@ export function ScheduleDailyPage() {
 }
 
 // ─── Public Schedule ────────────────────────────────────────
-export function PublicSchedulePage() {
+const SLOT_LABELS_PUB: Record<number, string> = {
+  1: 'Sabtu 17:30', 2: 'Minggu 06:00', 3: 'Minggu 08:00', 4: 'Minggu 17:30',
+};
+const LITURGY_BORDER: Record<string, string> = {
+  Hijau:     'border-green-500',
+  Merah:     'border-red-600',
+  Putih:     'border-amber-400',
+  Ungu:      'border-purple-500',
+  MerahMuda: 'border-pink-400',
+  Hitam:     'border-gray-600',
+};
+
+export function PublicSchedulePage({ internal = false }: { internal?: boolean }) {
   const [events, setEvents] = useState<any[]>([]);
   const [loading, setLoad]  = useState(true);
+
   useEffect(() => {
     supabase.from('events')
-      .select(`*, assignments(slot_number, users(nama_panggilan))`)
+      .select(`
+        id, perayaan, nama_event, tanggal_tugas, tanggal_latihan, tanpa_latihan,
+        tipe_event, jumlah_misa, warna_liturgi, latihan_times, latihan_notes,
+        assignments(slot_number, users(nama_panggilan)),
+        event_pelatih(nama, urutan)
+      `)
       .gte('tanggal_tugas', toLocalISO(new Date()))
-      .not('tipe_event','eq','Misa_Harian')
+      .not('tipe_event', 'eq', 'Misa_Harian')
       .eq('is_draft', false)
-      .order('tanggal_tugas').limit(8)
-      .then(({ data }: any) => { setEvents(data||[]); setLoad(false); });
+      .order('tanggal_tugas')
+      .limit(10)
+      .then(({ data }: any) => { setEvents(data || []); setLoad(false); });
   }, []);
-  const SLOT_LABELS: Record<number, string> = { 1:'Sabtu 17:30', 2:'Minggu 06:00', 3:'Minggu 08:00', 4:'Minggu 17:30' };
+
+  const cards = loading
+    ? [1, 2, 3].map(i => <div key={i} className="h-40 rounded-2xl bg-gray-200 animate-pulse"/>)
+    : events.length === 0
+      ? (
+        <div className="text-center py-14">
+          <CalendarDays size={40} className="mx-auto text-gray-300 mb-3"/>
+          <p className="text-gray-500">Belum ada jadwal mendatang</p>
+        </div>
+      )
+      : events.map(ev => {
+          const lc           = getLiturgyClass(ev.warna_liturgi);
+          const isMisaKhusus = ev.tipe_event === 'Misa_Khusus';
+          const nSlots       = isMisaKhusus ? (ev.jumlah_misa || 1) : 4;
+          const asgn         = ev.assignments || [];
+          const borderCls    = LITURGY_BORDER[ev.warna_liturgi] || 'border-green-500';
+          const pelatihNicks = (ev.event_pelatih || [])
+            .sort((a: any, b: any) => a.urutan - b.urutan)
+            .map((p: any) => p.nama).filter(Boolean);
+          const latihanJam  = ev.latihan_times?.length ? ev.latihan_times[0] : (ev.latihan_notes?.trim() || '');
+          const latihanHari = ev.tanggal_latihan
+            ? ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][new Date(ev.tanggal_latihan + 'T00:00:00').getDay()]
+            : 'Sabtu';
+
+          return (
+            <div key={ev.id} className={`${internal ? 'card' : 'bg-white rounded-2xl shadow-sm p-5'} border-l-4 ${borderCls}`}>
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${lc.dot}`}/>
+                    <h3 className="font-bold text-gray-900 text-base">{ev.perayaan || ev.nama_event}</h3>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1 ml-4">
+                    {formatDate(ev.tanggal_tugas, 'EEEE, dd MMMM yyyy')}
+                  </p>
+                  {ev.tanggal_latihan && !ev.tanpa_latihan && (
+                    <p className="text-xs text-teal-600 mt-0.5 ml-4">
+                      🏃 Latihan: {latihanHari}{latihanJam ? ` (${latihanJam})` : ''} · {formatDate(ev.tanggal_latihan, 'dd MMM')}
+                    </p>
+                  )}
+                </div>
+                <LiturgyBadge warna={ev.warna_liturgi} className="flex-shrink-0"/>
+              </div>
+
+              {/* Slot rows */}
+              <div className="space-y-1.5 ml-1">
+                {Array.from({ length: nSlots }, (_, i) => i + 1).map(slot => {
+                  const names = asgn
+                    .filter((a: any) => a.slot_number === slot)
+                    .map((a: any) => a.users?.nama_panggilan)
+                    .filter(Boolean);
+                  if (!names.length) return null;
+                  const label = isMisaKhusus ? `Misa ${slot}` : (SLOT_LABELS_PUB[slot] || `Slot ${slot}`);
+                  return (
+                    <div key={slot} className="flex gap-3 text-sm items-baseline">
+                      <span className="text-gray-400 w-28 flex-shrink-0 text-xs">{label}</span>
+                      <span className="font-medium text-gray-800 leading-relaxed">{names.join(' / ')}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Pelatih footer */}
+              {pelatihNicks.length > 0 && (
+                <div className="mt-3 pt-3 border-t border-gray-100 flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-gray-400">Pelatih:</span>
+                  {pelatihNicks.map((nick: string) => (
+                    <span key={nick} className="text-xs bg-teal-50 text-teal-700 px-2 py-0.5 rounded-full font-medium">{nick}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        });
+
+  if (internal) {
+    return (
+      <div className="space-y-5">
+        <div>
+          <h1 className="page-title">Jadwal Misa</h1>
+          <p className="page-subtitle">Jadwal mendatang yang sudah dipublish</p>
+        </div>
+        <div className="space-y-4">{cards}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-brand-800 text-white py-8 px-4 text-center">
@@ -598,33 +705,21 @@ export function PublicSchedulePage() {
         <p className="text-brand-200 text-sm">Jadwal Misdinar Paroki Kristus Raja Solo Baru</p>
         <p className="text-brand-300 text-xs italic mt-1">Serve the Lord with Gladness</p>
       </div>
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-4">
-        {loading ? [1,2,3].map(i=><div key={i} className="skeleton h-40 rounded-xl"/>) :
-         events.map(ev => {
-          const asgn = ev.assignments||[];
-          return (
-            <div key={ev.id} className="card">
-              <h3 className="font-bold text-gray-900">{ev.perayaan||ev.nama_event}</h3>
-              <p className="text-sm text-gray-500 mb-3">{formatDate(ev.tanggal_tugas,'EEEE, dd MMMM yyyy')}</p>
-              {[1,2,3,4].map(slot => {
-                const names = asgn.filter((a: any)=>a.slot_number===slot).map((a: any)=>a.users?.nama_panggilan);
-                return names.length ? (
-                  <div key={slot} className="flex gap-3 mb-2 text-sm">
-                    <span className="text-gray-400 w-28 flex-shrink-0">{SLOT_LABELS[slot]}</span>
-                    <span className="font-medium">{names.join(' / ')}</span>
-                  </div>
-                ) : null;
-              })}
-            </div>
-          );
-        })}
-        <div className="text-center pt-4">
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <div className="space-y-4">{cards}</div>
+        <div className="text-center pt-6">
           <a href="/login" className="btn-primary">Login ke SIGMA</a>
-          <p className="text-xs text-gray-400 mt-3">Daftar? <a href="/daftar" className="text-brand-800 underline">Klik di sini</a></p>
+          <p className="text-xs text-gray-400 mt-3">
+            Daftar? <a href="/daftar" className="text-brand-800 underline">Klik di sini</a>
+          </p>
         </div>
       </div>
     </div>
   );
+}
+
+export function InternalSchedulePage() {
+  return <PublicSchedulePage internal />;
 }
 
 export function NotFoundPage() {
