@@ -267,7 +267,9 @@ export default function SwapPage() {
   }
 
   async function offerToBoard(req: any) {
-    await supabase.from('swap_requests').update({ status:'Offered', is_penawaran:true }).eq('id', req.id);
+    const { data, error } = await supabase.rpc('offer_to_board', { p_request_id: req.id });
+    if (error) { toast.error('Gagal: ' + error.message); return; }
+    if (!data?.ok) { toast.error(data?.error || 'Gagal menawarkan ke papan'); return; }
     toast.success('Ditawarkan ke papan');
     loadData();
   }
