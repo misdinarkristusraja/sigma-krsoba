@@ -273,6 +273,9 @@ export default function AdminPage() {
   const [reregYear,      setReregYear]      = useState<string>('');
   const [reregStats,     setReregStats]     = useState<{ done: number; total: number } | null>(null);
   const [reregResetting, setReregResetting] = useState(false);
+  const [reregList,      setReregList]      = useState<any[]>([]);
+  const [reregListLoading, setReregListLoading] = useState(false);
+  const [cancellingId,   setCancellingId]   = useState<string | null>(null);
 
   // State untuk Auto-Retire
   const [autoRetiring,   setAutoRetiring]   = useState(false);
@@ -413,16 +416,37 @@ export default function AdminPage() {
   async function loadReregStats(year: string) {
     if (!year) return;
     const yr = parseInt(year);
-    const yearStart = `${yr}-01-01`;
     const [{ count: done }, { count: total }] = await Promise.all([
       supabase.from('reregistrations').select('id', { count: 'exact', head: true }).eq('tahun', yr),
-      // Exclude anggota yang mendaftar manual tahun rereg (registration_year = tahun)
-      // null = import/lama → wajib rereg → masuk hitungan
       supabase.from('users').select('id', { count: 'exact', head: true })
         .in('status', ['Active', 'Pending']).neq('role', 'Administrator')
         .or(`registration_year.is.null,registration_year.neq.${yr}`),
     ]);
     setReregStats({ done: done || 0, total: total || 0 });
+    loadReregList(year);
+  }
+
+  async function loadReregList(year: string) {
+    if (!year) return;
+    setReregListLoading(true);
+    const { data } = await supabase
+      .from('reregistrations')
+      .select('id, tahun, submitted_at, users(nama_panggilan, nickname, lingkungan, pendidikan)')
+      .eq('tahun', parseInt(year))
+      .order('submitted_at', { ascending: false });
+    setReregList(data || []);
+    setReregListLoading(false);
+  }
+
+  async function cancelRereg(id: string, nama: string) {
+    if (!window.confirm(`Batalkan daftar ulang milik ${nama}?\nMereka bisa daftar ulang lagi setelahnya.`)) return;
+    setCancellingId(id);
+    const { error } = await supabase.from('reregistrations').delete().eq('id', id);
+    setCancellingId(null);
+    if (error) { toast.error('Gagal batalkan: ' + error.message); return; }
+    toast.success(`Daftar ulang ${nama} dibatalkan`);
+    setReregList(prev => prev.filter(r => r.id !== id));
+    setReregStats(prev => prev ? { ...prev, done: prev.done - 1 } : null);
   }
 
   async function resetReregistrations() {
@@ -650,6 +674,53 @@ export default function AdminPage() {
               <div className="bg-gray-50 rounded-xl px-4 py-3 text-center min-w-[100px]">
                 <p className="text-2xl font-black text-gray-700">{reregStats.total}</p>
                 <p className="text-xs text-gray-500">Total Anggota Aktif</p>
+              </div>
+            </div>
+          )}
+
+          {/* List yang sudah daftar ulang */}
+          {reregStats && reregStats.done > 0 && (
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
+                <span className="text-sm font-semibold text-gray-700">
+                  Sudah Daftar Ulang ({reregStats.done})
+                </span>
+                {reregListLoading && <span className="text-xs text-gray-400">Memuat...</span>}
+              </div>
+              <div className="max-h-64 overflow-y-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-xs text-gray-500">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-medium">Nama</th>
+                      <th className="px-4 py-2 text-left font-medium">Lingkungan</th>
+                      <th className="px-4 py-2 text-left font-medium">Tgl Submit</th>
+                      <th className="px-4 py-2"></th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {reregList.map(r => (
+                      <tr key={r.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-2.5">
+                          <span className="font-medium text-gray-900">{r.users?.nama_panggilan}</span>
+                          <span className="text-gray-400 text-xs ml-1.5">@{r.users?.nickname}</span>
+                        </td>
+                        <td className="px-4 py-2.5 text-gray-500 text-xs">{r.users?.lingkungan || '—'}</td>
+                        <td className="px-4 py-2.5 text-gray-500 text-xs">
+                          {r.submitted_at ? new Date(r.submitted_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <button
+                            onClick={() => cancelRereg(r.id, r.users?.nama_panggilan || r.users?.nickname)}
+                            disabled={cancellingId === r.id}
+                            className="text-xs text-red-500 hover:text-red-700 hover:underline disabled:opacity-40 transition-colors"
+                          >
+                            {cancellingId === r.id ? 'Membatalkan...' : 'Batalkan'}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
