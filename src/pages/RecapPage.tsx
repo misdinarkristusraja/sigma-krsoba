@@ -3,7 +3,7 @@ import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { generateICS, downloadICS } from '../lib/calendarExport';
 import { useAuth } from '../contexts/AuthContext';
-import { formatDate, downloadCSV, hitungPoin, getWeekStartFromDate, getWeekEndFromStart, toLocalISO } from '../lib/utils';
+import { formatDate, downloadCSV, hitungPoin, getWeekStartFromDate, getWeekEndFromStart, toLocalISO, getWeekPeriod } from '../lib/utils';
 import { BarChart2, Download, TrendingUp, Calendar, RefreshCw, Info, Search } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 
@@ -118,12 +118,19 @@ function buildRekap({ assignments, scans, swaps, penggantiSwaps, dateFrom, dateT
     is_swap_pengganti:   false,
   });
 
-  // event_id → week_start map (from all assignments, not just active)
+  // event_id → week_start map: built from assignments AND from scan.events join.
+  // Needed so walkin scans (no assignment row) still resolve to the event's week.
   const eventIdToWeekStart: Record<string, string> = {};
   (assignments || []).forEach((a: any) => {
     if (a?.event_id && a?.tanggal_tugas) {
       const ws = getWeekStartFromDate(a.tanggal_tugas);
       if (ws) eventIdToWeekStart[a.event_id] = ws;
+    }
+  });
+  (scans || []).forEach((s: any) => {
+    if (s?.event_id && s?.events?.tanggal_tugas && !eventIdToWeekStart[s.event_id]) {
+      const ws = getWeekStartFromDate(s.events.tanggal_tugas);
+      if (ws) eventIdToWeekStart[s.event_id] = ws;
     }
   });
 
@@ -141,22 +148,25 @@ function buildRekap({ assignments, scans, swaps, penggantiSwaps, dateFrom, dateT
 
   // Pass 2 — scan records
   (scans || []).forEach((s: any) => {
-    if (!s) return;
-    const dateStr = s.timestamp?.split('T')[0];
-    if (!dateStr) return;
-    if (dateFrom && dateStr < dateFrom) return;
-    if (dateTo   && dateStr > dateTo)   return;
+    if (!s || !s.timestamp) return;
 
     const t = s.scan_type;
     const isLatihan = t === 'latihan' || t === 'walkin_latihan';
 
-    // For latihan scans: use the event's tanggal_tugas week if event_id is known.
-    // This handles cases where latihan is on a different day (e.g. Friday) than
-    // the event's misa (e.g. Sunday) — the scan date would otherwise map to the
-    // wrong week under the Sabtu-07:00 boundary rule.
-    const wsFromEvent = isLatihan && s.event_id ? eventIdToWeekStart[s.event_id] : null;
-    const ws = wsFromEvent || getWeekStartFromDate(dateStr);
-    if (!ws) return;
+    // Use full UTC timestamp → WIB-aware week boundary (Sabtu 07:00 WIB).
+    // getWeekPeriod handles the Saturday-before-07:00-WIB → previous week case.
+    const weekPeriod = getWeekPeriod(s.timestamp);
+    const wsFromTimestamp = weekPeriod.start;
+
+    // Date-range filter: compare scan's week_start against filter range
+    if (dateFrom && wsFromTimestamp < dateFrom) return;
+    if (dateTo   && wsFromTimestamp > dateTo)   return;
+
+    // If event_id known: use event's tanggal_tugas week — canonical and independent
+    // of scan timestamp timezone issues or pre-07:00 Saturday edge cases.
+    const wsFromEvent = s.event_id ? eventIdToWeekStart[s.event_id] : null;
+    const ws = wsFromEvent || wsFromTimestamp;
+
     if (!weeks[ws]) weeks[ws] = mkWeek(ws);
 
     if (isLatihan) weeks[ws].is_hadir_latihan = true;
@@ -252,7 +262,7 @@ export default function RecapPage() {
         .select('id, event_id, events(tanggal_tugas, tanggal_latihan, tipe_event, is_draft)')
         .eq('user_id', uid),
       supabase.from('scan_records')
-        .select('scan_type, timestamp, is_walk_in, event_id')
+        .select('scan_type, timestamp, is_walk_in, event_id, events(tanggal_tugas)')
         .eq('user_id', uid)
         .order('timestamp', { ascending: false }),
       supabase.from('swap_requests')
@@ -340,7 +350,7 @@ export default function RecapPage() {
         .select('id, user_id, event_id, events(tanggal_tugas, tanggal_latihan, tipe_event, is_draft)')
         .order('id')),
       fetchAll('scan_records', (t: any) => supabase.from(t)
-        .select('user_id, scan_type, timestamp, is_walk_in, event_id')
+        .select('user_id, scan_type, timestamp, is_walk_in, event_id, events(tanggal_tugas)')
         .order('timestamp', { ascending: false })),
       fetchAll('swap_requests', (t: any) => supabase.from(t)
         .select('requester_id, assignment_id, status')
