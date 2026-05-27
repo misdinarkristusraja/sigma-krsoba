@@ -435,13 +435,14 @@ export function ScheduleDailyPage() {
           </div>
 
           {/* Summary cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
             {[
               { label: 'Total Aktif',  value: optinList.length,        color: 'bg-gray-50',   text: 'text-gray-700' },
               { label: 'Bisa',         value: optinStats.bisa,         color: 'bg-green-50',  text: 'text-green-700' },
               { label: 'Tidak Bisa',   value: optinStats.tidakBisa,    color: 'bg-red-50',    text: 'text-red-700' },
               { label: 'Pas Libur',    value: optinStats.pasLibur,     color: 'bg-yellow-50', text: 'text-yellow-700' },
               { label: 'Belum Isi',    value: optinStats.belumIsi,     color: 'bg-orange-50', text: 'text-orange-700' },
+              { label: 'Tarakanita',   value: optinStats.tarakanita,   color: 'bg-blue-50',   text: 'text-blue-700' },
             ].map(s => (
               <div key={s.label} className={`card ${s.color} border-0 text-center p-3`}>
                 <div className={`text-2xl font-black ${s.text}`}>{s.value}</div>

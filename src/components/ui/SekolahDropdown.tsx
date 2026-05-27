@@ -1,7 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, Loader2, ChevronDown, CheckCircle, MapPin } from 'lucide-react';
 
-const BASE = 'https://api-sekolah-indonesia.vercel.app';
+// Gunakan edge function proxy agar tidak tergantung CORS browser
+const PROXY_URL  = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/sekolah-proxy`;
+const PROXY_HEADERS = {
+  'apikey':        import.meta.env.VITE_SUPABASE_ANON_KEY as string,
+  'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY as string}`,
+};
 const NPSN_TARAKANITA = '20310748';
 
 const JENJANG_MAP: Record<string, string> = {
@@ -84,34 +89,36 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
   }
 
   // Load all schools for selected kab/kota + jenjang (client-side filtering after)
-  const loadForKabKota = useCallback(async (j: string, kk: string) => {
+  const loadForKabKota = useCallback(async (j: string, kk: string, signal?: AbortSignal) => {
     setLoading(true);
     setError(false);
     try {
-      const res  = await fetch(`${BASE}/sekolah/${j}?kab_kota=${kk}&perPage=200`);
-      if (!res.ok) throw new Error('API error');
+      const res  = await fetch(
+        `${PROXY_URL}?jenjang=${j}&kab_kota=${kk}`,
+        { headers: PROXY_HEADERS, signal }
+      );
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      let data: Sekolah[] = mapData(json.dataSekolah || []);
-      // Fallback: jika kab/kota kosong, coba provinsi Jawa Tengah
-      if (data.length === 0) {
-        const res2  = await fetch(`${BASE}/sekolah/${j}?provinsi=030000&perPage=50`);
-        const json2 = await res2.json();
-        data = mapData(json2.dataSekolah || []);
-      }
+      if (signal?.aborted) return;
+      const data: Sekolah[] = mapData(json.data || []);
       setFullList(data);
-    } catch {
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      console.error('[SekolahDropdown] load error:', err);
       setError(true);
       setFullList([]);
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, []);
 
-  // Reload when dropdown opens or kab/kota or jenjang changes
+  // Reload when dropdown opens or kab/kota or jenjang changes; cancel stale requests
   useEffect(() => {
     if (!open || !jenjang) return;
+    const ctrl = new AbortController();
     setQuery('');
-    loadForKabKota(jenjang, kabKota);
+    loadForKabKota(jenjang, kabKota, ctrl.signal);
+    return () => ctrl.abort();
   }, [open, jenjang, kabKota, loadForKabKota]);
 
   // Client-side filter — instant, no debounce needed

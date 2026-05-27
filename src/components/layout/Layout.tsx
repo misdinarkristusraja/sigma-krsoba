@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import NotificationBell from '../ui/NotificationBell';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard, Users, Calendar, CalendarDays, QrCode,
   ArrowLeftRight, BarChart2, CreditCard, Database,
   Settings, LogOut, Menu, X, Church, AlertTriangle,
-  ClipboardList, RefreshCw, ClipboardCheck, PartyPopper, ListChecks, BookUser, Star, Microscope, Globe,
+  ClipboardList, RefreshCw, ClipboardCheck, PartyPopper, ListChecks,
+  BookUser, Star, Microscope, Globe, ChevronDown,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { cn, truncate } from '../../lib/utils';
@@ -16,29 +17,85 @@ const STAFF = ['Administrator', 'Pengurus', 'Pelatih'];
 const PENG  = ['Administrator', 'Pengurus'];
 const ADMIN = ['Administrator'];
 
-const NAV_ITEMS = [
-  { icon: LayoutDashboard, label: 'Dashboard',       path: '/dashboard',       roles: null  },
-  { icon: Users,           label: 'Anggota',         path: '/anggota',         roles: STAFF },
-  { icon: BookUser,        label: 'Direktori',       path: '/direktori',       roles: PENG  },
-  { icon: Microscope,      label: 'Analisis Kualitas', path: '/analisis',       roles: PENG  },
-  { icon: Globe,           label: 'Jadwal Misa',     path: '/jadwal-misa',     roles: null  },
-  { icon: Calendar,        label: 'Jadwal Mingguan', path: '/jadwal-mingguan', roles: PENG  },
-  { icon: CalendarDays,    label: 'Misa Harian',     path: '/jadwal-harian',   roles: null  },
-  { icon: QrCode,          label: 'Scan QR',         path: '/scan-qr',         roles: STAFF },
-  { icon: Star,            label: 'Scan Latihan',    path: '/scan-latihan',    roles: STAFF },
-  { icon: ClipboardCheck,  label: 'Presensi Acara',  path: '/presensi',        roles: STAFF },
-  { icon: PartyPopper,     label: 'Acara',            path: '/acara',           roles: PENG  },
-  { icon: ClipboardList,   label: 'Riwayat Scan',    path: '/riwayat-scan',    roles: STAFF },
-  { icon: ListChecks,      label: 'Jadwal Saya',     path: '/jadwal-saya',     roles: null  },
-  { icon: ArrowLeftRight,  label: 'Tukar Jadwal',    path: '/tukar-jadwal',    roles: null  },
-  { icon: BarChart2,       label: 'Rekap & Poin',    path: '/rekap',           roles: null  },
-  { icon: CreditCard,      label: 'Kartu Anggota',   path: '/kartu',           roles: null  },
-  { icon: RefreshCw,       label: 'Daftar Ulang',    path: '/daftar-ulang',    roles: null  },
-  { icon: Database,        label: 'Migrasi Data',    path: '/migrasi',         roles: ADMIN, configKey: 'migration_enabled' },
-  { icon: Settings,        label: 'Admin & Config',  path: '/admin',           roles: ADMIN },
+type NavItem = {
+  icon: React.ElementType;
+  label: string;
+  path: string;
+  roles: string[] | null;
+  configKey?: string;
+};
+
+type NavGroup = {
+  key: string;
+  label: string;
+  icon: React.ElementType;
+  items: NavItem[];
+};
+
+const NAV_GROUPS: NavGroup[] = [
+  {
+    key: 'jadwal',
+    label: 'Jadwal',
+    icon: CalendarDays,
+    items: [
+      { icon: Globe,          label: 'Cek Jadwal Semua', path: '/jadwal-misa',     roles: null },
+      { icon: Calendar,       label: 'Buat Mingguan',    path: '/jadwal-mingguan', roles: PENG },
+      { icon: CalendarDays,   label: 'Buat Harian',      path: '/jadwal-harian',   roles: null },
+      { icon: ListChecks,     label: 'Cek Jadwal Saya',  path: '/jadwal-saya',     roles: null },
+      { icon: ArrowLeftRight, label: 'Tukar Jadwal',     path: '/tukar-jadwal',    roles: null },
+    ],
+  },
+  {
+    key: 'presensi',
+    label: 'Presensi',
+    icon: ClipboardCheck,
+    items: [
+      { icon: QrCode,         label: 'Scan QR',         path: '/scan-qr',      roles: STAFF },
+      { icon: Star,           label: 'Latihan Khusus',  path: '/scan-latihan', roles: STAFF },
+      { icon: ClipboardCheck, label: 'Presensi Acara',  path: '/presensi',     roles: STAFF },
+      { icon: ClipboardList,  label: 'Riwayat Scan',    path: '/riwayat-scan', roles: STAFF },
+    ],
+  },
+  {
+    key: 'anggota',
+    label: 'Data Anggota',
+    icon: Users,
+    items: [
+      { icon: Users,      label: 'Anggota',          path: '/anggota',   roles: STAFF },
+      { icon: BookUser,   label: 'Direktori',         path: '/direktori', roles: PENG  },
+      { icon: Microscope, label: 'Analisis Kualitas', path: '/analisis',  roles: PENG  },
+    ],
+  },
+  {
+    key: 'rekap',
+    label: 'Profil & Rekap',
+    icon: BarChart2,
+    items: [
+      { icon: BarChart2,  label: 'Rekap & Poin',  path: '/rekap',        roles: null },
+      { icon: CreditCard, label: 'Kartu Anggota', path: '/kartu',        roles: null },
+      { icon: RefreshCw,  label: 'Daftar Ulang',  path: '/daftar-ulang', roles: null },
+    ],
+  },
+  {
+    key: 'kegiatan',
+    label: 'Kegiatan',
+    icon: PartyPopper,
+    items: [
+      { icon: PartyPopper, label: 'Acara', path: '/acara', roles: PENG },
+    ],
+  },
+  {
+    key: 'admin',
+    label: 'Admin',
+    icon: Settings,
+    items: [
+      { icon: Database, label: 'Migrasi Data',   path: '/migrasi', roles: ADMIN, configKey: 'migration_enabled' },
+      { icon: Settings, label: 'Admin & Config', path: '/admin',   roles: ADMIN },
+    ],
+  },
 ];
 
-// Bottom tab bar shows 5 most-used items for mobile
+// Bottom tab bar — 5 most-used items for mobile
 const BOTTOM_TAB_ITEMS = [
   { icon: LayoutDashboard, label: 'Home',    path: '/dashboard'     },
   { icon: CalendarDays,    label: 'Harian',  path: '/jadwal-harian' },
@@ -49,11 +106,14 @@ const BOTTOM_TAB_ITEMS = [
 
 export default function Layout() {
   const { profile, role, loading: authLoading, signOut } = useAuth();
-  const navigate = useNavigate();
+  const navigate  = useNavigate();
+  const location  = useLocation();
   const [open,       setOpen]      = useState(false);
-  const [hiddenKeys, setHiddenKeys]= useState<Record<string, boolean>>({}); // { migration_enabled: false }
+  const [hiddenKeys, setHiddenKeys]= useState<Record<string, boolean>>({});
+  const [openGroups, setOpenGroups]= useState<Set<string>>(
+    () => new Set(NAV_GROUPS.map(g => g.key))
+  );
 
-  // Fetch config flags yang bisa sembunyikan menu
   useEffect(() => {
     supabase
       .from('system_config')
@@ -73,16 +133,23 @@ export default function Layout() {
     navigate('/login');
   }
 
-  function canSeeItem(item: typeof NAV_ITEMS[0]) {
-    // Cek config flag (misal migration_enabled = false → sembunyikan)
+  function canSeeItem(item: NavItem) {
     if (item.configKey && hiddenKeys[item.configKey] === false) return false;
     if (!item.roles) return true;
-    if (!role) return true; // belum load profile → tampilkan semua dulu
+    if (!role) return true;
     return item.roles.includes(role);
   }
 
-  const visibleItems = NAV_ITEMS.filter(canSeeItem);
-  const displayName  = profile?.nama_panggilan || profile?.nickname || '...';
+  function toggleGroup(key: string) {
+    setOpenGroups(prev => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  const displayName = profile?.nama_panggilan || profile?.nickname || '...';
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -108,16 +175,63 @@ export default function Layout() {
       )}
 
       {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-0.5">
-        {visibleItems.map(item => (
-          <NavLink key={item.path} to={item.path} onClick={() => setOpen(false)}
-            className={({ isActive }) =>
-              cn('nav-item', isActive ? 'nav-item-active' : 'nav-item-inactive text-brand-100/80')
-            }>
-            <item.icon size={17}/>
-            <span className="text-sm">{item.label}</span>
-          </NavLink>
-        ))}
+      <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1">
+        {/* Dashboard — standalone, always visible */}
+        <NavLink to="/dashboard" onClick={() => setOpen(false)}
+          className={({ isActive }) =>
+            cn('nav-item', isActive ? 'nav-item-active' : 'nav-item-inactive text-brand-100/80')
+          }>
+          <LayoutDashboard size={17}/>
+          <span className="text-sm">Dashboard</span>
+        </NavLink>
+
+        {/* Grouped nav items */}
+        {NAV_GROUPS.map(group => {
+          const visibleItems = group.items.filter(canSeeItem);
+          if (!visibleItems.length) return null;
+
+          const isGroupActive = visibleItems.some(i => location.pathname === i.path);
+          const isOpen = openGroups.has(group.key);
+
+          return (
+            <div key={group.key}>
+              {/* Group header */}
+              <button
+                onClick={() => toggleGroup(group.key)}
+                className={cn(
+                  'w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-left transition-colors',
+                  isGroupActive
+                    ? 'text-white/90'
+                    : 'text-brand-200/70 hover:text-brand-100',
+                )}
+              >
+                <group.icon size={14} className="shrink-0"/>
+                <span className="text-[11px] font-semibold uppercase tracking-wider flex-1">
+                  {group.label}
+                </span>
+                <ChevronDown
+                  size={13}
+                  className={cn('shrink-0 transition-transform duration-200', isOpen ? 'rotate-0' : '-rotate-90')}
+                />
+              </button>
+
+              {/* Items */}
+              {isOpen && (
+                <div className="ml-2 pl-2 border-l border-brand-700/50 space-y-0.5 mt-0.5 mb-1">
+                  {visibleItems.map(item => (
+                    <NavLink key={item.path} to={item.path} onClick={() => setOpen(false)}
+                      className={({ isActive }) =>
+                        cn('nav-item py-1.5', isActive ? 'nav-item-active' : 'nav-item-inactive text-brand-100/80')
+                      }>
+                      <item.icon size={15}/>
+                      <span className="text-sm">{item.label}</span>
+                    </NavLink>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </nav>
 
       {/* Profile footer */}
@@ -176,7 +290,7 @@ export default function Layout() {
           </div>
         </header>
 
-        {/* Scrollable content — leave room for bottom tab on mobile */}
+        {/* Scrollable content */}
         <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
             <Outlet/>
@@ -203,7 +317,6 @@ export default function Layout() {
                 )}
               </NavLink>
             ))}
-            {/* More — opens drawer */}
             <button
               onClick={() => setOpen(true)}
               className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-gray-400 hover:text-gray-600 transition-colors"
