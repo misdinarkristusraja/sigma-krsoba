@@ -66,7 +66,7 @@ export default function JadwalSayaPage() {
         .from('assignments')
         .select(`
           id, slot_number,
-          events(
+          event:events(
             id, nama_event, perayaan, tipe_event,
             tanggal_tugas, tanggal_latihan, warna_liturgi,
             latihan_times,
@@ -78,8 +78,8 @@ export default function JadwalSayaPage() {
       if (error) throw error;
 
       const filtered = (data || [])
-        .filter((r: any) => r.events && r.events.tipe_event !== 'Misa_Harian')
-        .filter((r: any) => filter === 'semua' || r.events.tanggal_tugas >= today)
+        .filter((r: any) => r.event && r.event.tipe_event !== 'Misa_Harian')
+        .filter((r: any) => filter === 'semua' || r.event.tanggal_tugas >= today)
         .sort((a: any, b: any) =>
           (a.events?.tanggal_tugas || '').localeCompare(b.events?.tanggal_tugas || '')
         );
