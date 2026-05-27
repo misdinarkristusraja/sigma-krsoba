@@ -17,8 +17,9 @@ export function PriorityMonitor({ data, loading, onRefresh }: PriorityMonitorPro
       <div className="card bg-blue-50 border border-blue-200 space-y-2">
         <h3 className="font-bold text-blue-900 text-sm">Cara Rumus Prioritas Bekerja</h3>
         <div className="text-xs text-blue-800 space-y-1 leading-relaxed">
-          <p><strong>Skor</strong> = hari sejak tugas terakhir + bonus/penalti K1–K6</p>
-          <p>→ K1 +5, K2a +4, K2b/K3a/K3b +3, K3c/K4a +2, K4c -2, K6 -10</p>
+          <p><strong>Skor</strong> = hari sejak tugas terakhir + delta kondisi</p>
+          <p>→ Hadir (K1-K3c/K4a/K4c): -5 s/d -1 (kurangi prioritas)</p>
+          <p>→ K6 (absen) +10: naikkan prioritas agar cepat dijadwalkan ulang</p>
           <p>→ Belum pernah dijadwalkan = skor <strong>∞</strong> (prioritas tertinggi)</p>
           <p><strong>Persentase</strong> = min-max scaling dari distribusi skor nyata</p>
         </div>

@@ -51,8 +51,9 @@ export default function ScheduleWeeklyPage() {
   const [savingPelatih,   setSavingPelatih]   = useState(false);
 
   const INIT_MISA_FORM = {
-    tipe: 'Misa_Khusus', tanggal_tugas: '', tanggal_latihan: '',
+    tipe: 'Misa_Khusus_Biasa', tanggal_tugas: '', tanggal_latihan: '',
     perayaan: '', warna_liturgi: 'Putih', jumlah_misa: 1,
+    jumlah_petugas: 8, tanpa_latihan: false, auto_generate: false,
     slot_schedule: [{ tanggal: '', jam: '07.00' }], is_misa_besar: false,
   };
   const [addMisaForm, setAddMisaForm] = useState({ ...INIT_MISA_FORM });
@@ -165,27 +166,94 @@ export default function ScheduleWeeklyPage() {
   async function addMisaKhusus() {
     const f = addMisaForm;
     if (!f.tanggal_tugas || !f.perayaan) { toast.error('Tanggal dan nama perayaan wajib diisi'); return; }
-    const isMR = f.tipe === 'Mingguan_HariRaya';
-    let draftNote = null;
-    let tanggalLatihan = isMR ? f.tanggal_latihan : null;
-    if (!isMR) {
+
+    const isMR     = f.tipe === 'Mingguan_HariRaya';
+    const isBiasa  = f.tipe === 'Misa_Khusus_Biasa';
+    // Both Misa_Khusus and Misa_Khusus_Biasa stored as 'Misa_Khusus' tipe_event in DB
+    const dbTipe   = isMR ? 'Mingguan' : 'Misa_Khusus';
+    const nSlots   = isMR ? 4 : (f.slot_schedule?.length || 1);
+    const nPetugas = f.jumlah_petugas ?? 8;
+
+    let draftNote: string | null = null;
+    let tanggalLatihan: string | null = null;
+
+    if (isMR) {
+      tanggalLatihan = f.tanggal_latihan || null;
+    } else {
       const schedule = f.slot_schedule || [{ tanggal: f.tanggal_tugas, jam: '07.00' }];
       draftNote = `Jam: ${schedule.map((s: any, i: number) => `Slot ${i+1}: ${s.jam||'07.00'}|${s.tanggal||f.tanggal_tugas}`).join(' | ')}`;
-      tanggalLatihan = schedule[0]?.tanggal || f.tanggal_tugas;
+      // tanggal_latihan = latihan date if applicable
+      if (!f.tanpa_latihan && f.tanggal_latihan) {
+        tanggalLatihan = f.tanggal_latihan;
+      } else if (!f.tanpa_latihan && isBiasa) {
+        // default latihan = same day as first slot (e.g. a few hours before)
+        tanggalLatihan = schedule[0]?.tanggal || f.tanggal_tugas;
+      }
     }
-    const { error } = await supabase.from('events').insert({
-      nama_event: f.perayaan.toUpperCase(), tipe_event: isMR ? 'Mingguan' : 'Misa_Khusus',
-      tanggal_tugas: f.tanggal_tugas, tanggal_latihan: tanggalLatihan,
-      perayaan: f.perayaan, warna_liturgi: f.warna_liturgi,
-      jumlah_misa: isMR ? 4 : (f.slot_schedule?.length || 1),
-      status_event: 'Akan_Datang', is_draft: true, gcatholic_fetched: false,
-      draft_note: draftNote, is_misa_besar: f.is_misa_besar || false,
-    });
+
+    const { data: ev, error } = await supabase.from('events').insert({
+      nama_event:      f.perayaan.toUpperCase(),
+      tipe_event:      dbTipe,
+      tanggal_tugas:   f.tanggal_tugas,
+      tanggal_latihan: tanggalLatihan,
+      perayaan:        f.perayaan,
+      warna_liturgi:   f.warna_liturgi,
+      jumlah_misa:     nSlots,
+      jumlah_petugas:  nPetugas,
+      tanpa_latihan:   f.tanpa_latihan || false,
+      status_event:    'Akan_Datang',
+      is_draft:        true,
+      gcatholic_fetched: false,
+      draft_note:      draftNote,
+      is_misa_besar:   f.is_misa_besar || false,
+    }).select().single();
     if (error) { toast.error('Gagal tambah: ' + error.message); return; }
-    toast.success(`"${f.perayaan}" berhasil ditambahkan!`);
+
+    // Auto-generate petugas jika diminta
+    if (f.auto_generate && ev?.id) {
+      await autoGeneratePetugas(ev.id, nSlots, nPetugas);
+    }
+
+    toast.success(`"${f.perayaan}" berhasil ditambahkan!${f.auto_generate ? ' Petugas otomatis di-assign.' : ''}`);
     setShowAddMisa(false);
     setAddMisaForm({ ...INIT_MISA_FORM });
     loadEvents();
+  }
+
+  async function autoGeneratePetugas(eventId: string, nSlots: number, nPetugas: number) {
+    // Ambil pool anggota aktif, sort by last assignment (sama seperti generate mingguan)
+    const { data: pool } = await supabase.from('users')
+      .select('id').eq('status', 'Active').eq('is_suspended', false)
+      .in('role', ['Misdinar_Aktif', 'Misdinar_Retired']);
+    if (!pool?.length) return;
+
+    const since60 = new Date(Date.now() - 60*24*3600*1000).toISOString();
+    const { data: recent } = await supabase.from('assignments')
+      .select('user_id, created_at').gte('created_at', since60);
+    const lastMap: Record<string, string> = {};
+    (recent || []).forEach((a: any) => {
+      if (!lastMap[a.user_id] || a.created_at > lastMap[a.user_id]) lastMap[a.user_id] = a.created_at;
+    });
+    const scored = (pool as any[]).map(u => ({
+      id: u.id,
+      score: lastMap[u.id] ? (Date.now() - new Date(lastMap[u.id]).getTime()) / 86400000 : 9999,
+    })).sort((a, b) => b.score - a.score);
+
+    let poolIdx = 0;
+    const assigns: any[] = [];
+    for (let slot = 1; slot <= nSlots; slot++) {
+      const used = new Set<string>();
+      let cnt = 0, att = 0;
+      while (cnt < nPetugas && att < scored.length * 4) {
+        const u = scored[poolIdx % scored.length];
+        poolIdx++; att++;
+        if (used.has(u.id)) continue;
+        used.add(u.id);
+        assigns.push({ event_id: eventId, user_id: u.id, slot_number: slot, position: cnt + 1 });
+        cnt++;
+      }
+    }
+    if (assigns.length) await supabase.from('assignments').insert(assigns);
   }
 
   // ── Group vigili with parent ───────────────────────────────

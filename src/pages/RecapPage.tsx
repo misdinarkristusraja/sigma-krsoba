@@ -731,7 +731,7 @@ export default function RecapPage() {
       <div className="card bg-gray-50">
         <h3 className="font-semibold text-gray-700 mb-3 text-sm">📊 Keterangan Lengkap Kondisi Poin</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {Object.entries(KONDISI_INFO).map(([k,v])=>(
+          {Object.entries(KONDISI_INFO).filter(([k]) => !['K2','K3','K4','K5'].includes(k)).map(([k,v])=>(
             <div key={k} className={`p-3 rounded-xl ${v.color} flex items-start gap-3`}>
               <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-white/60 flex items-center justify-center">
                 <span className="font-black text-sm">{k}</span>

@@ -243,10 +243,13 @@ export function useAutoAssign(year: number, month: number, onDone: () => void) {
       .select('user_id, kondisi, poin')
       .gte('week_start', since30).lte('week_start', todayStr);
 
-    // Priority delta: K1/K2a/K2b (hadir lengkap) boost, K6 big penalty, K4c slight penalty
+    // Priority delta applied to daysSince score (higher score = higher priority = scheduled sooner).
+    // Hadir (K1-K3c): REDUCE score — person was recently active, lower their priority.
+    // K4c: tiny reduction — attended latihan only, slight credit.
+    // K6: INCREASE score — absen needs to be rescheduled sooner.
     const KONDISI_DELTA: Record<string, number> = {
-      K1:+5, K2a:+4, K2b:+3, K3a:+3, K3b:+3, K3c:+2,
-      K4a:+2, K4c:-2, K6:-10,
+      K1: -5, K2a: -4, K2b: -3, K3a: -3, K3b: -3, K3c: -2,
+      K4a: -2, K4c: -1, K6: +10,
     };
     const kondisiBonus: Record<string, number> = {};
     const kondisiCount: Record<string, Record<string, number>> = {};

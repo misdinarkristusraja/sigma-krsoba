@@ -328,13 +328,36 @@ export default function ScanPage() {
     }
 
     // 7. Cari event yang paling relevan (tempat user dijadwalkan)
-    let targetEvent  = null;
-    let assignmentId = null;
+    let targetEvent   = null;
+    let assignmentId  = null;
+    let isSwapReplace = false; // user hadir sebagai pengganti resmi (swap Replaced)
 
     for (const ev of todayEvents) {
       const { data: asgn } = await supabase.from('assignments')
         .select('id').eq('user_id', member.id).eq('event_id', ev.id).maybeSingle();
       if (asgn) { targetEvent = ev; assignmentId = asgn.id; break; }
+    }
+
+    // 7b. Tidak ada di assignments — cek apakah pengganti resmi via swap Replaced
+    if (!targetEvent) {
+      const todayEventIds = (todayEvents as any[]).map((ev: any) => ev.id);
+      if (todayEventIds.length) {
+        const { data: swapMatch } = await supabase
+          .from('swap_requests')
+          .select('id, assignment_id, assignments(event_id)')
+          .eq('pengganti_id', member.id)
+          .eq('status', 'Replaced')
+          .in('assignments.event_id', todayEventIds)
+          .not('pengganti_id', 'is', null)
+          .limit(1)
+          .maybeSingle();
+        if (swapMatch?.assignments?.event_id) {
+          const swapEventId = swapMatch.assignments.event_id;
+          targetEvent = (todayEvents as any[]).find(ev => ev.id === swapEventId) || null;
+          assignmentId = swapMatch.assignment_id;
+          isSwapReplace = true;
+        }
+      }
     }
 
     // 8. User tidak ada di jadwal hari ini → Walk-in / override
@@ -348,10 +371,14 @@ export default function ScanPage() {
     }
 
     // ✅ Semua validasi lulus — simpan tugas
+    // Pengganti resmi (swap): scan_type = walkin_tugas, is_walk_in = true, tapi BUKAN anomali
     await saveScanRecord({
       member, parsed, eventId: targetEvent.id, assignmentId,
-      isAnomaly, isWalkIn: false, walkInReason: null,
+      isAnomaly: isSwapReplace ? false : isAnomaly,
+      isWalkIn: isSwapReplace,
+      walkInReason: isSwapReplace ? 'Pengganti resmi (swap disetujui)' : null,
       raw, activeWindows,
+      forceNoAnomaly: isSwapReplace,
     });
   }
 
