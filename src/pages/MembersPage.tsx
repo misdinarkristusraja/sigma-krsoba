@@ -10,6 +10,8 @@ import {
   ShieldAlert, ShieldCheck, ChevronDown, Edit2, MessageCircle,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { usePagination } from '../hooks/usePagination';
+import { Pagination } from '../components/ui/Pagination';
 
 const TABS = [
   { key: 'all',     label: 'Semua' },      // ← default ke Semua dulu
@@ -86,6 +88,8 @@ export default function MembersPage() {
     return [m.nama_panggilan, m.nickname, m.nama_lengkap, m.lingkungan, m.sekolah, m.myid]
       .some(v => v?.toLowerCase().includes(q));
   });
+
+  const pg = usePagination(filtered, 10);
 
   // ── Quick inline change status/role ───────────────────────
   async function quickChange(memberId: any, field: any, value: any) {
@@ -276,7 +280,7 @@ export default function MembersPage() {
             <div className="flex items-center gap-2 text-sm text-gray-500">
               <Users size={15} />
               <span>
-                Menampilkan <strong className="text-gray-800">{filtered.length}</strong> anggota
+                <strong className="text-gray-800">{filtered.length}</strong> anggota
                 {search && ` (filter: "${search}")`}
               </span>
             </div>
@@ -320,7 +324,7 @@ export default function MembersPage() {
                         )}
                       </td>
                     </tr>
-                  ) : filtered.map(m => (
+                  ) : pg.paged.map(m => (
                     <tr key={m.id}>
                       <td>
                         <div className="flex items-center gap-2">
@@ -432,6 +436,11 @@ export default function MembersPage() {
                 </tbody>
               </table>
             </div>
+            {!loading && filtered.length > 0 && (
+              <div className="px-4">
+                <Pagination {...pg} onPage={pg.goTo} label="anggota" />
+              </div>
+            )}
           </div>
         </>
       )}

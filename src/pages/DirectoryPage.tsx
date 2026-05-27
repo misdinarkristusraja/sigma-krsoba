@@ -5,6 +5,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { Search, Download, RefreshCw, Phone, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
+import { usePagination } from '../hooks/usePagination';
+import { Pagination } from '../components/ui/Pagination';
 
 type Member = {
   id: string;
@@ -85,6 +87,7 @@ export default function DirectoryPage() {
       m.hp_ortu?.includes(q);
     return matchStatus && matchSearch;
   });
+  const pg = usePagination(filtered, 25);
 
   function exportExcel() {
     const rows = filtered.map((m, i) => ({
@@ -187,7 +190,7 @@ export default function DirectoryPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filtered.map(m => {
+                {pg.paged.map(m => {
                   const isOpen = expanded === m.id;
                   const umur = age(m.tanggal_lahir);
                   return (
@@ -265,6 +268,11 @@ export default function DirectoryPage() {
               </tbody>
             </table>
           </div>
+          {filtered.length > 0 && (
+            <div className="px-4">
+              <Pagination {...pg} onPage={pg.goTo} label="anggota" />
+            </div>
+          )}
         </div>
       )}
     </div>

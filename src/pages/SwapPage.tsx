@@ -8,6 +8,8 @@ import {
   Plus, AlertTriangle, Send, Copy, RefreshCw, Shield, Globe, MessageSquare,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { usePagination } from '../hooks/usePagination';
+import { Pagination } from '../components/ui/Pagination';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   Pending:      { label: 'Menunggu PIC',        color: 'badge-yellow' },
@@ -46,6 +48,10 @@ export default function SwapPage() {
   const [showWA,  setShowWA]  = useState(false);
   const [waText,  setWaText]  = useState('');
   const [grupWA,  setGrupWA]  = useState('');  // link grup WA
+
+  const pgMy  = usePagination(myReqs,  10);
+  const pgBoard = usePagination(board, 10);
+  const pgAll = usePagination(allReqs, 10);
 
   const loadData = useCallback(async () => {
     if (!profile) return;
@@ -355,7 +361,7 @@ export default function SwapPage() {
               <ArrowLeftRight size={40} className="mx-auto mb-2 opacity-30"/>
               <p>Belum ada request tukar jadwal</p>
             </div>
-          ) : myReqs.map((req: any) => {
+          ) : pgMy.paged.map((req: any) => {
             const sc = STATUS_CONFIG[req.status] || {};
             const ev = req.assignment?.events;
             return (
@@ -394,6 +400,7 @@ export default function SwapPage() {
               </div>
             );
           })}
+          {myReqs.length > 0 && <Pagination {...pgMy} onPage={pgMy.goTo} label="request" />}
         </div>
       )}
 
@@ -405,7 +412,7 @@ export default function SwapPage() {
               <CheckCircle size={40} className="mx-auto mb-2 opacity-30"/>
               <p>Tidak ada penawaran saat ini</p>
             </div>
-          ) : board.map((req: any) => {
+          ) : pgBoard.paged.map((req: any) => {
             const ev = req.assignment?.events;
             return (
               <div key={req.id} className="card border-l-4 border-purple-400">
@@ -423,13 +430,14 @@ export default function SwapPage() {
               </div>
             );
           })}
+          {board.length > 0 && <Pagination {...pgBoard} onPage={pgBoard.goTo} label="penawaran" />}
         </div>
       )}
 
       {/* ── TAB ALL (PENGURUS) ── */}
       {tab === 'all' && isPengurus && (
         <div className="card overflow-hidden p-0">
-          <div className="overflow-x-auto max-h-[65vh]">
+          <div className="overflow-x-auto">
             <table className="tbl">
               <thead>
                 <tr>
@@ -442,7 +450,7 @@ export default function SwapPage() {
                   <tr><td colSpan={7} className="text-center py-8 text-gray-400">Memuat...</td></tr>
                 ) : allReqs.length === 0 ? (
                   <tr><td colSpan={7} className="text-center py-8 text-gray-400">Belum ada data</td></tr>
-                ) : allReqs.map((req: any) => {
+                ) : pgAll.paged.map((req: any) => {
                   const sc = STATUS_CONFIG[req.status] || {};
                   const ev = req.assignment?.events;
                   return (
@@ -473,6 +481,11 @@ export default function SwapPage() {
               </tbody>
             </table>
           </div>
+          {allReqs.length > 0 && (
+            <div className="px-4">
+              <Pagination {...pgAll} onPage={pgAll.goTo} label="request" />
+            </div>
+          )}
         </div>
       )}
 

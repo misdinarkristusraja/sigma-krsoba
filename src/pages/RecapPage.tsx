@@ -5,6 +5,8 @@ import { generateICS, downloadICS } from '../lib/calendarExport';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate, downloadCSV, hitungPoin, getWeekStartFromDate, getWeekEndFromStart, toLocalISO, getWeekPeriod } from '../lib/utils';
 import { BarChart2, Download, TrendingUp, Calendar, RefreshCw, Info, Search } from 'lucide-react';
+import { usePagination } from '../hooks/usePagination';
+import { Pagination } from '../components/ui/Pagination';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 
 // ─── Label ramah pengguna ─────────────────────────────────
@@ -423,10 +425,15 @@ export default function RecapPage() {
   }));
 
   // Filter all by search
-  const filteredAll = allRekap.filter((m: any) => !searchName ||
-    m.nama_panggilan?.toLowerCase().includes(searchName.toLowerCase()) ||
-    m.lingkungan?.toLowerCase().includes(searchName.toLowerCase())
-  );
+  const filteredAll = allRekap
+    .filter((m: any) => !searchName ||
+      m.nama_panggilan?.toLowerCase().includes(searchName.toLowerCase()) ||
+      m.lingkungan?.toLowerCase().includes(searchName.toLowerCase())
+    )
+    .sort((a: any, b: any) => b.totalPoin - a.totalPoin);
+
+  const pgRekap    = usePagination(rekapMinggu, 10);
+  const pgAllRekap = usePagination(filteredAll, 10);
 
   function handleExport() {
     downloadCSV(
@@ -652,7 +659,7 @@ export default function RecapPage() {
                     <tbody>
                       {rekapMinggu.length===0 ? (
                         <tr><td colSpan={6} className="text-center py-8 text-gray-400">Tidak ada data pada rentang ini</td></tr>
-                      ) : rekapMinggu.map((r,i)=>{
+                      ) : pgRekap.paged.map((r,i)=>{
                         const ki = KONDISI_INFO[r.kondisi];
                         return (
                           <tr key={i}>
@@ -678,6 +685,11 @@ export default function RecapPage() {
                     </tbody>
                   </table>
                 </div>
+                {rekapMinggu.length > 0 && (
+                  <div className="px-4">
+                    <Pagination {...pgRekap} onPage={pgRekap.goTo} label="minggu" />
+                  </div>
+                )}
               </div>
             </>
           )}
@@ -718,7 +730,8 @@ export default function RecapPage() {
               <tbody>
                 {allLoading ? (
                   <tr><td colSpan={15} className="text-center py-8 text-gray-400">Menghitung rekap semua anggota...</td></tr>
-                ) : filteredAll.sort((a: any,b: any)=>b.totalPoin-a.totalPoin).map((m: any,i: any)=>{
+                ) : pgAllRekap.paged.map((m: any,i: number)=>{
+                  const globalRank = (pgAllRekap.page - 1) * pgAllRekap.pageSize + i + 1;
                   const kCounts: Record<string,any> = {};
                   ['K1','K2a','K2b','K3a','K3b','K3c','K4a','K4c','K6'].forEach((k: any) => {
                     kCounts[k] = (m.rows||[]).filter((r: any)=>r.kondisi===k).length;
@@ -730,7 +743,7 @@ export default function RecapPage() {
                   };
                   return (
                     <tr key={m.id}>
-                      <td className="text-gray-400 font-mono">{i+1}</td>
+                      <td className="text-gray-400 font-mono">{globalRank}</td>
                       <td className="font-semibold text-gray-900">{m.nama_panggilan}</td>
                       <td className="text-gray-500">{m.lingkungan}</td>
                       <td>
@@ -751,6 +764,11 @@ export default function RecapPage() {
               </tbody>
             </table>
           </div>
+          {!allLoading && filteredAll.length > 0 && (
+            <div className="px-4">
+              <Pagination {...pgAllRekap} onPage={pgAllRekap.goTo} label="anggota" />
+            </div>
+          )}
         </div>
       )}
 

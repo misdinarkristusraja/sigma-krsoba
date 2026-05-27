@@ -3,6 +3,8 @@ import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { formatDate, downloadCSV } from '../lib/utils';
 import { BarChart2, Search, Download, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { usePagination } from '../hooks/usePagination';
+import { Pagination } from '../components/ui/Pagination';
 
 const KONDISI_INFO: Record<string, { label: string; poin: string; color: string; dot: string }> = {
   K1:  { label: 'Mengganti mendadak + Latihan',       poin: '+5', color: 'bg-purple-100 text-purple-800',  dot: 'bg-purple-500'  },
@@ -148,6 +150,8 @@ export default function StatistikPage() {
       return sortDir === 'asc' ? va - vb : vb - va;
     });
 
+  const pgStatistik = usePagination(filtered, 10);
+
   function toggleSort(col: any) {
     if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
     else { setSortBy(col); setSortDir('desc'); }
@@ -259,10 +263,11 @@ export default function StatistikPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(u => {
+              {pgStatistik.paged.map((u, i) => {
                 const s = stats[u.id];
                 if (!s) return null;
                 const isOpen = expanded === u.id;
+                const globalRank = (pgStatistik.page - 1) * pgStatistik.pageSize + i + 1;
                 return (
                   <React.Fragment key={u.id}>
                     <tr className={isOpen ? 'bg-brand-50' : ''}>
@@ -350,6 +355,9 @@ export default function StatistikPage() {
               })}
             </tbody>
           </table>
+        </div>
+        <div className="px-4">
+          <Pagination {...pgStatistik} onPage={pgStatistik.goTo} label="anggota" />
         </div>
       </div>
     </div>

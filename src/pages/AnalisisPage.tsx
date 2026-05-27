@@ -3,6 +3,8 @@ import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate } from '../lib/utils';
+import { usePagination } from '../hooks/usePagination';
+import { Pagination } from '../components/ui/Pagination';
 import {
   RefreshCw, Download, ChevronUp, ChevronDown, X,
   TrendingUp, TrendingDown, Minus, AlertTriangle, Star, CheckCircle,
@@ -235,7 +237,7 @@ export default function AnalisisPage() {
     setLoading(false);
   }, [rangeMonths]);
 
-  // ── Sort ──────────────────────────────────────────────────────────────────
+  // ── Sort + paginate ───────────────────────────────────────────────────────
   const sorted = [...members].sort((a, b) => {
     let va: number | string = 0, vb: number | string = 0;
     if (sortKey === 'skor')   { va = a.skorKualitas; vb = b.skorKualitas; }
@@ -246,6 +248,8 @@ export default function AnalisisPage() {
     if (typeof va === 'string') return sortAsc ? va.localeCompare(vb as string) : (vb as string).localeCompare(va);
     return sortAsc ? (va - (vb as number)) : ((vb as number) - va);
   });
+
+  const pgAnalisis = usePagination(sorted, 10);
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortAsc(v => !v);
@@ -374,7 +378,7 @@ export default function AnalisisPage() {
           <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
             <h2 className="font-semibold text-gray-700">Ranking Kualitas — {members.length} anggota aktif</h2>
           </div>
-          <div className="overflow-x-auto max-h-[65vh]">
+          <div className="overflow-x-auto">
             <table className="tbl text-xs w-full">
               <thead>
                 <tr>
@@ -401,17 +405,18 @@ export default function AnalisisPage() {
                 </tr>
               </thead>
               <tbody>
-                {sorted.map((m, i) => {
+                {pgAnalisis.paged.map((m, i) => {
                   const grade = gradeFromSkor(m.skorKualitas);
                   const finalLabel = m.labelOverride || grade.label;
                   const finalGrade = m.labelOverride
                     ? LABEL_OPTIONS.find(l => l.value === m.labelOverride)
                     : grade;
                   const pctHadir = m.jadwalCount > 0 ? Math.round(m.hadirTugas / m.jadwalCount * 100) : 0;
+                  const globalRank = (pgAnalisis.page - 1) * pgAnalisis.pageSize + i + 1;
                   return (
                     <tr key={m.id} className="cursor-pointer hover:bg-brand-50/40 transition-colors"
                       onClick={() => { setSelected(m); setEditLabel(m.labelOverride || ''); setEditCatatan(m.catatanOverride || ''); }}>
-                      <td className="font-mono text-gray-400">{i + 1}</td>
+                      <td className="font-mono text-gray-400">{globalRank}</td>
                       <td>
                         <div className="font-semibold text-gray-900">{m.nama_panggilan}</div>
                         <div className="text-gray-400">@{m.nickname}</div>
@@ -460,6 +465,11 @@ export default function AnalisisPage() {
               </tbody>
             </table>
           </div>
+          {sorted.length > 0 && (
+            <div className="px-4">
+              <Pagination {...pgAnalisis} onPage={pgAnalisis.goTo} label="anggota" />
+            </div>
+          )}
         </div>
       )}
 
