@@ -8,8 +8,11 @@ import {
   Search, CheckCircle, XCircle, Eye,
   Download, RefreshCw, AlertTriangle, Users,
   ShieldAlert, ShieldCheck, ChevronDown, Edit2, MessageCircle,
-  KeyRound, Copy,
+  KeyRound, Copy, Share2,
 } from 'lucide-react';
+
+// Ganti dengan URL video tutorial setelah tersedia
+const VIDEO_TUTORIAL_LINK = '';
 import toast from 'react-hot-toast';
 import { usePagination } from '../hooks/usePagination';
 import { Pagination } from '../components/ui/Pagination';
@@ -32,8 +35,9 @@ export default function MembersPage() {
   const [total,    setTotal]   = useState(0);
   const [filter,   setFilter]  = useState({ pendidikan: '' });
   const [quickEdit, setQuickEdit] = useState<any>(null); // { id, field } — baris yang sedang diedit
-  const [resettingId,   setResettingId]   = useState<string | null>(null);
-  const [resetResult,   setResetResult]   = useState<{ nickname: string; password: string } | null>(null);
+  const [resettingId,      setResettingId]      = useState<string | null>(null);
+  const [resetResult,      setResetResult]      = useState<{ nickname: string; password: string } | null>(null);
+  const [sendPasswordMode, setSendPasswordMode] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -55,7 +59,7 @@ export default function MembersPage() {
         // Load users — query tanpa filter status dulu untuk tab 'all'
         let q = supabase
           .from('users')
-          .select('id, nickname, myid, nama_lengkap, nama_panggilan, pendidikan, sekolah, lingkungan, wilayah, role, status, is_tarakanita, is_suspended, created_at', { count: 'exact' })
+          .select('id, nickname, myid, nama_lengkap, nama_panggilan, pendidikan, sekolah, lingkungan, wilayah, role, status, is_tarakanita, is_suspended, created_at, hp_ortu, hp_anak', { count: 'exact' })
           .order('nama_panggilan', { nullsFirst: false })
           .order('nickname');  // fallback sort jika nama_panggilan null
 
@@ -180,6 +184,17 @@ export default function MembersPage() {
     }
   }
 
+  // Build WA link dengan template onboarding password
+  function buildPasswordWALink(member: any, hp: string): string {
+    const phone = hp.replace(/\D/g, '');
+    const normalized = phone.startsWith('0') ? '62' + phone.slice(1) : phone;
+    const nama     = member.nama_panggilan || member.nickname;
+    const username = member.nickname;
+    const videoLink = VIDEO_TUTORIAL_LINK || '[link video]';
+    const text = `Halo ${nama}! 👋\n\nKabar gembira! Saat ini, Sigma-Kr v.2 sudah resmi dirilis dan siap untuk kamu gunakan. ✨\n\nSebelum mulai menjelajah, ada beberapa langkah penting yang wajib kamu perhatikan terlebih dahulu:\n\n🔐 Login Awal: Dimohon untuk segera melakukan login setelah akun dibagikan.\n\n🔄 Ganti Password: Setelah berhasil masuk, segera ganti password default kamu dengan password baru yang aman dan mudah diingat.\n\n🔁 Re-Login: Silakan keluar lalu login kembali menggunakan password baru tersebut.\n\n📝 Daftar Ulang: Begitu masuk ke halaman dashboard, mohon segera lakukan daftar ulang SEBELUM 11 Juli 2026.\n\n🔍 Validasi Data: Pastikan seluruh data yang kamu masukkan sudah sesuai. Jika menemui kesulitan atau kendala dalam pengisian, wajib segera melaporkannya ke pengurus.\n\n🎉 Selesai: Jika langkah di atas sudah terpenuhi, akun dan aplikasi kamu sudah siap digunakan sepenuhnya!\n\n👥 Detail Akun Kamu:\n\nUsername: ${username}\n\nPassword: [password]\n\nLink Aplikasi: https://sigma-kr.vercel.app/\n\n🎬 Butuh Panduan Visual?\nUntuk alur yang lebih jelas, kamu bisa langsung menonton video tutorialnya di sini: ${videoLink}\n\nTerima kasih atas perhatiannya. Selamat mencoba Sigma-Kr v.2! 🚀`;
+    return `https://wa.me/${normalized}?text=${encodeURIComponent(text)}`;
+  }
+
   // Export CSV
   function exportCSV() {
     const rows = filtered.map(m => [
@@ -207,6 +222,14 @@ export default function MembersPage() {
           </p>
         </div>
         <div className="flex gap-2">
+          {isPengurus && (
+            <button
+              onClick={() => setSendPasswordMode(v => !v)}
+              className={`btn-sm gap-2 ${sendPasswordMode ? 'btn-primary' : 'btn-outline'}`}
+              title="Mode kirim pesan onboarding + password ke anggota via WA">
+              <Share2 size={14}/> {sendPasswordMode ? 'Mode Kirim: ON' : 'Kirim Password'}
+            </button>
+          )}
           <button onClick={exportCSV} disabled={filtered.length === 0}
             className="btn-outline gap-2 btn-sm">
             <Download size={14} /> Export CSV
@@ -465,11 +488,11 @@ export default function MembersPage() {
 
                       {/* Actions */}
                       <td>
-                        <div className="flex items-center gap-0.5">
+                        <div className="flex items-center gap-0.5 flex-wrap">
                           <Link to={`/anggota/${m.id}`} className="btn-ghost p-1.5" title="Lihat detail">
                             <Eye size={14}/>
                           </Link>
-                          {isPengurus && (m.hp_ortu || m.hp_anak) && (
+                          {isPengurus && !sendPasswordMode && (m.hp_ortu || m.hp_anak) && (
                             <button
                               title={`WA Orang Tua ${m.nama_panggilan}`}
                               onClick={() => {
@@ -480,6 +503,20 @@ export default function MembersPage() {
                               className="btn-ghost p-1.5 text-green-600 hover:bg-green-50">
                               <MessageCircle size={14}/>
                             </button>
+                          )}
+                          {isPengurus && sendPasswordMode && m.hp_ortu && (
+                            <a href={buildPasswordWALink(m, m.hp_ortu)} target="_blank" rel="noopener noreferrer"
+                              className="btn-ghost p-1.5 text-blue-600 hover:bg-blue-50"
+                              title={`Kirim onboarding ke Ortu (${m.hp_ortu})`}>
+                              <Share2 size={14}/>
+                            </a>
+                          )}
+                          {isPengurus && sendPasswordMode && m.hp_anak && (
+                            <a href={buildPasswordWALink(m, m.hp_anak)} target="_blank" rel="noopener noreferrer"
+                              className="btn-ghost p-1.5 text-violet-600 hover:bg-violet-50"
+                              title={`Kirim onboarding ke Anak (${m.hp_anak})`}>
+                              <Share2 size={14}/>
+                            </a>
                           )}
                           {isAdmin && (
                             <button
