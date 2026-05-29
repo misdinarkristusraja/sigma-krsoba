@@ -24,13 +24,16 @@ export function useSchedule(userId?: string) {
       .from('assignments')
       .select('id, slot_number, events(nama_event, tanggal_tugas, perayaan, tipe_event)')
       .eq('user_id', userId)
-      .gte('events.tanggal_tugas', today)
-      .order('events.tanggal_tugas')
-      .limit(6);
+      .limit(50);
 
-    const filtered = (rows || []).filter(
-      (d: any) => d.events && d.events.tipe_event !== 'Misa_Harian',
-    );
+    const filtered = (rows || [])
+      .filter((d: any) =>
+        d.events &&
+        d.events.tipe_event !== 'Misa_Harian' &&
+        d.events.tanggal_tugas >= today
+      )
+      .sort((a: any, b: any) => a.events.tanggal_tugas.localeCompare(b.events.tanggal_tugas))
+      .slice(0, 6);
     setData(filtered as ScheduleAssignment[]);
     setLoading(false);
   }, [userId]);
