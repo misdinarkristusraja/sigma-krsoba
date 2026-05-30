@@ -18,6 +18,7 @@ async function generateSuratPDF(
   hpOrtu: string,
   hpAnak: string,
   signatureDataUrl: string,
+  childSignatureDataUrl: string,
 ): Promise<Blob> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const W   = 210;
@@ -137,6 +138,11 @@ async function generateSuratPDF(
   doc.text('Orang Tua Calon Misdinar Baru',  rightCX, y, { align: 'center' });
   y += 5;
 
+  // Child digital signature in left column
+  try {
+    doc.addImage(childSignatureDataUrl, 'PNG', leftCX - 25, y, 50, 28);
+  } catch { /* keep PDF even if image fails */ }
+
   // Parent digital signature in right column
   try {
     doc.addImage(signatureDataUrl, 'PNG', rightCX - 25, y, 50, 28);
@@ -196,6 +202,7 @@ export default function RegisterPage() {
     alasan_masuk: '', sampai_kapan: '',
     sertifikat_komuni: null as File | null,
     signature_data_url: null as string | null,
+    signature_child_data_url: null as string | null,
     declared: false,
   });
   const [errors, setErrors] = useState<Record<string, any>>({});
@@ -231,6 +238,7 @@ export default function RegisterPage() {
     if (!form.pendidikan) e.pendidikan = 'Pilih pendidikan';
     if (!form.hp_ortu) e.hp_ortu = 'No. HP Orang Tua wajib';
     if (!form.nama_ayah && !form.nama_ibu) e.nama_ayah = 'Minimal salah satu orang tua';
+    if (!form.signature_child_data_url) e.signature_child = 'Tanda tangan calon misdinar wajib diisi';
     if (!form.signature_data_url) e.signature = 'Tanda tangan orang tua wajib diisi';
     if (!form.declared) e.declared = 'Wajib dicentang sebagai pernyataan';
     return e;
@@ -249,9 +257,10 @@ export default function RegisterPage() {
         form.nama_lengkap,
         namaOrtu,
         form.lingkungan,
-        form.hp_ortu   || '',
-        form.hp_anak   || '',
+        form.hp_ortu              || '',
+        form.hp_anak              || '',
         form.signature_data_url,
+        form.signature_child_data_url || '',
       );
       const pdfPath = `surat/${Date.now()}_${(form.nickname || 'pendaftar').toLowerCase()}_surat_pernyataan.pdf`;
       const { error: pdfErr } = await supabase.storage.from('documents').upload(pdfPath, pdfBlob, {
@@ -621,7 +630,27 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Surat Pernyataan — signature pad */}
+            {/* Surat Pernyataan — signature pad: Calon Misdinar */}
+            <div className="mt-4">
+              <label className="label">
+                Tanda Tangan Calon Misdinar Baru
+                <span className="text-red-500 ml-1">*</span>
+              </label>
+              <p className="text-xs text-gray-500 mb-2 leading-relaxed">
+                Tanda tangan calon misdinar (anak) sebagai pernyataan kesediaan bergabung.
+              </p>
+              <SignaturePad
+                onChange={dataUrl => setForm(f => ({ ...f, signature_child_data_url: dataUrl }))}
+              />
+              {errors.signature_child && <p className="text-xs text-red-500 mt-1">{errors.signature_child}</p>}
+              {form.signature_child_data_url && (
+                <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                  <CheckCircle size={12} /> Tanda tangan calon misdinar tercatat
+                </p>
+              )}
+            </div>
+
+            {/* Surat Pernyataan — signature pad: Orang Tua */}
             <div className="mt-4">
               <label className="label">
                 Tanda Tangan Orang Tua / Wali
@@ -638,7 +667,7 @@ export default function RegisterPage() {
               {errors.signature && <p className="text-xs text-red-500 mt-1">{errors.signature}</p>}
               {form.signature_data_url && (
                 <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
-                  <CheckCircle size={12} /> Tanda tangan tercatat
+                  <CheckCircle size={12} /> Tanda tangan orang tua tercatat
                 </p>
               )}
             </div>
