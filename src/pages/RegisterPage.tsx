@@ -514,6 +514,113 @@ export default function RegisterPage() {
               </label>
             </F>
 
+            {/* ── Preview Surat Pernyataan ── */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="label mb-0">
+                  <FileText size={14} className="inline mr-1 text-brand-800" />
+                  Surat Pernyataan
+                </label>
+                <span className="text-[11px] text-gray-400 italic">Baca sebelum tanda tangan</span>
+              </div>
+              <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                {/* Doc header strip */}
+                <div className="bg-brand-800 px-4 py-2 flex items-center gap-2">
+                  <FileText size={13} className="text-white/80" />
+                  <span className="text-xs font-semibold text-white tracking-wide">
+                    SURAT PERNYATAAN PERSETUJUAN ORANG TUA
+                  </span>
+                </div>
+                {/* Scrollable document body */}
+                <div
+                  className="bg-white px-6 py-5 text-[11px] leading-relaxed text-gray-800 max-h-96 overflow-y-auto"
+                  style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
+                >
+                  {/* Kop */}
+                  <div className="text-center mb-3 pb-3" style={{ borderBottom: '2.5px double #333' }}>
+                    <div className="font-bold text-[12px]">MISDINAR PAROKI KRISTUS RAJA SOLO BARU</div>
+                    <div className="text-[10px] mt-0.5">Perumahan Solo Baru Jalan Cendana Raya EF 1, Dusun III, Langenharjo,</div>
+                    <div className="text-[10px]">Kec. Grogol, Kabupaten Sukoharjo, Jawa Tengah 57552</div>
+                    <div className="text-[10px]">misdinar.kristusraja@gmail.com | @misdinarkr</div>
+                  </div>
+
+                  {/* Judul */}
+                  <div className="text-center font-bold text-[11.5px] mb-4">
+                    <div>SURAT PERNYATAAN PERSETUJUAN ORANG TUA MISDINAR BARU</div>
+                    <div>PAROKI KRISTUS RAJA SOLO BARU</div>
+                  </div>
+
+                  {/* Intro */}
+                  <p className="mb-3">Yang bertanda tangan di bawah ini :</p>
+
+                  {/* Parent fields */}
+                  {(
+                    [
+                      ['Nama',       [form.nama_ayah, form.nama_ibu].filter(Boolean).join(' / ')],
+                      ['Lingkungan', form.lingkungan],
+                      ['No. Telp.',  form.hp_ortu],
+                    ] as [string, string][]
+                  ).map(([lbl, val]) => (
+                    <div key={lbl} className="flex gap-0 mb-1">
+                      <span className="w-24 shrink-0">{lbl}</span>
+                      <span className="w-4 shrink-0">:</span>
+                      <span className={`font-semibold ${val ? '' : 'text-gray-400 italic'}`}>{val || '—'}</span>
+                    </div>
+                  ))}
+
+                  {/* Paragraph */}
+                  <p className="my-3 text-justify" style={{ textIndent: '1.5em' }}>
+                    Merupakan orang tua/wali dari Calon Misdinar Baru yang mendaftar dan akan
+                    mengikuti rangkaian kegiatan Misdinar Periode Pelayanan 2025 / 2026 :
+                  </p>
+
+                  {/* Child fields */}
+                  {(
+                    [
+                      ['Nama',       form.nama_lengkap],
+                      ['Lingkungan', form.lingkungan],
+                      ['No. Telp*',  form.hp_anak],
+                    ] as [string, string][]
+                  ).map(([lbl, val]) => (
+                    <div key={lbl} className="flex gap-0 mb-1">
+                      <span className="w-24 shrink-0">{lbl}</span>
+                      <span className="w-4 shrink-0">:</span>
+                      <span className={`font-semibold ${val ? '' : 'text-gray-400 italic'}`}>{val || '—'}</span>
+                    </div>
+                  ))}
+
+                  {/* Items */}
+                  <p className="mt-3 mb-2">Menyatakan bahwa :</p>
+                  <ol className="list-decimal ml-4 space-y-2 mb-3 text-justify">
+                    <li>Bersedia mendorong dan memotivasi anak tersebut untuk ikut ambil bagian dalam pelayanan misdinar dalam periode pelayanan 2025/2026.</li>
+                    <li>Bersedia dan memastikan anak tersebut untuk mematuhi seluruh syarat dan aturan dalam <span className="underline">SOM (STANDAR OPERASIONAL PROSEDUR MISDINAR)</span> Paroki Kristus Raja Solo Baru (link: s.id/SOMKR).</li>
+                    <li>Apabila di kemudian hari kami dan/atau anak kami terbukti melanggar isi Surat Pernyataan yang telah kami tandatangani, maka kami bersedia menerima segala bentuk sanksi yang diberikan kepada anak kami sesuai ketentuan yang berlaku.</li>
+                  </ol>
+                  <p className="text-justify mb-5">
+                    Demikian Surat Pernyataan ini kami buat dengan sebenar-benarnya, untuk dapat dipergunakan
+                    sebagaimana mestinya, dan kepada yang berkepentingan untuk menjadikan maklum.
+                  </p>
+
+                  {/* Signature block */}
+                  <div className="flex justify-between items-start mt-2">
+                    <div className="text-center w-36">
+                      <div>Calon Misdinar Baru</div>
+                      <div className="mt-10 border-t border-gray-500 pt-1 text-[10px]">(........................................)</div>
+                    </div>
+                    <div className="text-center">
+                      <div>Solo Baru, ……{' '}
+                        {new Date().toLocaleDateString('id-ID', { month: 'long', year: 'numeric' })}
+                      </div>
+                      <div className="mt-1">Yang Membuat,</div>
+                      <div className="mt-1">Orang Tua Calon Misdinar Baru</div>
+                      <div className="mt-10 border-t border-gray-500 pt-1 text-[10px]">(........................................)</div>
+                    </div>
+                  </div>
+                  <p className="text-[10px] italic text-gray-500 mt-3">*Dikosongi apabila tidak punya</p>
+                </div>
+              </div>
+            </div>
+
             {/* Surat Pernyataan — signature pad */}
             <div className="mt-4">
               <label className="label">
