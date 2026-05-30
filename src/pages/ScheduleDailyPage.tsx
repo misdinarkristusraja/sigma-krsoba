@@ -309,28 +309,108 @@ export function ScheduleDailyPage() {
     toast.success('PIC dihapus');
   }
 
-  // ── Export Excel ────────────────────────────────────────
+  // ── Export Excel — HTML-as-XLS with liturgy colors & weekly grouping ──
   function exportExcel() {
-    const rows = events.map(ev => {
-      const d       = new Date(ev.tanggal_tugas + 'T00:00:00');
-      const petugas = (ev.assignments || []).map((a: any) => a.users?.nama_panggilan).filter(Boolean).join(', ');
-      const pic     = (ev.event_pics || []).find((p: any) => p.slot === 1);
-      return {
-        Tanggal:        ev.tanggal_tugas,
-        Hari:           HARI[d.getDay()],
-        'Nama Perayaan': ev.perayaan || '',
-        'Warna Liturgi': ev.warna_liturgi || '',
-        PIC:            pic?.nama || '',
-        Petugas:        petugas || '(kosong)',
-        Status:         ev.is_draft ? 'Draft' : 'Published',
-      };
+    if (!events.length) { toast('Tidak ada data'); return; }
+
+    const MONTHS_ID = ['JANUARI','FEBRUARI','MARET','APRIL','MEI','JUNI',
+                        'JULI','AGUSTUS','SEPTEMBER','OKTOBER','NOVEMBER','DESEMBER'];
+    const LITURGY_BG: Record<string,string> = {
+      Hijau:'#c6efce', Merah:'#ffc7ce', Putih:'#ffeb9c',
+      Ungu:'#ddd0f0', MerahMuda:'#fce4ec', Hitam:'#d9d9d9',
+    };
+    const LITURGY_FG: Record<string,string> = {
+      Hijau:'#1a5c2a', Merah:'#721c24', Putih:'#7d5a00',
+      Ungu:'#4a1f6e', MerahMuda:'#880e4f', Hitam:'#343a40',
+    };
+
+    function isoDate(d: Date) {
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+    function romanToInt(s: string): number {
+      const m: Record<string,number> = {I:1,V:5,X:10,L:50,C:100,D:500,M:1000};
+      return [...s].reduce((acc,c,i,a) => {
+        const cur=m[c],nxt=m[a[i+1]]; return acc+(nxt&&cur<nxt?-cur:cur);
+      },0);
+    }
+    function weekLabel(mondayISO: string): string {
+      const mon = new Date(mondayISO + 'T00:00:00');
+      const sun = new Date(mon); sun.setDate(mon.getDate()-1);
+      const lit = getLiturgiByDate(isoDate(sun));
+      if (lit?.name) {
+        const p = lit.name.split(' ').filter((w:string) => w !== 'Minggu' && w !== 'HR.' && w !== 'HR');
+        if (p[0] === 'Biasa' && p[1]) return `PEKAN BIASA KE ${romanToInt(p[1])}`;
+        return 'PEKAN ' + p.join(' ').toUpperCase();
+      }
+      const w = getLiturgicalSeasonColor(mondayISO);
+      if (w==='Ungu'&&mondayISO>='2026-11-29') return 'PEKAN ADVEN';
+      if (w==='Ungu') return 'PEKAN PRAPASKAH';
+      if (w==='Putih'&&mondayISO>='2026-04-04') return 'PEKAN PASKAH';
+      if (w==='Putih') return 'PEKAN NATAL';
+      return 'PEKAN BIASA';
+    }
+
+    // Group by ISO week (Monday)
+    const weekMap = new Map<string,any[]>();
+    events.forEach(ev => {
+      const d=new Date(ev.tanggal_tugas+'T00:00:00'), dow=d.getDay();
+      const mon=new Date(d); mon.setDate(d.getDate()+(dow===0?-6:1-dow));
+      const k=isoDate(mon);
+      if(!weekMap.has(k)) weekMap.set(k,[]);
+      weekMap.get(k)!.push(ev);
     });
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 40 }, { wch: 14 }, { wch: 30 }, { wch: 10 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Jadwal Harian');
-    XLSX.writeFile(wb, `jadwal-harian-${MONTHS[month-1]}-${year}.xlsx`);
-    toast.success('Excel berhasil diunduh!');
+
+    const TD  = 'border:1px solid #000;';
+    const TDC = TD+'text-align:center;';
+
+    let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
+<table border="1" cellspacing="0" cellpadding="5" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:11px;">`;
+
+    for (const [monISO, wkEvents] of weekMap) {
+      html += `<tr><td colspan="4" style="${TDC}font-weight:bold;font-size:13px;padding:8px;">${weekLabel(monISO)}</td></tr>`;
+      html += `<tr>
+        <td style="${TDC}font-weight:bold;background:#d9d9d9;width:130px;">TANGGAL/WARNA<br>LITURGI</td>
+        <td style="${TDC}font-weight:bold;background:#d9d9d9;">NAMA LENGKAP</td>
+        <td style="${TDC}font-weight:bold;background:#d9d9d9;">PANGGILAN</td>
+        <td style="${TDC}font-weight:bold;background:#d9d9d9;">LINGKUNGAN</td></tr>`;
+
+      for (const ev of wkEvents) {
+        const d = new Date(ev.tanggal_tugas+'T00:00:00');
+        const hari = HARI[d.getDay()].toUpperCase();
+        const tgl  = `${d.getDate()} ${MONTHS_ID[d.getMonth()]} ${d.getFullYear()}`;
+        const warna = getLiturgicalSeasonColor(ev.tanggal_tugas);
+        const bg = LITURGY_BG[warna]||'#ffffff', fg = LITURGY_FG[warna]||'#000';
+        const asgns = ev.assignments||[];
+        const pic   = (ev.event_pics||[]).find((p:any)=>p.slot===1);
+        const picLine = pic ? `<br><b>PIC: ${pic.nama.toUpperCase()}</b>` : '';
+        const rs = Math.max(asgns.length,1);
+        const lcell = `background:${bg};color:${fg};${TDC}vertical-align:middle;font-weight:bold;`;
+        const lcontent = `${hari}<br>${tgl}${picLine}`;
+
+        if (!asgns.length) {
+          html += `<tr><td style="${lcell}">${lcontent}</td>
+            <td colspan="3" style="${TD}text-align:center;font-style:italic;color:#999;">(Kosong)</td></tr>`;
+        } else {
+          asgns.forEach((a:any,i:number) => {
+            html += `<tr>`;
+            if(i===0) html += `<td rowspan="${rs}" style="${lcell}">${lcontent}</td>`;
+            html += `<td style="${TD}">${a.users?.nama_lengkap||a.users?.nama_panggilan||'—'}</td>`;
+            html += `<td style="${TD}">${a.users?.nama_panggilan||'—'}</td>`;
+            html += `<td style="${TD}">${a.users?.lingkungan||'—'}</td></tr>`;
+          });
+        }
+      }
+      html += `<tr><td colspan="4" style="height:8px;border:none;"></td></tr>`;
+    }
+
+    html += `</table></body></html>`;
+    const blob = new Blob([html],{type:'application/vnd.ms-excel;charset=utf-8'});
+    const url  = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `jadwal-harian-${MONTHS[month-1]}-${year}.xls`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+    toast.success('File Excel berhasil diunduh!');
   }
 
   // ── Generate Jadwal Harian ───────────────────────────────
@@ -597,7 +677,8 @@ export function ScheduleDailyPage() {
                   </thead>
                   <tbody>
                     {events.map(ev => {
-                      const lc    = getLiturgyClass(ev.warna_liturgi);
+                      // Always derive display color from date (overrides stale DB value)
+                      const lc    = getLiturgyClass(getLiturgicalSeasonColor(ev.tanggal_tugas));
                       const asgns = ev.assignments || [];
                       const d     = new Date(ev.tanggal_tugas + 'T00:00:00');
                       const rs    = Math.max(asgns.length, 1);
