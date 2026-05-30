@@ -1,12 +1,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useEvents } from '../hooks/useEvents';
 import { useSwapRequests } from '../hooks/useSwapRequests';
 import { useSchedule } from '../hooks/useSchedule';
 import { useMemberStats } from '../hooks/useMemberStats';
 import { useOptinWindow } from '../hooks/useOptinWindow';
+import { useCountUp } from '../hooks/useCountUp';
 import { formatDate } from '../lib/utils';
+import { cardVariants, rowVariants, staggerContainer, fadeIn } from '../lib/motion';
 import { Skeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
 import { LiturgyBadge } from '../components/ui/LiturgyBadge';
@@ -212,7 +215,12 @@ export default function DashboardPage() {
             {loadingPStats && <div className="w-4 h-4 border-2 border-brand-300 border-t-brand-800 rounded-full animate-spin"/>}
           </div>
           {pengurusStats ? (
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+            <motion.div
+              className="grid grid-cols-3 sm:grid-cols-6 gap-3"
+              variants={staggerContainer}
+              initial="hidden"
+              animate="visible"
+            >
               {[
                 { label:'Misdinar Aktif',  val: pengurusStats.totalAktif,     color:'bg-brand-50 text-brand-800'   },
                 { label:'Pendaftar Baru',  val: pengurusStats.totalPending,   color:'bg-yellow-50 text-yellow-700' },
@@ -220,13 +228,10 @@ export default function DashboardPage() {
                 { label:'Jadwal Dibuat',   val: pengurusStats.jadwalBulanIni, color:'bg-blue-50 text-blue-700'     },
                 { label:'Tukar Jadwal',    val: pengurusStats.tukarBulanIni,  color:'bg-purple-50 text-purple-700' },
                 { label:'Absen Bulan Ini', val: pengurusStats.absenBulanIni,  color:'bg-red-50 text-red-700'       },
-              ].map(s => (
-                <div key={s.label} className={`${s.color} rounded-xl p-3 text-center`}>
-                  <div className="text-2xl font-black">{s.val}</div>
-                  <div className="text-[10px] font-medium mt-0.5 opacity-80 leading-tight">{s.label}</div>
-                </div>
+              ].map((s, i) => (
+                <AnimatedStatMini key={s.label} label={s.label} val={s.val} color={s.color} index={i} />
               ))}
-            </div>
+            </motion.div>
           ) : (
             <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
               {[1,2,3,4,5,6].map(i => <div key={i} className="skeleton h-16 rounded-xl"/>)}
@@ -248,20 +253,27 @@ export default function DashboardPage() {
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <motion.div
+        className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+        variants={staggerContainer}
+        initial="hidden"
+        animate="visible"
+      >
         <StatCard
           icon={<Star size={20} className="text-yellow-500" />}
           label="Total Poin"
-          value={loadingStats ? '…' : stats.totalPoin}
+          value={loadingStats ? null : stats.totalPoin}
           sub="Akumulasi"
           color="bg-yellow-50"
+          index={0}
         />
         <StatCard
           icon={<Zap size={20} className="text-green-500" />}
           label="Poin Minggu Ini"
-          value={loadingStats ? '…' : (stats.thisWeek?.poin ?? 0)}
+          value={loadingStats ? null : (stats.thisWeek?.poin ?? 0)}
           sub={stats.thisWeek?.kondisi ? `Kondisi ${stats.thisWeek.kondisi}` : 'Belum ada'}
           color="bg-green-50"
+          index={1}
         />
         <StatCard
           icon={<Calendar size={20} className="text-blue-500" />}
@@ -269,6 +281,7 @@ export default function DashboardPage() {
           value={mySchedule.length}
           sub="Tugas"
           color="bg-blue-50"
+          index={2}
         />
         <StatCard
           icon={<ArrowLeftRight size={20} className="text-purple-500" />}
@@ -276,8 +289,9 @@ export default function DashboardPage() {
           value={swapBoard.length}
           sub="Tersedia"
           color="bg-purple-50"
+          index={3}
         />
-      </div>
+      </motion.div>
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left col */}
@@ -299,17 +313,27 @@ export default function DashboardPage() {
             ) : upcomingEvents.length === 0 ? (
               <EmptyState title="Belum ada jadwal mendatang" />
             ) : (
-              <div className="space-y-3">
-                {upcomingEvents.map(ev => (
-                  <div key={ev.id} className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 bg-gray-50/50">
+              <motion.div
+                className="space-y-3"
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+              >
+                {upcomingEvents.map((ev, i) => (
+                  <motion.div
+                    key={ev.id}
+                    custom={i}
+                    variants={rowVariants}
+                    className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-100/60 transition-colors"
+                  >
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-gray-500 font-medium">{formatDate(ev.tanggal_tugas, 'EEEE, dd MMM yyyy')}</p>
                       <p className="font-semibold text-gray-900 text-sm truncate">{ev.perayaan || ev.nama_event}</p>
                     </div>
                     <LiturgyBadge warna={ev.warna_liturgi} />
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
           </div>
 
@@ -340,7 +364,7 @@ export default function DashboardPage() {
 
           {/* Poin mini chart */}
           {chartData.length > 1 && (
-            <div className="card">
+            <motion.div className="card" variants={fadeIn} initial="hidden" animate="visible">
               <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <Trophy size={18} className="text-yellow-500" /> Tren Poin 8 Minggu
               </h2>
@@ -364,7 +388,7 @@ export default function DashboardPage() {
               <Link to="/rekap" className="mt-2 text-xs text-brand-800 hover:underline flex items-center gap-1">
                 Lihat rekap lengkap <ChevronRight size={12} />
               </Link>
-            </div>
+            </motion.div>
           )}
         </div>
 
@@ -455,21 +479,52 @@ export default function DashboardPage() {
   );
 }
 
-function StatCard({ icon, label, value, sub, color }: {
+function StatCard({ icon, label, value, sub, color, index = 0 }: {
   icon: React.ReactNode;
   label: string;
-  value: React.ReactNode;
+  value: number | null;
   sub: string;
   color: string;
+  index?: number;
 }) {
+  const counted = useCountUp(value ?? 0, 800, index * 80);
   return (
-    <div className={`card ${color} border-0`}>
-      <div>{icon}</div>
+    <motion.div
+      custom={index}
+      variants={cardVariants}
+      className={`card ${color} border-0 card-hover`}
+    >
+      <motion.div
+        animate={{ rotate: [0, -8, 8, 0] }}
+        transition={{ delay: index * 0.08 + 0.4, duration: 0.5, ease: 'easeInOut' }}
+      >
+        {icon}
+      </motion.div>
       <div className="mt-3">
-        <div className="text-2xl font-bold text-gray-900">{value}</div>
+        <div className="text-2xl font-bold text-gray-900">
+          {value === null ? (
+            <span className="skeleton inline-block w-10 h-6 rounded align-middle" />
+          ) : counted}
+        </div>
         <div className="text-xs font-semibold text-gray-700 mt-0.5">{label}</div>
         <div className="text-xs text-gray-400">{sub}</div>
       </div>
-    </div>
+    </motion.div>
+  );
+}
+
+function AnimatedStatMini({ label, val, color, index }: {
+  label: string; val: number; color: string; index: number;
+}) {
+  const counted = useCountUp(val, 700, index * 60);
+  return (
+    <motion.div
+      custom={index}
+      variants={cardVariants}
+      className={`${color} rounded-xl p-3 text-center`}
+    >
+      <div className="text-2xl font-black">{counted}</div>
+      <div className="text-[10px] font-medium mt-0.5 opacity-80 leading-tight">{label}</div>
+    </motion.div>
   );
 }

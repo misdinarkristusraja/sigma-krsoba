@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import NotificationBell from '../ui/NotificationBell';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -300,7 +301,17 @@ export default function Layout() {
         {/* Scrollable content */}
         <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-            <Outlet/>
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+              >
+                <Outlet/>
+              </motion.div>
+            </AnimatePresence>
           </div>
         </main>
 
