@@ -13,8 +13,8 @@ import { supabase } from '../../lib/supabase';
 import { cn, truncate } from '../../lib/utils';
 import toast from 'react-hot-toast';
 
-const STAFF = ['Administrator', 'Pengurus', 'Pelatih'];
-const PENG  = ['Administrator', 'Pengurus'];
+const STAFF = ['Administrator', 'Pengurus', 'Pendamping', 'Pelatih'];
+const PENG  = ['Administrator', 'Pengurus', 'Pendamping'];
 const ADMIN = ['Administrator'];
 
 type NavItem = {
@@ -81,7 +81,8 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Kegiatan',
     icon: PartyPopper,
     items: [
-      { icon: PartyPopper, label: 'Acara', path: '/acara', roles: PENG },
+      { icon: PartyPopper, label: 'Acara',          path: '/acara',          roles: PENG },
+      { icon: Star,        label: 'Poin Kegiatan',  path: '/poin-kegiatan', roles: PENG },
     ],
   },
   {
