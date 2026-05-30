@@ -132,8 +132,26 @@ export function getLiturgiByMonth(year: number, month: number) {
 }
 
 // Hari-hari besar yang otomatis hapus Misa Harian (default: tidak ada)
+// Hari-hari yang TIDAK ada Misa Harian (HR weekday + Triduum).
+// Jumat Pertama tiap bulan dikecualikan secara dinamis via getFirstFriday().
 export const HARI_RAYA_NO_HARIAN = [
-  '2026-04-02', // Kamis Putih
-  '2026-04-03', // Jumat Agung
-  '2026-04-04', // Sabtu Suci
+  '2026-01-01', // Kamis  — HR. Santa Maria Bunda Allah
+  '2026-04-02', // Kamis  — Kamis Putih (Triduum)
+  '2026-04-03', // Jumat  — Ibadat Jumat Agung (Triduum)
+  '2026-04-04', // Sabtu  — Vigili Paskah (Triduum)
+  '2026-05-14', // Kamis  — HR. Kenaikan Tuhan
+  '2026-12-08', // Selasa — HR. Maria Dikandung Tanpa Noda
+  '2026-12-24', // Kamis  — Malam Natal
+  '2026-12-25', // Jumat  — HR. Natal
 ];
+
+/** Tanggal Jumat Pertama bulan tersebut (format YYYY-MM-DD) */
+export function getFirstFriday(year: number, month: number): string {
+  for (let d = 1; d <= 7; d++) {
+    const date = new Date(year, month - 1, d);
+    if (date.getDay() === 5) {
+      return `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    }
+  }
+  return '';
+}

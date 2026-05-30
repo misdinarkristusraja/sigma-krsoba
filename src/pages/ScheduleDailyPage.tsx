@@ -4,7 +4,7 @@ const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
 import * as XLSX from 'xlsx';
 import { formatDate, getLiturgyClass, LITURGY_COLORS } from '../lib/utils';
-import { getLiturgiByDate, getLiturgiByMonth, HARI_RAYA_NO_HARIAN } from '../lib/liturgiData2026';
+import { getLiturgiByDate, getLiturgiByMonth, HARI_RAYA_NO_HARIAN, getFirstFriday } from '../lib/liturgiData2026';
 import { LiturgyBadge } from '../components/ui/LiturgyBadge';
 import { toPng } from 'html-to-image';
 import {
@@ -82,10 +82,12 @@ export function ScheduleDailyPage() {
   const [searchOptin,  setSearchOptin]= useState('');
 
   const tableRef = useRef(null);
-  const [editModal,    setEditModal]    = useState<{ ev: any; assignments: any[] } | null>(null);
+  const [editModal,    setEditModal]    = useState<{ ev: any; assignments: any[]; pic: any | null } | null>(null);
   const [editFields,   setEditFields]   = useState({ perayaan: '', warna_liturgi: 'Hijau' });
   const [allUsers,     setAllUsers]     = useState<any[]>([]);
+  const [picUsers,     setPicUsers]     = useState<any[]>([]);
   const [addUserId,    setAddUserId]    = useState('');
+  const [editPicId,    setEditPicId]    = useState('');
   const [savingEdit,   setSavingEdit]   = useState(false);
 
   // Target bulan opt-in = bulan berikutnya dari bulan yang dipilih
@@ -102,7 +104,7 @@ export function ScheduleDailyPage() {
     const end     = `${year}-${padM}-${String(lastDay).padStart(2,'0')}`;
     const { data, error } = await supabase
       .from('events')
-      .select(`*, assignments(user_id, users(nama_lengkap, nama_panggilan, lingkungan, pendidikan))`)
+      .select(`*, assignments(user_id, users(nama_lengkap, nama_panggilan, lingkungan, pendidikan)), event_pics(id, slot, nama, hp, urutan)`)
       .eq('tipe_event', 'Misa_Harian')
       .gte('tanggal_tugas', start)
       .lte('tanggal_tugas', end)
@@ -183,16 +185,20 @@ export function ScheduleDailyPage() {
     loadOptinList();
   }
 
-  // ── Edit event (perayaan, warna, petugas) ───────────────
+  // ── Edit event (perayaan, warna, petugas, PIC) ──────────
   async function openEdit(ev: any) {
     setEditFields({ perayaan: ev.perayaan || '', warna_liturgi: ev.warna_liturgi || 'Hijau' });
-    setEditModal({ ev, assignments: ev.assignments || [] });
-    if (!allUsers.length) {
-      const { data } = await supabase.from('users')
-        .select('id, nama_panggilan, nickname, lingkungan')
-        .eq('status', 'Active').order('nama_panggilan');
-      setAllUsers(data || []);
-    }
+    const pic = (ev.event_pics || []).find((p: any) => p.slot === 1) || null;
+    setEditModal({ ev, assignments: ev.assignments || [], pic });
+    setEditPicId('');
+    const [usersRes, pengurusRes] = await Promise.all([
+      allUsers.length ? Promise.resolve({ data: allUsers }) :
+        supabase.from('users').select('id, nama_panggilan, nickname, lingkungan').eq('status', 'Active').order('nama_panggilan'),
+      picUsers.length ? Promise.resolve({ data: picUsers }) :
+        supabase.from('users').select('id, nama_panggilan, hp_anak, hp_ortu').in('role', ['Administrator','Pengurus']).eq('status', 'Active').order('nama_panggilan'),
+    ]);
+    if (!allUsers.length && usersRes.data) setAllUsers(usersRes.data as any[]);
+    if (!picUsers.length && pengurusRes.data) setPicUsers(pengurusRes.data as any[]);
   }
 
   async function saveEdit() {
@@ -240,23 +246,67 @@ export function ScheduleDailyPage() {
     loadEvents();
   }
 
-  // ── Fix liturgi: recalculate warna + perayaan for all events ───
+  // ── Fix liturgi: force-recalculate warna + perayaan ────
   async function fixLiturgi() {
     if (!events.length) return;
-    if (!confirm(`Recalculate warna liturgi & perayaan untuk semua ${events.length} event bulan ${MONTHS[month-1]} ${year}?`)) return;
-    let updated = 0;
-    for (const ev of events) {
-      const d = new Date(ev.tanggal_tugas + 'T00:00:00');
+    if (!confirm(`Recalculate warna liturgi & perayaan untuk semua ${events.length} event ${MONTHS[month-1]} ${year}?`)) return;
+    const tid = 'fix-liturgi';
+    toast.loading(`Memperbarui 0 / ${events.length}...`, { id: tid });
+    let updated = 0, failed = 0;
+    for (let i = 0; i < events.length; i++) {
+      const ev          = events[i];
+      const d           = new Date(ev.tanggal_tugas + 'T00:00:00');
       const namaHari    = HARI[d.getDay()];
       const newWarna    = getLiturgicalSeasonColor(ev.tanggal_tugas);
       const newPerayaan = getLiturgicalLabel(ev.tanggal_tugas, namaHari);
-      if (newWarna !== ev.warna_liturgi || newPerayaan !== ev.perayaan) {
-        await supabase.from('events').update({ warna_liturgi: newWarna, perayaan: newPerayaan }).eq('id', ev.id);
-        updated++;
-      }
+      const { error }   = await supabase.from('events')
+        .update({ warna_liturgi: newWarna, perayaan: newPerayaan })
+        .eq('id', ev.id);
+      if (error) { failed++; console.error('fixLiturgi', ev.tanggal_tugas, error.message); }
+      else updated++;
+      toast.loading(`Memperbarui ${i + 1} / ${events.length}...`, { id: tid });
     }
-    toast.success(updated ? `${updated} event diperbarui ✅` : 'Semua sudah benar');
+    if (failed) toast.error(`${failed} gagal (cek console). ${updated} berhasil.`, { id: tid, duration: 5000 });
+    else toast.success(`${updated} event diperbarui ✅`, { id: tid, duration: 4000 });
     loadEvents();
+  }
+
+  // ── Hapus semua Misa Harian bulan ini ───────────────────
+  async function deleteAllHarian() {
+    if (!events.length) { toast('Tidak ada event untuk dihapus'); return; }
+    if (!confirm(`⚠️ HAPUS SEMUA ${events.length} event Misa Harian ${MONTHS[month-1]} ${year}?\nTermasuk semua petugas & PIC. Tidak bisa dibatalkan!`)) return;
+    const ids = events.map((e: any) => e.id);
+    await supabase.from('assignments').delete().in('event_id', ids);
+    await supabase.from('event_pics').delete().in('event_id', ids);
+    const { error } = await supabase.from('events').delete().in('id', ids);
+    if (error) { toast.error('Gagal hapus: ' + error.message); return; }
+    toast.success(`${ids.length} event dihapus`);
+    loadEvents();
+  }
+
+  // ── Set / remove PIC via modal ───────────────────────────
+  async function savePIC() {
+    if (!editModal || !editPicId) return;
+    const user = picUsers.find((u: any) => u.id === editPicId);
+    if (!user) return;
+    await supabase.from('event_pics').delete().eq('event_id', editModal.ev.id).eq('slot', 1);
+    const { error } = await supabase.from('event_pics').insert({
+      event_id: editModal.ev.id, slot: 1,
+      nama:     user.nama_panggilan,
+      hp:       user.hp_anak || user.hp_ortu || null,
+      urutan:   1,
+    });
+    if (error) { toast.error(error.message); return; }
+    setEditModal(m => m ? { ...m, pic: { slot: 1, nama: user.nama_panggilan, hp: user.hp_anak || user.hp_ortu || null } } : null);
+    setEditPicId('');
+    toast.success('PIC diperbarui');
+  }
+
+  async function removePIC() {
+    if (!editModal) return;
+    await supabase.from('event_pics').delete().eq('event_id', editModal.ev.id).eq('slot', 1);
+    setEditModal(m => m ? { ...m, pic: null } : null);
+    toast.success('PIC dihapus');
   }
 
   // ── Export Excel ────────────────────────────────────────
@@ -264,11 +314,13 @@ export function ScheduleDailyPage() {
     const rows = events.map(ev => {
       const d       = new Date(ev.tanggal_tugas + 'T00:00:00');
       const petugas = (ev.assignments || []).map((a: any) => a.users?.nama_panggilan).filter(Boolean).join(', ');
+      const pic     = (ev.event_pics || []).find((p: any) => p.slot === 1);
       return {
         Tanggal:        ev.tanggal_tugas,
         Hari:           HARI[d.getDay()],
         'Nama Perayaan': ev.perayaan || '',
         'Warna Liturgi': ev.warna_liturgi || '',
+        PIC:            pic?.nama || '',
         Petugas:        petugas || '(kosong)',
         Status:         ev.is_draft ? 'Draft' : 'Published',
       };
@@ -287,14 +339,20 @@ export function ScheduleDailyPage() {
     const tid = 'gen-harian';
     try {
       toast.loading('Mengambil pool peserta...', { id: tid });
-      const { data: optins } = await supabase.from('misa_harian_availability')
-        .select('user_id, status, tanggal_tidak_bisa')
-        .eq('tahun', year).eq('bulan', month)
-        .in('status', ['Bisa', 'Pas_Libur']);
-      const { data: tarakanita } = await supabase.from('users')
-        .select('id, nickname, nama_panggilan, lingkungan, pendidikan')
-        .eq('is_tarakanita', true).eq('status', 'Active').eq('is_suspended', false)
-        .in('role', ['Misdinar_Aktif','Misdinar_Retired']);
+      const [{ data: optins }, { data: tarakanita }, { data: pengurusPool }] = await Promise.all([
+        supabase.from('misa_harian_availability')
+          .select('user_id, status, tanggal_tidak_bisa')
+          .eq('tahun', year).eq('bulan', month)
+          .in('status', ['Bisa', 'Pas_Libur']),
+        supabase.from('users')
+          .select('id, nickname, nama_panggilan, lingkungan, pendidikan')
+          .eq('is_tarakanita', true).eq('status', 'Active').eq('is_suspended', false)
+          .in('role', ['Misdinar_Aktif','Misdinar_Retired']),
+        supabase.from('users')
+          .select('id, nama_panggilan, hp_anak, hp_ortu')
+          .in('role', ['Administrator','Pengurus'])
+          .eq('status', 'Active').order('nama_panggilan'),
+      ]);
       const { data: optinUsers } = optins?.length
         ? await supabase.from('users')
             .select('id, nickname, nama_panggilan, lingkungan, pendidikan')
@@ -312,11 +370,13 @@ export function ScheduleDailyPage() {
       (optins||[]).forEach((o: any) => { if (o.tanggal_tidak_bisa) tidakBisaMap[o.user_id] = o.tanggal_tidak_bisa; });
 
       const weekdays = getWeekdays(year, month);
-      toast.loading(`Generate ${weekdays.length} hari (${pool.length} orang di pool)...`, { id: tid });
-      let poolIdx = 0, created = 0, skipped = 0;
+      toast.loading(`Generate ${weekdays.length} hari (${pool.length} petugas, ${pengurusPool?.length || 0} PIC)...`, { id: tid });
+      const firstFriday = getFirstFriday(year, month);
+      let poolIdx = 0, picIdx = 0, created = 0, skipped = 0;
 
       for (const { date, dow } of weekdays) {
         if (HARI_RAYA_NO_HARIAN.includes(date)) { skipped++; continue; }
+        if (date === firstFriday) { skipped++; continue; } // Jumat Pertama → masuk mingguan
         const { data: existing } = await supabase.from('events')
           .select('id').eq('tipe_event','Misa_Harian').eq('tanggal_tugas', date).maybeSingle();
         if (existing) continue;
@@ -348,6 +408,18 @@ export function ScheduleDailyPage() {
           assigns.push({ event_id: ev.id, user_id: u.id, slot_number: 1, position: i+1 });
         }
         if (assigns.length) await supabase.from('assignments').insert(assigns);
+
+        // Assign PIC from Pengurus pool (rotating)
+        if (pengurusPool?.length) {
+          const pic = pengurusPool[picIdx % pengurusPool.length];
+          picIdx++;
+          await supabase.from('event_pics').insert({
+            event_id: ev.id, slot: 1,
+            nama:     pic.nama_panggilan,
+            hp:       pic.hp_anak || pic.hp_ortu || null,
+            urutan:   1,
+          });
+        }
         created++;
       }
 
@@ -423,6 +495,11 @@ export function ScheduleDailyPage() {
               {events.length > 0 && (
                 <button onClick={fixLiturgi} className="btn-outline gap-2" title="Recalculate warna liturgi & perayaan">
                   <RefreshCw size={15}/> Fix Liturgi
+                </button>
+              )}
+              {events.length > 0 && (
+                <button onClick={deleteAllHarian} className="btn-danger gap-2">
+                  <X size={15}/> Hapus Semua
                 </button>
               )}
               {draftCount > 0 && (
@@ -512,7 +589,7 @@ export function ScheduleDailyPage() {
                   <thead>
                     <tr>
                       <th>Tgl</th><th>Hari</th><th>Warna</th>
-                      <th>Perayaan</th><th>Petugas</th><th>Lingkungan</th><th>Status</th>
+                      <th>Perayaan</th><th>PIC</th><th>Petugas</th><th>Lingkungan</th><th>Status</th>
                       {isPengurus && <th>Aksi</th>}
                     </tr>
                   </thead>
@@ -544,12 +621,25 @@ export function ScheduleDailyPage() {
                         </td>
                       );
 
+                      const pic = (ev.event_pics || []).find((p: any) => p.slot === 1);
+                      const picCell = (
+                        <td rowSpan={rs} className="text-xs">
+                          {pic ? (
+                            pic.hp
+                              ? <a href={`https://wa.me/${pic.hp.replace(/\D/g,'')}`} target="_blank" rel="noreferrer"
+                                  className="text-green-700 hover:underline font-medium">{pic.nama}</a>
+                              : <span className="font-medium text-gray-700">{pic.nama}</span>
+                          ) : <span className="text-gray-300 italic">—</span>}
+                        </td>
+                      );
+
                       if (!asgns.length) return (
                         <tr key={ev.id} className={lc.bg}>
                           <td className={`font-bold ${lc.text}`}>{formatDate(ev.tanggal_tugas,'dd')}</td>
                           <td>{HARI[d.getDay()]}</td>
                           <td><div className="flex items-center gap-1"><div className={`w-3 h-3 rounded-full ${lc.dot}`}/><span className="text-xs">{ev.warna_liturgi}</span></div></td>
                           <td className="text-xs">{ev.perayaan||'—'}</td>
+                          {picCell}
                           <td className="text-orange-400 text-xs italic">Kosong</td>
                           <td>—</td>
                           <td>{statusBadge}</td>
@@ -563,6 +653,7 @@ export function ScheduleDailyPage() {
                             <td rowSpan={rs}>{HARI[d.getDay()]}</td>
                             <td rowSpan={rs}><div className="flex items-center gap-1"><div className={`w-3 h-3 rounded-full ${lc.dot}`}/><span className="text-xs">{ev.warna_liturgi}</span></div></td>
                             <td rowSpan={rs} className="text-xs">{ev.perayaan||'—'}</td>
+                            {picCell}
                           </>}
                           <td className="font-medium text-sm">{a.users?.nama_panggilan||'—'}</td>
                           <td className="text-xs text-gray-500">{a.users?.lingkungan||'—'}</td>
@@ -660,6 +751,38 @@ export function ScheduleDailyPage() {
                   </select>
                   <button onClick={addAssignment} disabled={!addUserId} className="btn-primary btn-sm px-4">
                     Tambah
+                  </button>
+                </div>
+              </div>
+              {/* PIC Pengurus */}
+              <div>
+                <label className="label">PIC Pengurus</label>
+                {editModal.pic ? (
+                  <div className="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2 mb-2">
+                    <div>
+                      <span className="text-sm font-medium text-blue-800">{editModal.pic.nama}</span>
+                      {editModal.pic.hp && <span className="text-xs text-blue-500 ml-2">· {editModal.pic.hp}</span>}
+                    </div>
+                    <button onClick={removePIC} className="p-1 text-red-400 hover:text-red-600 rounded">
+                      <X size={14}/>
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400 italic mb-2">Belum ada PIC</p>
+                )}
+                <div className="flex gap-2">
+                  <select
+                    className="input flex-1 text-sm"
+                    value={editPicId}
+                    onChange={e => setEditPicId(e.target.value)}
+                  >
+                    <option value="">{editModal.pic ? 'Ganti PIC...' : 'Set PIC...'}</option>
+                    {picUsers.map((u: any) => (
+                      <option key={u.id} value={u.id}>{u.nama_panggilan}</option>
+                    ))}
+                  </select>
+                  <button onClick={savePIC} disabled={!editPicId} className="btn-primary btn-sm px-4">
+                    Set
                   </button>
                 </div>
               </div>
