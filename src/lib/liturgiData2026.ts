@@ -140,7 +140,6 @@ export const HARI_RAYA_NO_HARIAN = [
   '2026-04-03', // Jumat  — Ibadat Jumat Agung (Triduum)
   '2026-04-04', // Sabtu  — Vigili Paskah (Triduum)
   '2026-05-14', // Kamis  — HR. Kenaikan Tuhan
-  '2026-12-08', // Selasa — HR. Maria Dikandung Tanpa Noda
   '2026-12-24', // Kamis  — Malam Natal
   '2026-12-25', // Jumat  — HR. Natal
 ];
