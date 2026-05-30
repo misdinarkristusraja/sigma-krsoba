@@ -325,3 +325,6 @@ Without this step, AdminPage → Reset Password and registration approval will f
 ---
 
 *Last updated: 2026-05-20*
+
+NOTE:
+Dashboard Aksi Cepat — "Video Tutorial" button dengan href="#". Nanti tinggal ganti # di DashboardPage.tsx:397 dengan URL YouTube-nya
