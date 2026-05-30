@@ -1,4 +1,4 @@
-export type UserRole = 'Administrator' | 'Pengurus' | 'Pelatih' | 'Misdinar_Aktif' | 'Misdinar_Retired';
+export type UserRole = 'Administrator' | 'Pengurus' | 'Pendamping' | 'Pelatih' | 'Misdinar_Aktif' | 'Misdinar_Retired';
 export type UserStatus = 'Active' | 'Pending' | 'Retired' | 'Suspended';
 export type EventType = 'Mingguan' | 'Jumper' | 'Sabtu_Imam' | 'Misa_Khusus' | 'Misa_Harian' | 'Latihan';
 export type SwapStatus = 'Pending' | 'Approved_PIC' | 'Rejected_PIC' | 'Replaced' | 'Offered' | 'Expired';

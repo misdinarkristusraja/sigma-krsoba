@@ -171,6 +171,7 @@ export function getLiturgyClass(color: string | null | undefined) {
 export const ROLE_LABELS: Record<string, string> = {
   Administrator:    'Administrator',
   Pengurus:         'Pengurus',
+  Pendamping:       'Pendamping',
   Pelatih:          'Pelatih',
   Misdinar_Aktif:   'Misdinar Aktif',
   Misdinar_Retired: 'Misdinar Retired',

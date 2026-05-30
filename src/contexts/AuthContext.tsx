@@ -138,8 +138,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const role       = (profile?.role ?? null) as UserRole | null;
   const isAdmin    = role === 'Administrator';
-  const isPengurus = role != null && ['Administrator', 'Pengurus'].includes(role);
-  const isPelatih  = role != null && ['Administrator', 'Pengurus', 'Pelatih'].includes(role);
+  const isPengurus = role != null && ['Administrator', 'Pengurus', 'Pendamping'].includes(role);
+  const isPelatih  = role != null && ['Administrator', 'Pengurus', 'Pendamping', 'Pelatih'].includes(role);
   const canScan    = isPelatih;
 
   function hasRole(...roles: UserRole[]) { return role != null && roles.includes(role); }

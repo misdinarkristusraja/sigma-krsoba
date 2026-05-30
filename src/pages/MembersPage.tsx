@@ -470,7 +470,7 @@ export default function MembersPage() {
                               defaultValue={m.role}
                               onChange={e => quickChange(m.id, 'role', e.target.value)}
                               onBlur={() => setQuickEdit(null)}>
-                              {['Administrator','Pengurus','Pelatih','Misdinar_Aktif','Misdinar_Retired'].map(r => (
+                              {['Administrator','Pengurus','Pendamping','Pelatih','Misdinar_Aktif','Misdinar_Retired'].map(r => (
                                 <option key={r} value={r}>{ROLE_LABELS[r]||r}</option>
                               ))}
                             </select>
