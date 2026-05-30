@@ -154,3 +154,13 @@ export function getFirstFriday(year: number, month: number): string {
   }
   return '';
 }
+
+/** Sabtu Imam = Sabtu setelah Jumat Pertama (format YYYY-MM-DD) */
+export function getSabtuImam(year: number, month: number): string {
+  const ff = getFirstFriday(year, month);
+  if (!ff) return '';
+  const d = new Date(ff + 'T00:00:00');
+  d.setDate(d.getDate() + 1);
+  // Sabtu Imam bisa jatuh di bulan berikutnya — tetap kembalikan tanggalnya
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}

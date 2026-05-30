@@ -4,7 +4,7 @@ const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
 import * as XLSX from 'xlsx';
 import { formatDate, getLiturgyClass, LITURGY_COLORS } from '../lib/utils';
-import { getLiturgiByDate, getLiturgiByMonth, HARI_RAYA_NO_HARIAN, getFirstFriday } from '../lib/liturgiData2026';
+import { getLiturgiByDate, getLiturgiByMonth, HARI_RAYA_NO_HARIAN, getFirstFriday, getSabtuImam } from '../lib/liturgiData2026';
 import { LiturgyBadge } from '../components/ui/LiturgyBadge';
 import { toPng } from 'html-to-image';
 import {
@@ -52,7 +52,7 @@ function getWeekdays(year: any, month: any) {
   for (let d = 1; d <= total; d++) {
     const date = new Date(year, month - 1, d);
     const dow  = date.getDay();
-    if (dow >= 1 && dow <= 5) days.push({ date: toLocalISO(date), dow });
+    if (dow >= 1 && dow <= 6) days.push({ date: toLocalISO(date), dow }); // Senin–Sabtu
   }
   return days;
 }
@@ -372,11 +372,13 @@ export function ScheduleDailyPage() {
       const weekdays = getWeekdays(year, month);
       toast.loading(`Generate ${weekdays.length} hari (${pool.length} petugas, ${pengurusPool?.length || 0} PIC)...`, { id: tid });
       const firstFriday = getFirstFriday(year, month);
+      const sabtuImam   = getSabtuImam(year, month);
       let poolIdx = 0, picIdx = 0, created = 0, skipped = 0;
 
       for (const { date, dow } of weekdays) {
         if (HARI_RAYA_NO_HARIAN.includes(date)) { skipped++; continue; }
-        if (date === firstFriday) { skipped++; continue; } // Jumat Pertama → masuk mingguan
+        if (date === firstFriday) { skipped++; continue; } // Jumat Pertama → mingguan
+        if (date === sabtuImam)   { skipped++; continue; } // Sabtu Imam → mingguan
         const { data: existing } = await supabase.from('events')
           .select('id').eq('tipe_event','Misa_Harian').eq('tanggal_tugas', date).maybeSingle();
         if (existing) continue;
