@@ -516,8 +516,11 @@ export default function RegisterPage() {
                   className="hidden"
                   onChange={e => {
                     const f = e.target.files?.[0];
-                    if (f && f.size > 2 * 1024 * 1024) { toast.error('File terlalu besar (maks 2 MB)'); return; }
-                    setForm(prev => ({ ...prev, sertifikat_komuni: f || null }));
+                    if (!f) return;
+                    const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
+                    if (!ALLOWED_TYPES.includes(f.type)) { toast.error('Format file tidak didukung. Gunakan PDF, JPG, atau PNG'); return; }
+                    if (f.size > 2 * 1024 * 1024) { toast.error('File terlalu besar (maks 2 MB)'); return; }
+                    setForm(prev => ({ ...prev, sertifikat_komuni: f }));
                   }}
                 />
               </label>

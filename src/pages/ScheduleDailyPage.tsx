@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
-import * as XLSX from 'xlsx';
 import { formatDate, getLiturgyClass, LITURGY_COLORS } from '../lib/utils';
 import { getLiturgiByDate, getLiturgiByMonth, HARI_RAYA_NO_HARIAN, getFirstFriday, getSabtuImam } from '../lib/liturgiData2026';
 import { LiturgyBadge } from '../components/ui/LiturgyBadge';

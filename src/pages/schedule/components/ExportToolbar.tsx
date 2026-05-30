@@ -46,6 +46,10 @@ function fmtTglIndo(dateStr: string) {
   return `${HARI[dt.getDay()]} ${d} ${MONTHS_UPPER[mo - 1]} ${y}`;
 }
 
+function escHtml(s: string): string {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 // ── Core HTML builder ────────────────────────────────────────────────────────
 function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []) {
   const isMisaKhusus = ev.tipe_event === 'Misa_Khusus';
@@ -53,7 +57,7 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
   const nSlots       = isMisaKhusus ? Math.max(ev.jumlah_misa || 1, schedule.length) : 4;
   const bySlot: Record<number, any[]> = {};
   for (let s = 1; s <= nSlots; s++) bySlot[s] = assignments.filter(a => a.slot_number === s);
-  const perayaan = (ev.perayaan || ev.nama_event || 'MISA MINGGUAN').toUpperCase();
+  const perayaan = escHtml((ev.perayaan || ev.nama_event || 'MISA MINGGUAN').toUpperCase());
 
   // Helper: get PICs for a slot from event_pics array
   function slotPics(slot: number) {
@@ -80,9 +84,9 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
     const info    = SLOT_INFO[slot] || SLOT_INFO[1];
     const people  = bySlot[slot] || [];
     const pics    = slotPics(slot);
-    const picA    = (pics[0]?.nama || '').toUpperCase();
-    const picB    = (pics[1]?.nama || '').toUpperCase();
-    const hpA     = pics[0]?.hp || '';
+    const picA    = escHtml((pics[0]?.nama || '').toUpperCase());
+    const picB    = escHtml((pics[1]?.nama || '').toUpperCase());
+    const hpA     = escHtml(pics[0]?.hp || '');
     const sc      = schedule.find(s => s.slot === slot);
     const tglSlot = isMisaKhusus
       ? fmtTglIndo(sc?.tanggal || ev.tanggal_tugas)
@@ -127,9 +131,9 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
         const u   = a.users || {};
         const cst = i === 0 ? firstRowStyle : normRowStyle;
         rows += `<tr>${i === 0 ? leftCell : ''}
-          <td style="${cst}">${u.nama_lengkap || '—'}</td>
-          <td style="${cst}">${u.nama_panggilan || '—'}</td>
-          <td style="${cst}border-right:${BORDER_OUTER};">${u.lingkungan || '—'}</td>
+          <td style="${cst}">${escHtml(u.nama_lengkap || '—')}</td>
+          <td style="${cst}">${escHtml(u.nama_panggilan || '—')}</td>
+          <td style="${cst}border-right:${BORDER_OUTER};">${escHtml(u.lingkungan || '—')}</td>
         </tr>`;
       });
     }
@@ -171,8 +175,8 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
     const count = pelatihNicks.length;
     const cells = pelatihNicks.map((nick: string) => {
       const found = pelatihOptions.find(p => p.nickname === nick);
-      const nama  = (found?.nama_panggilan || nick).toUpperCase();
-      const hp    = found?.hp_anak || found?.hp_ortu || '';
+      const nama  = escHtml((found?.nama_panggilan || nick).toUpperCase());
+      const hp    = escHtml(found?.hp_anak || found?.hp_ortu || '');
       return `
         <td style="
           border:${BORDER};padding:8px 14px;text-align:center;
@@ -180,7 +184,7 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
           background:#f0f7ff;width:${Math.floor(100/count)}%;">
           <div style="font-weight:bold;font-size:18px;">${nama}</div>
           ${hp ? `<div style="font-size:15px;color:#555;margin-top:3px;">${hp}</div>` : ''}
-          ${latihanJam ? `<div style="font-size:15px;color:#333;margin-top:4px;">Latihan: ${latihanHari} (${latihanJam})</div>` : ''}
+          ${latihanJam ? `<div style="font-size:15px;color:#333;margin-top:4px;">Latihan: ${escHtml(latihanHari)} (${escHtml(latihanJam)})</div>` : ''}
         </td>`;
     }).join('');
     const empties = Array(3 - pelatihNicks.length)
@@ -325,7 +329,7 @@ function buildCombinedHTML(eventsWithAssignments: Array<{ ev: any; assignments: 
   const BORDER_SEP = '5px solid #111'; // pemisah antar-event
 
   const headerNames = eventsWithAssignments
-    .map(({ ev }) => (ev.perayaan || ev.nama_event || '').toUpperCase())
+    .map(({ ev }) => escHtml((ev.perayaan || ev.nama_event || '').toUpperCase()))
     .join('\n');
 
   // Subtitle: rentang tanggal gabungan
@@ -352,7 +356,7 @@ function buildCombinedHTML(eventsWithAssignments: Array<{ ev: any; assignments: 
     }
 
     // Event separator row (except before first event)
-    const evName = (ev.perayaan || ev.nama_event || '').toUpperCase();
+    const evName = escHtml((ev.perayaan || ev.nama_event || '').toUpperCase());
     const evTgl  = ev.tanggal_latihan
       ? `${fmtTglIndo(ev.tanggal_latihan)} s/d ${fmtTglIndo(ev.tanggal_tugas)}`
       : fmtTglIndo(ev.tanggal_tugas);
@@ -373,9 +377,9 @@ function buildCombinedHTML(eventsWithAssignments: Array<{ ev: any; assignments: 
       const info    = SLOT_INFO[slot] || SLOT_INFO[1];
       const people  = bySlot[slot] || [];
       const pics    = slotPics(slot);
-      const picA    = (pics[0]?.nama || '').toUpperCase();
-      const picB    = (pics[1]?.nama || '').toUpperCase();
-      const hpA     = pics[0]?.hp || '';
+      const picA    = escHtml((pics[0]?.nama || '').toUpperCase());
+      const picB    = escHtml((pics[1]?.nama || '').toUpperCase());
+      const hpA     = escHtml(pics[0]?.hp || '');
       const sc      = schedule.find(s => s.slot === slot);
       const tglSlot = isMisaKhusus
         ? fmtTglIndo(sc?.tanggal || ev.tanggal_tugas)
@@ -418,9 +422,9 @@ function buildCombinedHTML(eventsWithAssignments: Array<{ ev: any; assignments: 
           const u   = a.users || {};
           const cst = i === 0 ? firstRowStyle : normRowStyle;
           allRows += `<tr>${i === 0 ? leftCell : ''}
-            <td style="${cst}">${u.nama_lengkap || '—'}</td>
-            <td style="${cst}">${u.nama_panggilan || '—'}</td>
-            <td style="${cst}border-right:${BORDER_OUTER};">${u.lingkungan || '—'}</td>
+            <td style="${cst}">${escHtml(u.nama_lengkap || '—')}</td>
+            <td style="${cst}">${escHtml(u.nama_panggilan || '—')}</td>
+            <td style="${cst}border-right:${BORDER_OUTER};">${escHtml(u.lingkungan || '—')}</td>
           </tr>`;
         });
       }
@@ -438,7 +442,7 @@ function buildCombinedHTML(eventsWithAssignments: Array<{ ev: any; assignments: 
       : 'Sabtu';
 
     const pelatihStr = pelatihNicks.length
-      ? ` | PELATIH: ${pelatihNicks.map(n => { const f = pelatihOptions.find(p => p.nickname === n); return (f?.nama_panggilan || n).toUpperCase(); }).join(', ')}`
+      ? ` | PELATIH: ${pelatihNicks.map(n => { const f = pelatihOptions.find(p => p.nickname === n); return escHtml((f?.nama_panggilan || n).toUpperCase()); }).join(', ')}`
       : '';
 
     if (!ev.tanpa_latihan) {
