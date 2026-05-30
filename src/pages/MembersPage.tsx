@@ -11,8 +11,7 @@ import {
   KeyRound, Copy, Share2,
 } from 'lucide-react';
 
-// Ganti dengan URL video tutorial setelah tersedia
-const VIDEO_TUTORIAL_LINK = '';
+const VIDEO_TUTORIAL_LINK = 'https://youtu.be/hGUqJilAhp8';
 import toast from 'react-hot-toast';
 import { usePagination } from '../hooks/usePagination';
 import { Pagination } from '../components/ui/Pagination';
