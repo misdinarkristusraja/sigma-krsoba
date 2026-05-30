@@ -36,8 +36,8 @@ const JadwalMisa         = lazy(() => import('./pages/ScheduleDailyPage').then(m
 const NotFound           = lazy(() => import('./pages/ScheduleDailyPage').then(m => ({ default: m.NotFoundPage })));
 
 const ADMIN = ['Administrator'];
-const PENG  = ['Administrator', 'Pengurus'];
-const STAFF = ['Administrator', 'Pengurus', 'Pelatih'];
+const PENG  = ['Administrator', 'Pengurus', 'Pendamping'];
+const STAFF = ['Administrator', 'Pengurus', 'Pendamping', 'Pelatih'];
 
 /**
  * ProtectedRoute — penjaga akses berbasis login dan role.

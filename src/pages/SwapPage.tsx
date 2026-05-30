@@ -240,9 +240,10 @@ export default function SwapPage() {
 
     // Jika langsung Replaced: update assignment ke pengganti
     if (f.status === 'Replaced' && f.pengganti_id) {
-      await supabase.from('assignments')
+      const { error: aErr } = await supabase.from('assignments')
         .update({ user_id: f.pengganti_id })
         .eq('id', f.assignment_id);
+      if (aErr) { toast.error('Swap dicatat tapi jadwal gagal diupdate: ' + aErr.message); return; }
     }
 
     toast.success('Tukar jadwal berhasil dicatat!');

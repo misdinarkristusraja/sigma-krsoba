@@ -99,7 +99,9 @@ export default function MembersPage() {
   const pg = usePagination(filtered, 10);
 
   // ── Quick inline change status/role ───────────────────────
-  async function quickChange(memberId: any, field: any, value: any) {
+  const ALLOWED_QUICK_FIELDS = ['status', 'role'] as const;
+  async function quickChange(memberId: string, field: typeof ALLOWED_QUICK_FIELDS[number], value: string) {
+    if (!(ALLOWED_QUICK_FIELDS as readonly string[]).includes(field)) { toast.error('Field tidak valid'); return; }
     const { error } = await supabase
       .from('users')
       .update({ [field]: value, updated_at: new Date().toISOString() })
