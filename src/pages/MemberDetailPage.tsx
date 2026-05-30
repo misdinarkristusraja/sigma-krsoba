@@ -7,7 +7,7 @@ import { formatDate, buildWALink, PENDIDIKAN_OPTIONS, formatHP, STATUS_LABELS, R
 import { LINGKUNGAN_LIST, getWilayah } from '../lib/wilayah';
 import {
   ArrowLeft, CreditCard, BarChart2, Phone, Edit2, Save, X,
-  ShieldAlert, ShieldCheck, KeyRound, MessageCircle,
+  ShieldAlert, ShieldCheck, KeyRound, MessageCircle, FileText, Download, ExternalLink,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 const ROLES = ['Administrator','Pengurus','Pelatih','Misdinar_Aktif','Misdinar_Retired'];
@@ -43,11 +43,138 @@ Mohon login menggunakan akun tersebut, kemudian langsung mengganti password sesu
   );
 }
 
+// ── Dokumen Tab ──────────────────────────────────────────────────
+function DocTab({ member, isPengurus }: { member: any; isPengurus: boolean }) {
+  const [loadingUrl, setLoadingUrl] = React.useState<string | null>(null);
+
+  async function openDoc(storagePath: string, filename: string) {
+    setLoadingUrl(storagePath);
+    try {
+      const { data, error } = await supabase.storage
+        .from('documents')
+        .createSignedUrl(storagePath, 60 * 5); // 5-minute signed URL
+      if (error) throw error;
+      window.open(data.signedUrl, '_blank');
+    } catch (err: any) {
+      toast.error('Gagal membuka dokumen: ' + err.message);
+    } finally {
+      setLoadingUrl(null);
+    }
+  }
+
+  const docs = [
+    {
+      key: 'surat_pernyataan_url',
+      label: 'Surat Pernyataan Orang Tua',
+      icon: FileText,
+      color: 'text-brand-800',
+      bg: 'bg-brand-50',
+    },
+    {
+      key: 'sertifikat_komuni_url',
+      label: 'Sertifikat Komuni Pertama / Baptis Dewasa',
+      icon: FileText,
+      color: 'text-green-700',
+      bg: 'bg-green-50',
+    },
+  ];
+
+  const hasAny = docs.some(d => !!member[d.key]);
+
+  if (!isPengurus) {
+    return (
+      <div className="card text-center py-10 text-gray-400">
+        <FileText size={36} className="mx-auto mb-2 opacity-30" />
+        <p>Hanya Pengurus yang dapat mengakses dokumen anggota.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card space-y-4">
+      <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+        <FileText size={16} className="text-brand-800" /> Dokumen Anggota
+      </h3>
+
+      {!hasAny && (
+        <div className="text-center py-8 text-gray-400">
+          <FileText size={40} className="mx-auto mb-2 opacity-20" />
+          <p className="text-sm">Belum ada dokumen yang diunggah.</p>
+        </div>
+      )}
+
+      <div className="space-y-3">
+        {docs.map(doc => {
+          const path: string | null = member[doc.key] ?? null;
+          return (
+            <div
+              key={doc.key}
+              className={`flex items-center gap-3 p-4 rounded-xl border ${path ? 'border-gray-200 bg-white' : 'border-dashed border-gray-200 bg-gray-50 opacity-60'}`}
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${doc.bg}`}>
+                <doc.icon size={18} className={doc.color} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-800">{doc.label}</p>
+                <p className="text-xs text-gray-400 mt-0.5">
+                  {path ? path.split('/').pop() : 'Belum diunggah'}
+                </p>
+              </div>
+              {path && (
+                <div className="flex gap-2 shrink-0">
+                  <button
+                    onClick={() => openDoc(path, doc.label)}
+                    disabled={loadingUrl === path}
+                    className="btn-outline btn-sm gap-1 text-xs"
+                    title="Buka / Unduh"
+                  >
+                    {loadingUrl === path ? (
+                      <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <ExternalLink size={13} />
+                    )}
+                    Buka
+                  </button>
+                  <a
+                    href="#"
+                    onClick={async e => {
+                      e.preventDefault();
+                      setLoadingUrl(path + '_dl');
+                      try {
+                        const { data, error } = await supabase.storage
+                          .from('documents')
+                          .createSignedUrl(path, 60 * 5, { download: true });
+                        if (error) throw error;
+                        const a = document.createElement('a');
+                        a.href = data.signedUrl;
+                        a.download = doc.label;
+                        a.click();
+                      } catch (err: any) {
+                        toast.error('Gagal unduh: ' + err.message);
+                      } finally {
+                        setLoadingUrl(null);
+                      }
+                    }}
+                    className="btn-ghost btn-sm gap-1 text-xs"
+                    title="Unduh"
+                  >
+                    <Download size={13} />
+                  </a>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function MemberDetailPage() {
   const { id } = useParams();
   const { isPengurus, isAdmin } = useAuth();
   const navigate  = useNavigate();
-  const [tab,     setTab]     = useState('data');  // 'data' | 'akun'
+  const [tab,     setTab]     = useState('data');  // 'data' | 'akun' | 'dokumen'
   const [member,  setMember]  = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
@@ -220,8 +347,9 @@ export default function MemberDetailPage() {
       {/* Tabs */}
       <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
         {[
-          { key: 'data', label: '👤 Data Diri' },
-          { key: 'akun', label: '🔑 Akun & WA' },
+          { key: 'data',    label: '👤 Data Diri' },
+          { key: 'akun',    label: '🔑 Akun & WA' },
+          { key: 'dokumen', label: '📄 Dokumen' },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab===t.key?'bg-white text-brand-800 shadow-sm':'text-gray-500'}`}>
@@ -397,6 +525,11 @@ Mohon login... (dst)`
           <KeyRound size={36} className="mx-auto mb-2 opacity-30"/>
           <p>Hanya Administrator yang dapat mengakses tab ini.</p>
         </div>
+      )}
+
+      {/* ─── TAB DOKUMEN ─── */}
+      {tab === 'dokumen' && (
+        <DocTab member={member} isPengurus={isPengurus} />
       )}
 
       {/* Action buttons */}
