@@ -2,7 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
-import { Search, Download, RefreshCw, Phone, User } from 'lucide-react';
+import { Search, Download, RefreshCw, Phone, User, MessageCircle, Send } from 'lucide-react';
+
+const VIDEO_TUTORIAL_LINK = 'https://youtu.be/zVN7jL6fUqQ';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { usePagination } from '../hooks/usePagination';
@@ -55,7 +57,15 @@ export default function DirectoryPage() {
   const [loading,  setLoading]  = useState(false);
   const [search,   setSearch]   = useState('');
   const [statusF,  setStatusF]  = useState('Active');
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [expanded,        setExpanded]        = useState<string | null>(null);
+  const [sendPasswordMode, setSendPasswordMode] = useState(false);
+
+  function buildWALink(hp: string, nama: string, username: string) {
+    const normalized = hp.replace(/\D/g, '');
+    const videoLink  = VIDEO_TUTORIAL_LINK || '[link video]';
+    const text = `Halo ${nama}! 👋\n\nKabar gembira! Saat ini, Sigma-Kr v.2 sudah resmi dirilis dan siap untuk kamu gunakan. ✨\n\nSebelum mulai menjelajah, ada beberapa langkah penting yang wajib kamu perhatikan terlebih dahulu:\n\n🔐 Login Awal: Dimohon untuk segera melakukan login setelah akun dibagikan.\n\n🔄 Ganti Password: Setelah berhasil masuk, segera ganti password default kamu dengan password baru yang aman dan mudah diingat.\n\n🔁 Re-Login: Silakan keluar lalu login kembali menggunakan password baru tersebut.\n\n📝 Daftar Ulang: Begitu masuk ke halaman dashboard, mohon segera lakukan daftar ulang SEBELUM 11 Juli 2026.\n\n🔍 Validasi Data: Pastikan seluruh data yang kamu masukkan sudah sesuai. Jika menemui kesulitan atau kendala dalam pengisian, wajib segera melaporkannya ke pengurus.\n\n🎉 Selesai: Jika langkah di atas sudah terpenuhi, akun dan aplikasi kamu sudah siap digunakan sepenuhnya!\n\n👥 Detail Akun Kamu:\n\nUsername: ${username}\n\nPassword: [password]\n\nLink Aplikasi: https://sigma-kr.vercel.app/\n\n🎬 Butuh Panduan Visual?\nUntuk alur yang lebih jelas, kamu bisa langsung menonton video tutorialnya di sini: ${videoLink}\n\nTerima kasih atas perhatiannya. Selamat mencoba Sigma-Kr v.2! 🚀`;
+    return `https://wa.me/${normalized}?text=${encodeURIComponent(text)}`;
+  }
 
   async function load() {
     setLoading(true);
@@ -129,11 +139,24 @@ export default function DirectoryPage() {
           <h1 className="text-xl font-bold text-gray-900">Direktori Anggota</h1>
           <p className="text-sm text-gray-500">Data lengkap semua anggota — akses terbatas Admin & Pengurus</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button onClick={load} disabled={loading}
             className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors" title="Refresh">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
+          {isPengurus && (
+            <button
+              onClick={() => setSendPasswordMode(v => !v)}
+              className={`inline-flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg font-medium transition-colors ${
+                sendPasswordMode
+                  ? 'bg-green-600 hover:bg-green-700 text-white'
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+              title="Mode kirim pesan onboarding + password ke anggota via WA">
+              <MessageCircle size={15}/>
+              {sendPasswordMode ? '✓ Kirim Password: ON' : 'Kirim Password'}
+            </button>
+          )}
           <button onClick={exportExcel}
             className="inline-flex items-center gap-1.5 text-sm bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-2 rounded-lg transition-colors font-medium">
             <Download size={15} /> Export Excel
@@ -164,6 +187,22 @@ export default function DirectoryPage() {
         </div>
       </div>
 
+      {sendPasswordMode && (
+        <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-3">
+          <MessageCircle size={16} className="text-green-600 flex-shrink-0"/>
+          <div className="flex-1">
+            <p className="text-sm font-semibold text-green-800">Mode Kirim Password Aktif</p>
+            <p className="text-xs text-green-600">
+              Setiap baris menampilkan tombol WA untuk kirim pesan onboarding ke anak dan/atau ortu.
+              Ganti <code className="bg-green-100 px-1 rounded">[password]</code> di WA sebelum kirim.
+            </p>
+          </div>
+          <button onClick={() => setSendPasswordMode(false)} className="text-green-600 hover:text-green-800 text-xs font-medium underline flex-shrink-0">
+            Matikan
+          </button>
+        </div>
+      )}
+
       <p className="text-xs text-gray-400">{filtered.length} anggota</p>
 
       {/* Loading */}
@@ -186,6 +225,7 @@ export default function DirectoryPage() {
                   <th className="px-4 py-3 font-medium">HP Anak</th>
                   <th className="px-4 py-3 font-medium">HP Ortu</th>
                   <th className="px-4 py-3 font-medium">Status</th>
+                  {sendPasswordMode && <th className="px-4 py-3 font-medium text-green-700">Kirim WA</th>}
                   <th className="px-4 py-3 font-medium w-8"></th>
                 </tr>
               </thead>
@@ -232,13 +272,40 @@ export default function DirectoryPage() {
                             {m.status?.replace('_', ' ')}
                           </span>
                         </td>
+                        {sendPasswordMode && (
+                          <td className="px-3 py-3 whitespace-nowrap" onClick={e => e.stopPropagation()}>
+                            <div className="flex flex-col gap-1">
+                              {m.hp_ortu && (
+                                <a
+                                  href={buildWALink(m.hp_ortu, m.nama_panggilan || m.nickname, m.nickname)}
+                                  target="_blank" rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs bg-green-100 hover:bg-green-200 text-green-800 px-2 py-1 rounded-lg font-medium transition-colors"
+                                  title={`Kirim ke Ortu: ${m.hp_ortu}`}>
+                                  <Send size={11}/> Ortu
+                                </a>
+                              )}
+                              {m.hp_anak && (
+                                <a
+                                  href={buildWALink(m.hp_anak, m.nama_panggilan || m.nickname, m.nickname)}
+                                  target="_blank" rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs bg-blue-100 hover:bg-blue-200 text-blue-800 px-2 py-1 rounded-lg font-medium transition-colors"
+                                  title={`Kirim ke Anak: ${m.hp_anak}`}>
+                                  <Send size={11}/> Anak
+                                </a>
+                              )}
+                              {!m.hp_ortu && !m.hp_anak && (
+                                <span className="text-xs text-gray-300 italic">No HP</span>
+                              )}
+                            </div>
+                          </td>
+                        )}
                         <td className="px-3 py-3 text-gray-400 text-xs">{isOpen ? '▲' : '▼'}</td>
                       </tr>
 
                       {/* Expanded detail */}
                       {isOpen && (
                         <tr className="bg-blue-50/20">
-                          <td colSpan={7} className="px-6 py-5">
+                          <td colSpan={sendPasswordMode ? 8 : 7} className="px-6 py-5">
                             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-3 text-sm">
                               <Field label="Nickname"    value={m.nickname} />
                               <Field label="Pendidikan"  value={m.pendidikan} />
@@ -259,7 +326,7 @@ export default function DirectoryPage() {
 
                 {filtered.length === 0 && (
                   <tr>
-                    <td colSpan={7} className="px-4 py-16 text-center text-gray-400">
+                    <td colSpan={sendPasswordMode ? 8 : 7} className="px-4 py-16 text-center text-gray-400">
                       <User size={36} className="mx-auto mb-2 opacity-30" />
                       <p>Tidak ada anggota ditemukan</p>
                     </td>
