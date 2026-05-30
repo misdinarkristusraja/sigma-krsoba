@@ -15,73 +15,148 @@ async function generateSuratPDF(
   namaAnak: string,
   namaOrtu: string,
   lingkungan: string,
+  hpOrtu: string,
+  hpAnak: string,
   signatureDataUrl: string,
 ): Promise<Blob> {
-  const doc  = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  const W    = 210;
-  const M    = 25;
-  const CW   = W - 2 * M;
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+  const W   = 210;
+  const M   = 20;
+  const CW  = W - 2 * M;
 
+  // ── Kop surat ──────────────────────────────────────────────────
+  // Logo placeholder box with cross
+  doc.setDrawColor(80, 80, 80);
+  doc.setLineWidth(0.5);
+  doc.rect(M, 10, 20, 20);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text('SURAT PERNYATAAN ORANG TUA / WALI', W / 2, 30, { align: 'center' });
+  doc.setFontSize(18);
+  doc.setTextColor(100, 0, 0);
+  doc.text('+', M + 10, 23, { align: 'center' });
+  doc.setTextColor(0, 0, 0);
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text('Misdinar Paroki Kristus Raja Solo Baru', W / 2, 37, { align: 'center' });
-
-  doc.setLineWidth(0.4);
-  doc.line(M, 41, W - M, 41);
-
-  let y = 52;
+  // Org name + address
+  const hdrX = M + 24;
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text('Yang bertanda tangan di bawah ini:', M, y); y += 8;
+  doc.text('MISDINAR PAROKI KRISTUS RAJA SOLO BARU', hdrX, 15);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.text('Perumahan Solo Baru Jalan Cendana Raya EF 1, Dusun III, Langenharjo,', hdrX, 20);
+  doc.text('Kec. Grogol, Kabupaten Sukoharjo, Jawa Tengah 57552', hdrX, 24.5);
+  doc.text('misdinar.kristusraja@gmail.com  |  @misdinarkr', hdrX, 29);
 
-  const fields: [string, string][] = [
-    ['Nama Orang Tua / Wali', namaOrtu || '—'],
-    ['Nama Anak',             namaAnak  || '—'],
-    ['Lingkungan',            lingkungan || '—'],
+  // Double line separator
+  doc.setLineWidth(0.8);
+  doc.line(M, 33, W - M, 33);
+  doc.setLineWidth(0.2);
+  doc.line(M, 34.5, W - M, 34.5);
+
+  // ── Judul ──────────────────────────────────────────────────────
+  let y = 44;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(12);
+  doc.text('SURAT PERNYATAAN PERSETUJUAN ORANG TUA MISDINAR BARU', W / 2, y, { align: 'center' });
+  y += 7;
+  doc.text('PAROKI KRISTUS RAJA SOLO BARU', W / 2, y, { align: 'center' });
+
+  // ── Body ───────────────────────────────────────────────────────
+  y += 10;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.text('Yang bertanda tangan di bawah ini :', M, y);
+  y += 8;
+
+  const labelW = 28;
+  const colonX = M + labelW;
+  const valX   = colonX + 4;
+
+  const parentFields: [string, string][] = [
+    ['Nama',       namaOrtu   || '—'],
+    ['Lingkungan', lingkungan || '—'],
+    ['No. Telp.',  hpOrtu     || '—'],
   ];
-  for (const [label, val] of fields) {
-    doc.text(label,      M + 5, y);
-    doc.text(`: ${val}`, M + 60, y);
+  for (const [lbl, val] of parentFields) {
+    doc.text(lbl,  M, y);
+    doc.text(':',  colonX, y);
+    doc.text(val,  valX, y);
+    y += 7;
+  }
+
+  y += 3;
+  const para1 = 'Merupakan orang tua/wali dari Calon Misdinar Baru yang mendaftar dan akan mengikuti rangkaian kegiatan Misdinar Periode Pelayanan 2025 / 2026 :';
+  const para1Lines = doc.splitTextToSize(para1, CW - 8);
+  doc.text(para1Lines, M + 5, y);
+  y += para1Lines.length * 6 + 5;
+
+  const childFields: [string, string][] = [
+    ['Nama',       namaAnak   || '—'],
+    ['Lingkungan', lingkungan || '—'],
+    ['No. Telp*',  hpAnak     || '—'],
+  ];
+  for (const [lbl, val] of childFields) {
+    doc.text(lbl, M, y);
+    doc.text(':', colonX, y);
+    doc.text(val, valX, y);
     y += 7;
   }
 
   y += 5;
-  doc.text('Menyatakan dengan sesungguhnya bahwa:', M, y); y += 7;
+  doc.text('Menyatakan bahwa :', M, y);
+  y += 7;
 
   const items = [
-    'Saya mengizinkan anak saya untuk bergabung menjadi anggota Misdinar Paroki Kristus Raja Solo Baru.',
-    'Saya bersedia mendukung dan memfasilitasi anak saya untuk mengikuti seluruh kegiatan Misdinar.',
-    'Saya menyatakan bahwa semua data yang diberikan dalam formulir pendaftaran adalah benar adanya.',
-    'Apabila terjadi kesalahan data di kemudian hari, saya bersedia bertanggung jawab penuh.',
+    'Bersedia mendorong dan memotivasi anak tersebut untuk ikut ambil bagian dalam pelayanan misdinar dalam periode pelayanan 2025/2026.',
+    'Bersedia dan memastikan anak tersebut untuk mematuhi seluruh syarat dan aturan dalam SOM (STANDAR OPERASIONAL PROSEDUR MISDINAR) Paroki Kristus Raja Solo Baru (link: s.id/SOMKR).',
+    'Apabila di kemudian hari kami dan/atau anak kami terbukti melanggar isi Surat Pernyataan yang telah kami tandatangani, maka kami bersedia menerima segala bentuk sanksi yang diberikan kepada anak kami sesuai ketentuan yang berlaku.',
   ];
   for (let i = 0; i < items.length; i++) {
-    const lines = doc.splitTextToSize(`${i + 1}. ${items[i]}`, CW - 5);
-    doc.text(lines, M + 5, y);
+    const lines = doc.splitTextToSize(`${i + 1}.  ${items[i]}`, CW - 8);
+    doc.text(lines, M + 4, y);
     y += lines.length * 6 + 2;
   }
 
-  y += 8;
-  doc.text('Demikian surat pernyataan ini dibuat dengan sebenarnya.', M, y);
-  y += 14;
+  y += 4;
+  const closing = 'Demikian Surat Pernyataan ini kami buat dengan sebenar-benarnya, untuk dapat dipergunakan sebagaimana mestinya, dan kepada yang berkepentingan untuk menjadikan maklum.';
+  const closingLines = doc.splitTextToSize(closing, CW);
+  doc.text(closingLines, M, y);
+  y += closingLines.length * 6 + 10;
 
-  const tanggal = new Date().toLocaleDateString('id-ID', {
-    day: 'numeric', month: 'long', year: 'numeric',
-  });
-  doc.text(`Solo Baru, ${tanggal}`, W - M - 55, y, { align: 'center' }); y += 7;
-  doc.text('Orang Tua / Wali,', W - M - 55, y, { align: 'center' }); y += 4;
+  // ── Blok tanda tangan ──────────────────────────────────────────
+  const tanggal = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+  doc.text(`Solo Baru, ${tanggal}`, W - M, y, { align: 'right' });
+  y += 6;
+  doc.text('Yang Membuat,', W - M, y, { align: 'right' });
+  y += 5;
 
+  const leftCX  = M + 27;          // center Calon Misdinar col
+  const rightCX = W - M - 27;      // center Orang Tua col
+
+  doc.setFontSize(10);
+  doc.text('Calon Misdinar Baru',            leftCX,  y, { align: 'center' });
+  doc.text('Orang Tua Calon Misdinar Baru',  rightCX, y, { align: 'center' });
+  y += 5;
+
+  // Parent digital signature in right column
   try {
-    doc.addImage(signatureDataUrl, 'PNG', W - M - 80, y, 50, 30);
+    doc.addImage(signatureDataUrl, 'PNG', rightCX - 25, y, 50, 28);
   } catch { /* keep PDF even if image fails */ }
-  y += 34;
 
+  y += 32;
+
+  // Signature lines
   doc.setLineWidth(0.3);
-  doc.line(W - M - 80, y, W - M - 10, y);
+  doc.line(leftCX  - 27, y, leftCX  + 27, y);
+  doc.line(rightCX - 27, y, rightCX + 27, y);
+  y += 5;
   doc.setFontSize(9);
-  doc.text('(Tanda Tangan Orang Tua / Wali)', W - M - 45, y + 5, { align: 'center' });
+  doc.text('(........................................)', leftCX,  y, { align: 'center' });
+  doc.text('(........................................)', rightCX, y, { align: 'center' });
+
+  y += 8;
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(8);
+  doc.text('*Dikosongi apabila tidak punya', M, y);
 
   return doc.output('blob');
 }
@@ -174,6 +249,8 @@ export default function RegisterPage() {
         form.nama_lengkap,
         namaOrtu,
         form.lingkungan,
+        form.hp_ortu   || '',
+        form.hp_anak   || '',
         form.signature_data_url,
       );
       const pdfPath = `surat/${Date.now()}_${(form.nickname || 'pendaftar').toLowerCase()}_surat_pernyataan.pdf`;
