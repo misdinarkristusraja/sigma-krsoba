@@ -422,7 +422,7 @@ export default function DashboardPage() {
                 <span className="text-sm font-medium text-gray-700">Kartu Anggota</span>
                 <ChevronRight size={16} className="ml-auto text-gray-400" />
               </Link>
-              <a href="https://youtu.be/hGUqJilAhp8" target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
+              <a href="https://youtu.be/zVN7jL6fUqQ" target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
                 <PlayCircle size={18} className="text-brand-800" />
                 <span className="text-sm font-medium text-gray-700">Video Tutorial</span>
                 <ChevronRight size={16} className="ml-auto text-gray-400" />

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
-import { formatDate, getLiturgyClass } from '../lib/utils';
+import * as XLSX from 'xlsx';
+import { formatDate, getLiturgyClass, LITURGY_COLORS } from '../lib/utils';
 import { getLiturgiByDate, getLiturgiByMonth, HARI_RAYA_NO_HARIAN } from '../lib/liturgiData2026';
 import { LiturgyBadge } from '../components/ui/LiturgyBadge';
 import { toPng } from 'html-to-image';
@@ -15,7 +16,30 @@ import toast from 'react-hot-toast';
 import { usePagination } from '../hooks/usePagination';
 import { Pagination } from '../components/ui/Pagination';
 
+const WARNA_OPTIONS = ['Hijau','Merah','Putih','Ungu','MerahMuda','Hitam'];
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+
+// ── Liturgical season color (falls back to explicit feast day data) ──
+function getLiturgicalSeasonColor(dateStr: string): string {
+  const explicit = getLiturgiByDate(dateStr);
+  if (explicit?.color) return explicit.color;
+  if (dateStr >= '2026-01-01' && dateStr <= '2026-01-11') return 'Putih';   // Natal — Pembaptisan Tuhan
+  if (dateStr >= '2026-02-18' && dateStr <= '2026-04-01') return 'Ungu';    // Prapaskah
+  if (dateStr >= '2026-04-04' && dateStr <= '2026-05-23') return 'Putih';   // Masa Paskah
+  if (dateStr >= '2026-11-29' && dateStr <= '2026-12-24') return 'Ungu';    // Adven
+  if (dateStr >= '2026-12-25')                            return 'Putih';   // Natal
+  return 'Hijau';
+}
+
+function getLiturgicalLabel(dateStr: string, namaHari: string): string {
+  const explicit = getLiturgiByDate(dateStr);
+  if (explicit?.name) return `${namaHari} — ${explicit.name}`;
+  if (dateStr >= '2026-02-18' && dateStr <= '2026-04-01') return `${namaHari} Pekan Prapaskah`;
+  if (dateStr >= '2026-04-04' && dateStr <= '2026-05-23') return `${namaHari} Pekan Paskah`;
+  if (dateStr >= '2026-11-29' && dateStr <= '2026-12-24') return `${namaHari} Pekan Adven`;
+  if (dateStr >= '2026-12-25')                            return `${namaHari} Masa Natal`;
+  return namaHari;
+}
 const HARI   = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
 
 function lastDayOfMonth(year: any, month: any) { return new Date(year, month, 0).getDate(); }
@@ -58,6 +82,11 @@ export function ScheduleDailyPage() {
   const [searchOptin,  setSearchOptin]= useState('');
 
   const tableRef = useRef(null);
+  const [editModal,    setEditModal]    = useState<{ ev: any; assignments: any[] } | null>(null);
+  const [editFields,   setEditFields]   = useState({ perayaan: '', warna_liturgi: 'Hijau' });
+  const [allUsers,     setAllUsers]     = useState<any[]>([]);
+  const [addUserId,    setAddUserId]    = useState('');
+  const [savingEdit,   setSavingEdit]   = useState(false);
 
   // Target bulan opt-in = bulan berikutnya dari bulan yang dipilih
   const nextMonth = month === 12 ? 1  : month + 1;
@@ -154,6 +183,104 @@ export function ScheduleDailyPage() {
     loadOptinList();
   }
 
+  // ── Edit event (perayaan, warna, petugas) ───────────────
+  async function openEdit(ev: any) {
+    setEditFields({ perayaan: ev.perayaan || '', warna_liturgi: ev.warna_liturgi || 'Hijau' });
+    setEditModal({ ev, assignments: ev.assignments || [] });
+    if (!allUsers.length) {
+      const { data } = await supabase.from('users')
+        .select('id, nama_panggilan, nickname, lingkungan')
+        .eq('status', 'Active').order('nama_panggilan');
+      setAllUsers(data || []);
+    }
+  }
+
+  async function saveEdit() {
+    if (!editModal) return;
+    setSavingEdit(true);
+    const { error } = await supabase.from('events').update({
+      perayaan:      editFields.perayaan,
+      warna_liturgi: editFields.warna_liturgi,
+    }).eq('id', editModal.ev.id);
+    setSavingEdit(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success('Event diperbarui');
+    setEditModal(null);
+    loadEvents();
+  }
+
+  async function removeAssignment(userId: string) {
+    if (!editModal) return;
+    await supabase.from('assignments').delete()
+      .eq('event_id', editModal.ev.id).eq('user_id', userId);
+    setEditModal(m => m ? { ...m, assignments: m.assignments.filter((a: any) => a.user_id !== userId) } : null);
+  }
+
+  async function addAssignment() {
+    if (!editModal || !addUserId) return;
+    const pos = editModal.assignments.length + 1;
+    const { error } = await supabase.from('assignments').insert({
+      event_id: editModal.ev.id, user_id: addUserId, slot_number: 1, position: pos,
+    });
+    if (error) { toast.error(error.message); return; }
+    const user = allUsers.find(u => u.id === addUserId);
+    setEditModal(m => m ? { ...m, assignments: [...m.assignments, { user_id: addUserId, users: user }] } : null);
+    setAddUserId('');
+  }
+
+  // ── Individual publish / unpublish ──────────────────────
+  async function togglePublish(ev: any) {
+    const goPublish = ev.is_draft;
+    const { error } = await supabase.from('events').update({
+      is_draft: !goPublish,
+      ...(goPublish ? { published_at: new Date().toISOString() } : {}),
+    }).eq('id', ev.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success(goPublish ? 'Published ✅' : 'Dikembalikan ke Draft');
+    loadEvents();
+  }
+
+  // ── Fix liturgi: recalculate warna + perayaan for all events ───
+  async function fixLiturgi() {
+    if (!events.length) return;
+    if (!confirm(`Recalculate warna liturgi & perayaan untuk semua ${events.length} event bulan ${MONTHS[month-1]} ${year}?`)) return;
+    let updated = 0;
+    for (const ev of events) {
+      const d = new Date(ev.tanggal_tugas + 'T00:00:00');
+      const namaHari    = HARI[d.getDay()];
+      const newWarna    = getLiturgicalSeasonColor(ev.tanggal_tugas);
+      const newPerayaan = getLiturgicalLabel(ev.tanggal_tugas, namaHari);
+      if (newWarna !== ev.warna_liturgi || newPerayaan !== ev.perayaan) {
+        await supabase.from('events').update({ warna_liturgi: newWarna, perayaan: newPerayaan }).eq('id', ev.id);
+        updated++;
+      }
+    }
+    toast.success(updated ? `${updated} event diperbarui ✅` : 'Semua sudah benar');
+    loadEvents();
+  }
+
+  // ── Export Excel ────────────────────────────────────────
+  function exportExcel() {
+    const rows = events.map(ev => {
+      const d       = new Date(ev.tanggal_tugas + 'T00:00:00');
+      const petugas = (ev.assignments || []).map((a: any) => a.users?.nama_panggilan).filter(Boolean).join(', ');
+      return {
+        Tanggal:        ev.tanggal_tugas,
+        Hari:           HARI[d.getDay()],
+        'Nama Perayaan': ev.perayaan || '',
+        'Warna Liturgi': ev.warna_liturgi || '',
+        Petugas:        petugas || '(kosong)',
+        Status:         ev.is_draft ? 'Draft' : 'Published',
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 40 }, { wch: 14 }, { wch: 30 }, { wch: 10 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Jadwal Harian');
+    XLSX.writeFile(wb, `jadwal-harian-${MONTHS[month-1]}-${year}.xlsx`);
+    toast.success('Excel berhasil diunduh!');
+  }
+
   // ── Generate Jadwal Harian ───────────────────────────────
   async function generateHarian() {
     setGen(true);
@@ -194,10 +321,9 @@ export function ScheduleDailyPage() {
           .select('id').eq('tipe_event','Misa_Harian').eq('tanggal_tugas', date).maybeSingle();
         if (existing) continue;
 
-        const liturgi  = getLiturgiByDate(date);
         const namaHari = HARI[dow];
-        const perayaan = liturgi?.name ? `${namaHari} — ${liturgi.name}` : namaHari;
-        const warna    = liturgi?.color || 'Hijau';
+        const perayaan = getLiturgicalLabel(date, namaHari);
+        const warna    = getLiturgicalSeasonColor(date);
 
         const { data: ev, error: evErr } = await supabase.from('events').insert({
           nama_event:     perayaan.toUpperCase(),
@@ -294,12 +420,22 @@ export function ScheduleDailyPage() {
               <button onClick={generateHarian} disabled={generating} className="btn-primary gap-2">
                 <Zap size={16}/> {generating ? 'Generating...' : 'Generate Harian'}
               </button>
+              {events.length > 0 && (
+                <button onClick={fixLiturgi} className="btn-outline gap-2" title="Recalculate warna liturgi & perayaan">
+                  <RefreshCw size={15}/> Fix Liturgi
+                </button>
+              )}
               {draftCount > 0 && (
                 <button onClick={publishAllHarian} className="btn-outline gap-2">
                   <Globe size={16}/> Publish ({draftCount})
                 </button>
               )}
-              <button onClick={exportPNG} className="btn-outline gap-2"><Download size={16}/> PNG</button>
+              {events.length > 0 && (
+                <div className="flex gap-1">
+                  <button onClick={exportPNG} className="btn-outline gap-1 text-xs px-3"><Download size={14}/> PNG</button>
+                  <button onClick={exportExcel} className="btn-outline gap-1 text-xs px-3"><Download size={14}/> Excel</button>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -377,6 +513,7 @@ export function ScheduleDailyPage() {
                     <tr>
                       <th>Tgl</th><th>Hari</th><th>Warna</th>
                       <th>Perayaan</th><th>Petugas</th><th>Lingkungan</th><th>Status</th>
+                      {isPengurus && <th>Aksi</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -384,9 +521,28 @@ export function ScheduleDailyPage() {
                       const lc    = getLiturgyClass(ev.warna_liturgi);
                       const asgns = ev.assignments || [];
                       const d     = new Date(ev.tanggal_tugas + 'T00:00:00');
+                      const rs    = Math.max(asgns.length, 1);
                       const statusBadge = ev.is_draft
                         ? <span className="badge-yellow text-xs">Draft</span>
                         : <span className="badge-green text-xs">Published</span>;
+                      const actionCell = isPengurus && (
+                        <td rowSpan={rs} className="whitespace-nowrap">
+                          <div className="flex flex-col gap-1">
+                            <button
+                              onClick={() => openEdit(ev)}
+                              className="btn-ghost btn-sm gap-1 text-xs py-1"
+                              title="Edit">
+                              <Edit2 size={12}/> Edit
+                            </button>
+                            <button
+                              onClick={() => togglePublish(ev)}
+                              className={`btn-sm gap-1 text-xs py-1 ${ev.is_draft ? 'btn-outline' : 'btn-ghost text-gray-400'}`}
+                              title={ev.is_draft ? 'Publish' : 'Kembalikan ke Draft'}>
+                              {ev.is_draft ? <><Globe size={12}/> Publish</> : <><FileEdit size={12}/> Draft</>}
+                            </button>
+                          </div>
+                        </td>
+                      );
 
                       if (!asgns.length) return (
                         <tr key={ev.id} className={lc.bg}>
@@ -397,19 +553,21 @@ export function ScheduleDailyPage() {
                           <td className="text-orange-400 text-xs italic">Kosong</td>
                           <td>—</td>
                           <td>{statusBadge}</td>
+                          {actionCell}
                         </tr>
                       );
                       return asgns.map((a: any, i: any) => (
                         <tr key={`${ev.id}-${i}`} className={lc.bg}>
                           {i===0 && <>
-                            <td rowSpan={asgns.length} className={`font-bold ${lc.text}`}>{formatDate(ev.tanggal_tugas,'dd')}</td>
-                            <td rowSpan={asgns.length}>{HARI[d.getDay()]}</td>
-                            <td rowSpan={asgns.length}><div className="flex items-center gap-1"><div className={`w-3 h-3 rounded-full ${lc.dot}`}/><span className="text-xs">{ev.warna_liturgi}</span></div></td>
-                            <td rowSpan={asgns.length} className="text-xs">{ev.perayaan||'—'}</td>
+                            <td rowSpan={rs} className={`font-bold ${lc.text}`}>{formatDate(ev.tanggal_tugas,'dd')}</td>
+                            <td rowSpan={rs}>{HARI[d.getDay()]}</td>
+                            <td rowSpan={rs}><div className="flex items-center gap-1"><div className={`w-3 h-3 rounded-full ${lc.dot}`}/><span className="text-xs">{ev.warna_liturgi}</span></div></td>
+                            <td rowSpan={rs} className="text-xs">{ev.perayaan||'—'}</td>
                           </>}
                           <td className="font-medium text-sm">{a.users?.nama_panggilan||'—'}</td>
                           <td className="text-xs text-gray-500">{a.users?.lingkungan||'—'}</td>
-                          {i===0 && <td rowSpan={asgns.length}>{statusBadge}</td>}
+                          {i===0 && <td rowSpan={rs}>{statusBadge}</td>}
+                          {i===0 && actionCell}
                         </tr>
                       ));
                     })}
@@ -419,6 +577,101 @@ export function ScheduleDailyPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* ─── Edit Modal ─── */}
+      {editModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+              <div>
+                <h3 className="font-bold text-gray-900">Edit Misa Harian</h3>
+                <p className="text-xs text-gray-400 mt-0.5">{formatDate(editModal.ev.tanggal_tugas, 'EEEE, dd MMMM yyyy')}</p>
+              </div>
+              <button onClick={() => setEditModal(null)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400"><X size={18}/></button>
+            </div>
+            <div className="p-5 space-y-4">
+              {/* Perayaan */}
+              <div>
+                <label className="label">Nama Perayaan</label>
+                <input
+                  className="input"
+                  value={editFields.perayaan}
+                  onChange={e => setEditFields(f => ({ ...f, perayaan: e.target.value }))}
+                  placeholder="cth. Senin Pekan Prapaskah II"
+                />
+              </div>
+              {/* Warna Liturgi */}
+              <div>
+                <label className="label">Warna Liturgi</label>
+                <div className="grid grid-cols-3 gap-2">
+                  {WARNA_OPTIONS.map(w => {
+                    const cls = LITURGY_COLORS[w];
+                    return (
+                      <button
+                        key={w}
+                        onClick={() => setEditFields(f => ({ ...f, warna_liturgi: w }))}
+                        className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm transition-all ${
+                          editFields.warna_liturgi === w
+                            ? 'border-brand-800 bg-brand-50 font-semibold'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className={`w-3 h-3 rounded-full flex-shrink-0 ${cls?.dot}`}/>
+                        <span>{cls?.label || w}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              {/* Petugas */}
+              <div>
+                <label className="label">Petugas ({editModal.assignments.length})</label>
+                <div className="space-y-1.5 mb-3">
+                  {editModal.assignments.length === 0 && (
+                    <p className="text-sm text-gray-400 italic">Belum ada petugas</p>
+                  )}
+                  {editModal.assignments.map((a: any) => (
+                    <div key={a.user_id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                      <div>
+                        <span className="text-sm font-medium">{a.users?.nama_panggilan || a.user_id}</span>
+                        {a.users?.lingkungan && <span className="text-xs text-gray-400 ml-2">· {a.users.lingkungan}</span>}
+                      </div>
+                      <button onClick={() => removeAssignment(a.user_id)} className="p-1 text-red-400 hover:text-red-600 rounded">
+                        <X size={14}/>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {/* Add user */}
+                <div className="flex gap-2">
+                  <select
+                    className="input flex-1 text-sm"
+                    value={addUserId}
+                    onChange={e => setAddUserId(e.target.value)}
+                  >
+                    <option value="">Tambah petugas...</option>
+                    {allUsers
+                      .filter(u => !editModal.assignments.some((a: any) => a.user_id === u.id))
+                      .map(u => (
+                        <option key={u.id} value={u.id}>{u.nama_panggilan} — {u.lingkungan}</option>
+                      ))
+                    }
+                  </select>
+                  <button onClick={addAssignment} disabled={!addUserId} className="btn-primary btn-sm px-4">
+                    Tambah
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 px-5 pb-5">
+              <button onClick={() => setEditModal(null)} className="btn-outline flex-1">Batal</button>
+              <button onClick={saveEdit} disabled={savingEdit} className="btn-primary flex-1">
+                {savingEdit ? 'Menyimpan...' : 'Simpan Perubahan'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ─── TAB OPT-IN ─── */}
