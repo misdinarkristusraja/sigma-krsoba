@@ -270,7 +270,7 @@ export function ScheduleDailyPage() {
       // Always fetch fresh data — clear cache so we get latest GCatholic
       clearGcatholicCache(year, month);
       setProgress({ label: 'Mengambil data liturgi GCatholic...', current: 0, total });
-      const liturgiMap = await fetchGcatholicMonth(year, month);
+      const liturgiMap = await fetchGcatholicMonth(year, month, supabase);
 
       let updated = 0, failed = 0;
       for (let i = 0; i < events.length; i++) {
@@ -477,7 +477,7 @@ export function ScheduleDailyPage() {
       (optins||[]).forEach((o: any) => { if (o.tanggal_tidak_bisa) tidakBisaMap[o.user_id] = o.tanggal_tidak_bisa; });
 
       setProgress({ label: 'Mengambil data liturgi GCatholic...', current: 0, total: 1 });
-      const liturgiMap = await fetchGcatholicMonth(year, month);
+      const liturgiMap = await fetchGcatholicMonth(year, month, supabase);
 
       // Batch-check existing events (1 query, not 1 per day)
       const { data: existingEvs } = await supabase.from('events')

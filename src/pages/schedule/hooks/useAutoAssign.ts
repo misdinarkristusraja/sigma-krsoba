@@ -11,7 +11,7 @@ const PETUGAS_PER_SLOT = 8;
 // ── Liturgi fetcher (static 2026, gcatholic fallback) ──────────────
 async function fetchLiturgi(year: number, month: number) {
   if (year === 2026) return getLiturgiByMonth(year, month);
-  const map = await fetchGcatholicMonth(year, month);
+  const map = await fetchGcatholicMonth(year, month, supabase);
   return Array.from(map.values());
 }
 

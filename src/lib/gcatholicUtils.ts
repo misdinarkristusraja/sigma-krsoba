@@ -6,9 +6,6 @@
  * Fallback source: gcatholic.org      — fetched client-side via CORS proxy.
  */
 
-import { supabase as supabaseTyped } from './supabase';
-const supabase = supabaseTyped as any;
-
 export interface GcatholicEntry {
   date:       string;   // YYYY-MM-DD
   name:       string;
@@ -151,27 +148,32 @@ function edgeDataToMap(data: any[], year: number, month: number): Map<string, Gc
 /**
  * Fetch liturgical data for a month.
  * 1st try: Supabase edge function (server-side → imankatolik.or.id, always reachable).
+ *   Pass the authenticated Supabase client from the calling component so
+ *   functions.invoke runs with the correct session context.
  * Fallback: GCatholic via CORS proxy (client-side).
  */
 export async function fetchGcatholicMonth(
-  year: number, month: number
+  year: number, month: number,
+  supabaseClient?: any,
 ): Promise<Map<string, GcatholicEntry>> {
   const key = `${year}-${month}`;
   if (_cache[key]) return _cache[key];
 
   // ── Primary: edge function → imankatolik.or.id ──────────────────
-  try {
-    const { data, error } = await supabase.functions.invoke('fetch-gcatholic', {
-      body: { year, month },
-    });
-    if (!error && Array.isArray(data) && data.length > 0) {
-      const map = edgeDataToMap(data, year, month);
-      if (map.size > 0) {
-        _cache[key] = map;
-        return map;
+  if (supabaseClient) {
+    try {
+      const { data, error } = await supabaseClient.functions.invoke('fetch-gcatholic', {
+        body: { year, month },
+      });
+      if (!error && Array.isArray(data) && data.length > 0) {
+        const map = edgeDataToMap(data, year, month);
+        if (map.size > 0) {
+          _cache[key] = map;
+          return map;
+        }
       }
-    }
-  } catch { /* fall through */ }
+    } catch { /* fall through */ }
+  }
 
   // ── Fallback: GCatholic via CORS proxy ───────────────────────────
   const targetUrl = `https://gcatholic.org/calendar/${year}/ID-id`;
