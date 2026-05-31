@@ -4,6 +4,7 @@ const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate, getLiturgyClass, LITURGY_COLORS } from '../lib/utils';
 import { getLiturgiByDate, getLiturgiByMonth, HARI_RAYA_NO_HARIAN, getFirstFriday, getSabtuImam } from '../lib/liturgiData2026';
+import { fetchGcatholicMonth, clearGcatholicCache } from '../lib/gcatholicUtils';
 import { LiturgyBadge } from '../components/ui/LiturgyBadge';
 import { toPng } from 'html-to-image';
 import {
@@ -17,34 +18,6 @@ import { Pagination } from '../components/ui/Pagination';
 
 const WARNA_OPTIONS = ['Hijau','Merah','Putih','Ungu','MerahMuda','Hitam'];
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
-
-// ── GCatholic liturgi fetch (via edge function) ──────────────────────
-// Cache keyed by "year-month". Call clearHarianLiturgiCache(year, month) to force refresh.
-const _harianLiturgiCache: Record<string, Map<string, any>> = {};
-export function clearHarianLiturgiCache(year: number, month: number) {
-  delete _harianLiturgiCache[`${year}-${month}`];
-}
-async function fetchHarianLiturgi(year: number, month: number): Promise<Map<string, any>> {
-  const key = `${year}-${month}`;
-  if (_harianLiturgiCache[key]) return _harianLiturgiCache[key];
-  try {
-    const { data, error } = await supabase.functions.invoke('fetch-gcatholic', {
-      body: { year, month },
-    });
-    if (error || !Array.isArray(data)) return new Map();
-    const map = new Map<string, any>();
-    data.forEach((entry: any) => {
-      const existing = map.get(entry.date);
-      if (!existing || (entry.rank ?? 5) < (existing.rank ?? 5)) {
-        map.set(entry.date, entry);
-      }
-    });
-    _harianLiturgiCache[key] = map;
-    return map;
-  } catch {
-    return new Map();
-  }
-}
 
 // Build perayaan string: verified LITURGI_2026 data > GCatholic saint feast (rank≤3) > season label
 function buildPerayaan(dateStr: string, namaHari: string, gcEntry?: any): string {
@@ -289,9 +262,9 @@ export function ScheduleDailyPage() {
     const total = events.length;
     try {
       // Always fetch fresh data — clear cache so we get latest GCatholic
-      clearHarianLiturgiCache(year, month);
+      clearGcatholicCache(year, month);
       setProgress({ label: 'Mengambil data liturgi GCatholic...', current: 0, total });
-      const liturgiMap = await fetchHarianLiturgi(year, month);
+      const liturgiMap = await fetchGcatholicMonth(year, month);
 
       let updated = 0, failed = 0;
       for (let i = 0; i < events.length; i++) {
@@ -498,7 +471,7 @@ export function ScheduleDailyPage() {
       (optins||[]).forEach((o: any) => { if (o.tanggal_tidak_bisa) tidakBisaMap[o.user_id] = o.tanggal_tidak_bisa; });
 
       setProgress({ label: 'Mengambil data liturgi GCatholic...', current: 0, total: 1 });
-      const liturgiMap = await fetchHarianLiturgi(year, month);
+      const liturgiMap = await fetchGcatholicMonth(year, month);
 
       // Batch-check existing events (1 query, not 1 per day)
       const { data: existingEvs } = await supabase.from('events')
