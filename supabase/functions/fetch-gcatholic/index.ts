@@ -97,22 +97,20 @@ serve(async (req) => {
       const cells = row.querySelectorAll('td');
       if (cells.length < 2) return;
       const dateText = cells[0]?.textContent?.trim() || '';
-      const name     = cells[1]?.textContent?.trim() || '';
 
       // Try to parse date (format varies: "1 Mar" or "01/03")
       const dateMatch = dateText.match(/(\d{1,2})[\/\s-]?(\w+)?/);
       if (!dateMatch) return;
 
-      const day    = dateMatch[1].padStart(2, '0');
+      const day      = dateMatch[1].padStart(2, '0');
       const fullDate = `${year}-${targetMonth}-${day}`;
 
       // Extract color from span class (e.g. <span class="feastw">, <span class="feastr">)
-      // GCatholic puts color indicators on span elements, not on <tr> class
-      const rowHtml  = row.innerHTML || '';
+      const rowHtml   = row.innerHTML || '';
       const spanMatch = rowHtml.match(/class="feast([a-z])"/i);
-      let rawColor = spanMatch ? (COLOR_MAP[spanMatch[1].toLowerCase()] || 'Hijau') : 'Hijau';
+      let rawColor    = spanMatch ? (COLOR_MAP[spanMatch[1].toLowerCase()] || 'Hijau') : 'Hijau';
 
-      // Fallback: try <tr> class (some GCatholic variants use row class)
+      // Fallback: try <tr> class
       if (rawColor === 'Hijau') {
         const className = (row.getAttribute('class') || '').toLowerCase();
         for (const [k, v] of Object.entries(COLOR_MAP)) {
@@ -120,20 +118,43 @@ serve(async (req) => {
         }
       }
 
-      const cleanName  = name.replace(/\s+/g, ' ').trim();
-      const dayNum     = parseInt(day, 10);
+      // Extract feast entries with rank from span class="feast[digit]..."
+      // Rank 1=Solemnity(H), 2=Feast(Pfak), 3=ObligatoryMemorial(Pw), 4=Optional(P), 5=Feria
+      // When multiple entries exist, pick highest liturgical importance (lowest rank number)
+      interface FeastEntry { rank: number; name: string; }
+      const feastEntries: FeastEntry[] = [];
+      const nameCell = cells[1];
+      nameCell?.querySelectorAll('span').forEach((span: any) => {
+        const cls       = span.getAttribute('class') || '';
+        const rankMatch = cls.match(/^feast(\d)/);
+        if (rankMatch) {
+          const text = (span.textContent || '').replace(/\s+/g, ' ').trim();
+          if (text.length >= 3) feastEntries.push({ rank: parseInt(rankMatch[1], 10), name: text });
+        }
+      });
+      feastEntries.sort((a, b) => a.rank - b.rank);
+      const best = feastEntries[0];
+
+      // Fall back to full cell text if no feast span found
+      const cleanName = best
+        ? best.name
+        : (nameCell?.textContent || '').replace(/\s+/g, ' ').trim();
+      const rank      = best?.rank ?? 5;
+
+      if (!cleanName || cleanName.length < 3 || !day) return;
+
+      const dayNum      = parseInt(day, 10);
       const seasonColor = getSeasonColor(year, parseInt(targetMonth, 10), dayNum);
       const finalColor  = resolveHarianColor(cleanName, rawColor, seasonColor);
       const isHariRaya  = /hari raya|solemnity/i.test(cleanName);
 
-      if (cleanName && day) {
-        result.push({
-          date:  fullDate,
-          name:  cleanName,
-          color: finalColor,
-          type:  isHariRaya ? 'HR' : 'HS',
-        });
-      }
+      result.push({
+        date:  fullDate,
+        name:  cleanName,
+        color: finalColor,
+        rank,
+        type:  isHariRaya ? 'HR' : 'HS',
+      });
     });
 
     // Filter to requested month only

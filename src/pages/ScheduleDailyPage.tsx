@@ -18,6 +18,42 @@ import { Pagination } from '../components/ui/Pagination';
 const WARNA_OPTIONS = ['Hijau','Merah','Putih','Ungu','MerahMuda','Hitam'];
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
+// ── GCatholic liturgi fetch (via edge function) ──────────────────────
+const _harianLiturgiCache: Record<string, Map<string, any>> = {};
+async function fetchHarianLiturgi(
+  supabaseClient: any, year: number, month: number
+): Promise<Map<string, any>> {
+  const key = `${year}-${month}`;
+  if (_harianLiturgiCache[key]) return _harianLiturgiCache[key];
+  try {
+    const { data, error } = await supabaseClient.functions.invoke('fetch-gcatholic', {
+      body: { year, month },
+    });
+    if (error || !Array.isArray(data)) return new Map();
+    const map = new Map<string, any>();
+    // If multiple entries per date, keep highest rank (already sorted by edge fn)
+    // Edge fn returns one entry per date (best rank). Build date→entry map.
+    data.forEach((entry: any) => {
+      const existing = map.get(entry.date);
+      if (!existing || (entry.rank ?? 5) < (existing.rank ?? 5)) {
+        map.set(entry.date, entry);
+      }
+    });
+    _harianLiturgiCache[key] = map;
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+// Build perayaan string: verified LITURGI_2026 data > GCatholic saint feast (rank≤3) > season label
+function buildPerayaan(dateStr: string, namaHari: string, gcEntry?: any): string {
+  const explicit = getLiturgiByDate(dateStr);
+  if (explicit?.name) return `${namaHari} — ${explicit.name}`;
+  if (gcEntry?.name && (gcEntry.rank ?? 5) <= 3) return `${namaHari} — ${gcEntry.name}`;
+  return getLiturgicalLabel(dateStr, namaHari);
+}
+
 // ── Liturgical season color (falls back to explicit feast day data) ──
 function getLiturgicalSeasonColor(dateStr: string): string {
   const explicit = getLiturgiByDate(dateStr);
@@ -245,19 +281,23 @@ export function ScheduleDailyPage() {
     loadEvents();
   }
 
-  // ── Fix liturgi: force-recalculate warna + perayaan ────
+  // ── Fix liturgi: recalculate warna + perayaan using GCatholic data ──
   async function fixLiturgi() {
     if (!events.length) return;
     if (!confirm(`Recalculate warna liturgi & perayaan untuk semua ${events.length} event ${MONTHS[month-1]} ${year}?`)) return;
     const tid = 'fix-liturgi';
+    toast.loading('Mengambil data liturgi...', { id: tid });
+    const liturgiMap = await fetchHarianLiturgi(supabase, year, month);
     toast.loading(`Memperbarui 0 / ${events.length}...`, { id: tid });
     let updated = 0, failed = 0;
     for (let i = 0; i < events.length; i++) {
       const ev          = events[i];
       const d           = new Date(ev.tanggal_tugas + 'T00:00:00');
       const namaHari    = HARI[d.getDay()];
-      const newWarna    = getLiturgicalSeasonColor(ev.tanggal_tugas);
-      const newPerayaan = getLiturgicalLabel(ev.tanggal_tugas, namaHari);
+      const gcEntry     = liturgiMap.get(ev.tanggal_tugas);
+      // Color: use GCatholic-resolved color if available, else static season
+      const newWarna    = gcEntry?.color || getLiturgicalSeasonColor(ev.tanggal_tugas);
+      const newPerayaan = buildPerayaan(ev.tanggal_tugas, namaHari, gcEntry);
       const { error }   = await supabase.from('events')
         .update({ warna_liturgi: newWarna, perayaan: newPerayaan })
         .eq('id', ev.id);
@@ -449,6 +489,8 @@ export function ScheduleDailyPage() {
       (optins||[]).forEach((o: any) => { if (o.tanggal_tidak_bisa) tidakBisaMap[o.user_id] = o.tanggal_tidak_bisa; });
 
       const weekdays = getWeekdays(year, month);
+      toast.loading('Mengambil data liturgi GCatholic...', { id: tid });
+      const liturgiMap = await fetchHarianLiturgi(supabase, year, month);
       toast.loading(`Generate ${weekdays.length} hari (${pool.length} petugas, ${pengurusPool?.length || 0} PIC)...`, { id: tid });
       const firstFriday = getFirstFriday(year, month);
       const sabtuImam   = getSabtuImam(year, month);
@@ -463,8 +505,9 @@ export function ScheduleDailyPage() {
         if (existing) continue;
 
         const namaHari = HARI[dow];
-        const perayaan = getLiturgicalLabel(date, namaHari);
-        const warna    = getLiturgicalSeasonColor(date);
+        const gcEntry  = liturgiMap.get(date);
+        const perayaan = buildPerayaan(date, namaHari, gcEntry);
+        const warna    = gcEntry?.color || getLiturgicalSeasonColor(date);
 
         const { data: ev, error: evErr } = await supabase.from('events').insert({
           nama_event:     perayaan.toUpperCase(),
@@ -676,8 +719,9 @@ export function ScheduleDailyPage() {
                   </thead>
                   <tbody>
                     {events.map(ev => {
-                      // Always derive display color from date (overrides stale DB value)
-                      const lc    = getLiturgyClass(getLiturgicalSeasonColor(ev.tanggal_tugas));
+                      // Use DB warna_liturgi (set correctly by generate/fixLiturgi via GCatholic).
+                      // Fall back to season color for legacy events created before this fix.
+                      const lc    = getLiturgyClass(ev.warna_liturgi || getLiturgicalSeasonColor(ev.tanggal_tugas));
                       const asgns = ev.assignments || [];
                       const d     = new Date(ev.tanggal_tugas + 'T00:00:00');
                       const rs    = Math.max(asgns.length, 1);
