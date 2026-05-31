@@ -18,7 +18,6 @@ const ScanRecordsPage    = lazy(() => import('./pages/ScanRecordsPage'));
 const SwapPage           = lazy(() => import('./pages/SwapPage'));
 const RecapPage          = lazy(() => import('./pages/RecapPage'));
 const CardsPage          = lazy(() => import('./pages/CardsPage'));
-const MigrationPage      = lazy(() => import('./pages/MigrationPage'));
 const AdminPage          = lazy(() => import('./pages/AdminPage'));
 const AttendancePage     = lazy(() => import('./pages/AttendancePage'));
 const AcaraPage          = lazy(() => import('./pages/AcaraPage'));
@@ -143,7 +142,6 @@ function AppRoutes() {
             <Route path="/jadwal-saya"     element={<ErrorBoundary><JadwalSayaPage/></ErrorBoundary>}/>
             <Route path="/direktori"       element={<ProtectedRoute roles={PENG}><ErrorBoundary><DirectoryPage/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/analisis"        element={<ProtectedRoute roles={PENG}><ErrorBoundary><AnalisisPage/></ErrorBoundary></ProtectedRoute>}/>
-            <Route path="/migrasi"         element={<ProtectedRoute roles={ADMIN}><ErrorBoundary><MigrationPage/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/admin"           element={<ProtectedRoute roles={ADMIN}><ErrorBoundary><AdminPage/></ErrorBoundary></ProtectedRoute>}/>
           </Route>
 

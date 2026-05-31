@@ -5,7 +5,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   LayoutDashboard, Users, Calendar, CalendarDays, QrCode,
-  ArrowLeftRight, BarChart2, CreditCard, Database,
+  ArrowLeftRight, BarChart2, CreditCard,
   Settings, LogOut, Menu, X, Church, AlertTriangle,
   ClipboardList, RefreshCw, ClipboardCheck, PartyPopper, ListChecks,
   BookUser, Star, Microscope, Globe, ChevronDown,
@@ -91,7 +91,6 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Admin',
     icon: Settings,
     items: [
-      { icon: Database, label: 'Migrasi Data',   path: '/migrasi', roles: ADMIN, configKey: 'migration_enabled' },
       { icon: Settings, label: 'Admin & Config', path: '/admin',   roles: ADMIN },
     ],
   },

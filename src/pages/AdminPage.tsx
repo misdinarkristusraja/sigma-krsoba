@@ -29,7 +29,6 @@ import {
   RefreshCw, ClipboardCopy, SkipForward, Users, Download, RotateCcw, Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import * as XLSX from 'xlsx';
 import { usePagination } from '../hooks/usePagination';
 import { Pagination } from '../components/ui/Pagination';
 
@@ -125,15 +124,19 @@ function MassResetResultsTable({ results }: { results: any[] }) {
         'Password Baru': r.password || '',
       }));
 
-    const ws = XLSX.utils.json_to_sheet(rows);
-    // Auto-width
-    const colWidths = [6, 22, 18, 16, 16, 16, 14];
-    ws['!cols'] = colWidths.map((w) => ({ wch: w }));
-
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Password Reset');
-    const date = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(wb, `mass_reset_${date}.xlsx`);
+    if (!rows.length) return;
+    const esc = (v: any) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const headers = Object.keys(rows[0]);
+    let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
+<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:11px;">
+<thead><tr>${headers.map(h => `<th style="background:#eee;font-weight:bold;">${esc(h)}</th>`).join('')}</tr></thead>
+<tbody>${rows.map(row => `<tr>${headers.map(h => `<td>${esc((row as any)[h])}</td>`).join('')}</tr>`).join('')}</tbody>
+</table></body></html>`;
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `mass_reset_${new Date().toISOString().slice(0,10)}.xls`; a.click();
+    URL.revokeObjectURL(url);
     toast.success('File Excel berhasil diunduh');
   }
 

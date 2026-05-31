@@ -6,7 +6,6 @@ import { Search, Download, RefreshCw, Phone, User, MessageCircle, Send } from 'l
 
 const VIDEO_TUTORIAL_LINK = 'https://youtu.be/zVN7jL6fUqQ';
 import toast from 'react-hot-toast';
-import * as XLSX from 'xlsx';
 import { usePagination } from '../hooks/usePagination';
 import { Pagination } from '../components/ui/Pagination';
 
@@ -120,12 +119,19 @@ export default function DirectoryPage() {
       'Role':           m.role           || '',
       'Status':         m.status         || '',
     }));
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [4,18,22,14,12,6,12,20,16,14,14,14,16,16,28,24,14,10].map(w => ({ wch: w }));
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Direktori');
-    const date = new Date().toISOString().slice(0, 10);
-    XLSX.writeFile(wb, `direktori_anggota_${date}.xlsx`);
+    if (!rows.length) return;
+    const esc = (v: any) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const headers = Object.keys(rows[0]);
+    let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
+<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:11px;">
+<thead><tr>${headers.map(h => `<th style="background:#eee;font-weight:bold;">${esc(h)}</th>`).join('')}</tr></thead>
+<tbody>${rows.map(row => `<tr>${headers.map(h => `<td>${esc((row as any)[h])}</td>`).join('')}</tr>`).join('')}</tbody>
+</table></body></html>`;
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `direktori_anggota_${new Date().toISOString().slice(0,10)}.xls`; a.click();
+    URL.revokeObjectURL(url);
     toast.success('File Excel berhasil diunduh');
   }
 

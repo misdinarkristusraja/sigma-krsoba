@@ -22,7 +22,6 @@ export default defineConfig({
           'supabase-vendor': ['@supabase/supabase-js'],
           'chart-vendor':    ['recharts'],
           'export-vendor':   ['html-to-image', 'jspdf', 'qrcode'],
-          'xlsx-vendor':     ['xlsx'],
         },
       },
     },

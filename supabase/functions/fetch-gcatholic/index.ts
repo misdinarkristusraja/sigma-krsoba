@@ -11,13 +11,63 @@ const corsHeaders = {
 
 // Mapping gcatholic color codes to our system
 const COLOR_MAP: Record<string, string> = {
-  'G': 'Hijau',   'green': 'Hijau',
-  'R': 'Merah',   'red': 'Merah',
-  'W': 'Putih',   'white': 'Putih',
-  'V': 'Ungu',    'violet': 'Ungu', 'purple': 'Ungu',
-  'P': 'MerahMuda', 'rose': 'MerahMuda', 'pink': 'MerahMuda',
-  'B': 'Hitam',   'black': 'Hitam',
+  'G': 'Hijau',   'g': 'Hijau',   'green': 'Hijau',
+  'R': 'Merah',   'r': 'Merah',   'red': 'Merah',
+  'W': 'Putih',   'w': 'Putih',   'white': 'Putih',
+  'V': 'Ungu',    'v': 'Ungu',    'violet': 'Ungu', 'purple': 'Ungu',
+  'P': 'MerahMuda', 'p': 'MerahMuda', 'rose': 'MerahMuda', 'pink': 'MerahMuda',
+  'B': 'Hitam',   'b': 'Hitam',   'black': 'Hitam',
 };
+
+// ── Easter (Anonymous Gregorian) ────────────────────────────────────
+function computeEaster(year: number): Date {
+  const a = year % 19, b = Math.floor(year / 100), c = year % 100;
+  const d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day   = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day);
+}
+function addDays(d: Date, n: number): Date { const r = new Date(d); r.setDate(d.getDate() + n); return r; }
+
+function getSeasonColor(year: number, month: number, day: number): string {
+  const d = new Date(year, month - 1, day);
+  const easter    = computeEaster(year);
+  const ashWed    = addDays(easter, -46);
+  const holySat   = addDays(easter, -1);
+  const pentecost = addDays(easter, 49);
+  const christmas = new Date(year, 11, 25);
+  const christmasDow = christmas.getDay();
+  const advent    = addDays(christmas, -(christmasDow === 0 ? 21 : christmasDow + 21));
+  const epiphany  = new Date(year, 0, 6);
+  const epDow     = epiphany.getDay();
+  const baptism   = epDow === 0 ? addDays(epiphany, 7) : addDays(epiphany, 7 - epDow);
+  if (d >= ashWed  && d <= holySat)   return 'Ungu';
+  if (d >= easter  && d <= pentecost) return 'Putih';
+  if (d >= advent  && d < christmas)  return 'Ungu';
+  if (d >= christmas)                  return 'Putih';
+  if (d <= baptism)                    return 'Putih';
+  return 'Hijau';
+}
+
+/**
+ * Resolve liturgical color for a misa harian entry.
+ * Priority: Martyr/Apostle → Merah; Saint title → Putih; GCatholic color; Season fallback.
+ */
+function resolveHarianColor(name: string, rawColor: string, seasonColor: string): string {
+  if (!name || name.length < 3) return seasonColor;
+  const n = name.toLowerCase();
+  const isJohnApostle = /yohanes\s*(rasul|penginjil|apostle|evangelist)|john\s*(the\s*)?(apostle|evangelist)/i.test(name);
+  if (!isJohnApostle && /\b(martir|para\s+martir|martyr|martyrs|rasul|apostle|apostles|penginjil|evangelist)\b/.test(n)) return 'Merah';
+  if (/\b(uskup|bishop|paus|pope|imam|priest|pastor|perawan|virgin|doktor|doctor|abas|abbot|pengaku\s+iman|confessor|rahib|monk|biarawan|biarawati|nun|diakon|deacon)\b/.test(n)) return 'Putih';
+  if (/\b(pesta|feast|solemnity|hari\s+raya|peringatan\s+wajib|memorial)\b/.test(n)) return 'Putih';
+  if (rawColor && rawColor !== 'Hijau') return rawColor;
+  return seasonColor;
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -56,21 +106,31 @@ serve(async (req) => {
       const day    = dateMatch[1].padStart(2, '0');
       const fullDate = `${year}-${targetMonth}-${day}`;
 
-      // Get color from class or text
-      const className  = (row.getAttribute('class') || '').toLowerCase();
-      let liturgyColor = 'Hijau';
-      for (const [k, v] of Object.entries(COLOR_MAP)) {
-        if (className.includes(k)) { liturgyColor = v; break; }
+      // Extract color from span class (e.g. <span class="feastw">, <span class="feastr">)
+      // GCatholic puts color indicators on span elements, not on <tr> class
+      const rowHtml  = row.innerHTML || '';
+      const spanMatch = rowHtml.match(/class="feast([a-z])"/i);
+      let rawColor = spanMatch ? (COLOR_MAP[spanMatch[1].toLowerCase()] || 'Hijau') : 'Hijau';
+
+      // Fallback: try <tr> class (some GCatholic variants use row class)
+      if (rawColor === 'Hijau') {
+        const className = (row.getAttribute('class') || '').toLowerCase();
+        for (const [k, v] of Object.entries(COLOR_MAP)) {
+          if (className.includes(k.toLowerCase())) { rawColor = v; break; }
+        }
       }
 
-      // Detect if feast day
-      const isHariRaya = name.toLowerCase().includes('hari raya') || name.toLowerCase().includes('solemnity');
+      const cleanName  = name.replace(/\s+/g, ' ').trim();
+      const dayNum     = parseInt(day, 10);
+      const seasonColor = getSeasonColor(year, parseInt(targetMonth, 10), dayNum);
+      const finalColor  = resolveHarianColor(cleanName, rawColor, seasonColor);
+      const isHariRaya  = /hari raya|solemnity/i.test(cleanName);
 
-      if (name && day) {
+      if (cleanName && day) {
         result.push({
           date:  fullDate,
-          name:  name.replace(/\s+/g, ' ').trim(),
-          color: liturgyColor,
+          name:  cleanName,
+          color: finalColor,
           type:  isHariRaya ? 'HR' : 'HS',
         });
       }
