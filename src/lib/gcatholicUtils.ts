@@ -1,24 +1,25 @@
 /**
- * Shared GCatholic liturgical calendar utilities.
- * Used by: useAutoAssign (weekly schedule) + ScheduleDailyPage (daily mass).
- * Fetches via client-side CORS proxies — no edge function required.
+ * Shared liturgical calendar utilities.
+ *
+ * Primary source : imankatolik.or.id  — fetched server-side via Supabase edge function
+ *                  (direct HTTP from browser is blocked by CORS / Cloudflare).
+ * Fallback source: gcatholic.org      — fetched client-side via CORS proxy.
  */
 
-const COLOR_MAP: Record<string, string> = {
-  v: 'Ungu', r: 'Merah', w: 'Putih', g: 'Hijau', p: 'MerahMuda', b: 'Hitam',
-};
+import { supabase as supabaseTyped } from './supabase';
+const supabase = supabaseTyped as any;
 
 export interface GcatholicEntry {
   date:       string;   // YYYY-MM-DD
   name:       string;
-  color:      string;   // Indonesian color name
+  color:      string;   // Hijau | Merah | Putih | Ungu | MerahMuda | Hitam
   rank:       number;   // 1=Solemnity, 2=Feast, 3=ObligatoryMemorial, 4=Optional, 5=Feria
   isMinggu:   boolean;
   isSabtu:    boolean;
   isHariRaya: boolean;
 }
 
-// ── Easter: Anonymous Gregorian algorithm ───────────────────────────
+// ── Easter + season helpers (used by GCatholic fallback parser) ─────
 export function computeEaster(year: number): Date {
   const a = year % 19, b = Math.floor(year / 100), c = year % 100;
   const d = Math.floor(b / 4), e = b % 4;
@@ -37,17 +38,17 @@ export function addDays(d: Date, n: number): Date {
 }
 
 export function getSeasonColor(year: number, month: number, day: number): string {
-  const d          = new Date(year, month - 1, day);
-  const easter     = computeEaster(year);
-  const ashWed     = addDays(easter, -46);
-  const holySat    = addDays(easter, -1);
-  const pentecost  = addDays(easter, 49);
-  const christmas  = new Date(year, 11, 25);
-  const christDow  = christmas.getDay();
-  const advent     = addDays(christmas, -(christDow === 0 ? 21 : christDow + 21));
-  const epiphany   = new Date(year, 0, 6);
-  const epDow      = epiphany.getDay();
-  const baptism    = epDow === 0 ? addDays(epiphany, 7) : addDays(epiphany, 7 - epDow);
+  const d         = new Date(year, month - 1, day);
+  const easter    = computeEaster(year);
+  const ashWed    = addDays(easter, -46);
+  const holySat   = addDays(easter, -1);
+  const pentecost = addDays(easter, 49);
+  const christmas = new Date(year, 11, 25);
+  const christDow = christmas.getDay();
+  const advent    = addDays(christmas, -(christDow === 0 ? 21 : christDow + 21));
+  const epiphany  = new Date(year, 0, 6);
+  const epDow     = epiphany.getDay();
+  const baptism   = epDow === 0 ? addDays(epiphany, 7) : addDays(epiphany, 7 - epDow);
   if (d >= ashWed  && d <= holySat)   return 'Ungu';
   if (d >= easter  && d <= pentecost) return 'Putih';
   if (d >= advent  && d < christmas)  return 'Ungu';
@@ -67,11 +68,11 @@ export function resolveHarianColor(name: string, rawColor: string, seasonColor: 
   return seasonColor;
 }
 
-/**
- * Parse raw GCatholic HTML into GcatholicEntry[].
- * Uses <tr id="MMDD"> for reliable date identification.
- * Picks the highest-rank entry per date (rank 1=best, 5=feria).
- */
+// ── GCatholic fallback parser (CORS proxy) ───────────────────────────
+const GC_COLOR_MAP: Record<string, string> = {
+  v: 'Ungu', r: 'Merah', w: 'Putih', g: 'Hijau', p: 'MerahMuda', b: 'Hitam',
+};
+
 export function parseLiturgiHTML(html: string, year: number): GcatholicEntry[] {
   const dateMap = new Map<string, GcatholicEntry>();
   const trRegex = /<tr[^>]*\sid="(\d{4})"[^>]*>([\s\S]*?)<\/tr>/gi;
@@ -83,15 +84,11 @@ export function parseLiturgiHTML(html: string, year: number): GcatholicEntry[] {
     if (!rowMonth || !rowDay) continue;
     const row = m[2];
 
-    // Day-of-week text from second <td>
-    const tds = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)];
-    const dow  = (tds[1]?.[1] ?? '').replace(/<[^>]+>/g, '').trim();
-
-    // Color from feast[single-letter] span, e.g. <span class="feastr">
+    const tds      = [...row.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)];
+    const dow      = (tds[1]?.[1] ?? '').replace(/<[^>]+>/g, '').trim();
     const colorM   = row.match(/<span\s+class="feast([a-z])"\s*>/i);
-    const rawColor = colorM ? (COLOR_MAP[colorM[1]] ?? 'Hijau') : 'Hijau';
+    const rawColor = colorM ? (GC_COLOR_MAP[colorM[1]] ?? 'Hijau') : 'Hijau';
 
-    // All feast entries ranked by feast[digit] class
     const feastRe = /<span[^>]+class="feast(\d)[^"]*"[^>]*>([\s\S]*?)<\/span>/gi;
     const entries: Array<{ rank: number; name: string }> = [];
     let fm: RegExpExecArray | null;
@@ -100,47 +97,88 @@ export function parseLiturgiHTML(html: string, year: number): GcatholicEntry[] {
       if (text.length >= 3) entries.push({ rank: parseInt(fm[1], 10), name: text });
     }
     if (!entries.length) continue;
-
     entries.sort((a, b) => a.rank - b.rank);
     const best = entries[0];
 
-    const dateStr    = `${year}-${String(rowMonth).padStart(2, '0')}-${String(rowDay).padStart(2, '0')}`;
+    const dateStr     = `${year}-${String(rowMonth).padStart(2,'0')}-${String(rowDay).padStart(2,'0')}`;
     const seasonColor = getSeasonColor(year, rowMonth, rowDay);
     const color       = resolveHarianColor(best.name, rawColor, seasonColor);
+    const d           = new Date(dateStr + 'T00:00:00');
     const entry: GcatholicEntry = {
       date:       dateStr,
       name:       best.name,
       color,
       rank:       best.rank,
-      isMinggu:   /minggu/i.test(dow),
-      isSabtu:    /sabtu/i.test(dow),
+      isMinggu:   d.getDay() === 0,
+      isSabtu:    d.getDay() === 6,
       isHariRaya: /hari raya/i.test(best.name),
     };
-
-    // Multiple <tr id="MMDD"> rows for same date → keep best rank
     const existing = dateMap.get(dateStr);
-    if (!existing || entry.rank < existing.rank) {
-      dateMap.set(dateStr, entry);
-    }
+    if (!existing || entry.rank < existing.rank) dateMap.set(dateStr, entry);
   }
   return Array.from(dateMap.values());
 }
 
-// ── Fetch + parse GCatholic for a given month ────────────────────────
+// ── Cache + fetch ────────────────────────────────────────────────────
 const _cache: Record<string, Map<string, GcatholicEntry>> = {};
 
+export function clearGcatholicCache(year: number, month: number): void {
+  delete _cache[`${year}-${month}`];
+}
+
+function edgeDataToMap(data: any[], year: number, month: number): Map<string, GcatholicEntry> {
+  const padM = String(month).padStart(2, '0');
+  const map  = new Map<string, GcatholicEntry>();
+  (data as any[])
+    .filter(e => typeof e.date === 'string' && e.date.startsWith(`${year}-${padM}`))
+    .forEach(e => {
+      const d   = new Date(`${e.date}T00:00:00`);
+      const entry: GcatholicEntry = {
+        date:       e.date,
+        name:       e.name   ?? '',
+        color:      e.color  ?? 'Hijau',
+        rank:       e.rank   ?? 5,
+        isMinggu:   d.getDay() === 0,
+        isSabtu:    d.getDay() === 6,
+        isHariRaya: e.type === 'HR' || /hari raya/i.test(e.name ?? ''),
+      };
+      const existing = map.get(e.date);
+      if (!existing || entry.rank < existing.rank) map.set(e.date, entry);
+    });
+  return map;
+}
+
+/**
+ * Fetch liturgical data for a month.
+ * 1st try: Supabase edge function (server-side → imankatolik.or.id, always reachable).
+ * Fallback: GCatholic via CORS proxy (client-side).
+ */
 export async function fetchGcatholicMonth(
   year: number, month: number
 ): Promise<Map<string, GcatholicEntry>> {
   const key = `${year}-${month}`;
   if (_cache[key]) return _cache[key];
 
+  // ── Primary: edge function → imankatolik.or.id ──────────────────
+  try {
+    const { data, error } = await supabase.functions.invoke('fetch-gcatholic', {
+      body: { year, month },
+    });
+    if (!error && Array.isArray(data) && data.length > 0) {
+      const map = edgeDataToMap(data, year, month);
+      if (map.size > 0) {
+        _cache[key] = map;
+        return map;
+      }
+    }
+  } catch { /* fall through */ }
+
+  // ── Fallback: GCatholic via CORS proxy ───────────────────────────
   const targetUrl = `https://gcatholic.org/calendar/${year}/ID-id`;
-  const proxies = [
+  const proxies   = [
     `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}`,
     `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`,
   ];
-
   let html = '';
   for (const proxy of proxies) {
     try {
@@ -148,21 +186,15 @@ export async function fetchGcatholicMonth(
       if (!res.ok) continue;
       const json = await res.json().catch(() => null);
       html = (json?.contents ?? json?.body ?? '') as string;
-      if (html.includes('feast1') || html.includes('feast2') || html.includes('feast3')) break;
-    } catch { /* try next proxy */ }
+      if (html.includes('feast1') || html.includes('feast3')) break;
+    } catch { /* try next */ }
   }
 
-  const padM  = String(month).padStart(2, '0');
-  const all   = html ? parseLiturgiHTML(html, year) : [];
-  const map   = new Map<string, GcatholicEntry>();
-  all
-    .filter(e => e.date.startsWith(`${year}-${padM}`))
-    .forEach(e => map.set(e.date, e));
+  const padM = String(month).padStart(2, '0');
+  const all  = html ? parseLiturgiHTML(html, year) : [];
+  const map  = new Map<string, GcatholicEntry>();
+  all.filter(e => e.date.startsWith(`${year}-${padM}`)).forEach(e => map.set(e.date, e));
 
   _cache[key] = map;
   return map;
-}
-
-export function clearGcatholicCache(year: number, month: number): void {
-  delete _cache[`${year}-${month}`];
 }

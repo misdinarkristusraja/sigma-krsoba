@@ -19,11 +19,17 @@ import { Pagination } from '../components/ui/Pagination';
 const WARNA_OPTIONS = ['Hijau','Merah','Putih','Ungu','MerahMuda','Hitam'];
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
-// Build perayaan string: verified LITURGI_2026 data > GCatholic saint feast (rank≤3) > season label
+// Build perayaan string:
+//   1. LITURGI_2026 verified data (Sundays / HR with official parish names)
+//   2. imankatolik name for non-feria entries (includes week number for feria days)
+//   3. Season label fallback when GCatholic is unavailable
 function buildPerayaan(dateStr: string, namaHari: string, gcEntry?: any): string {
   const explicit = getLiturgiByDate(dateStr);
   if (explicit?.name) return `${namaHari} — ${explicit.name}`;
-  if (gcEntry?.name && (gcEntry.rank ?? 5) <= 3) return `${namaHari} — ${gcEntry.name}`;
+  if (gcEntry?.name) {
+    const isFeria = /^hari biasa|^hari minggu/i.test(gcEntry.name) || (gcEntry.rank ?? 5) >= 5;
+    return isFeria ? gcEntry.name : `${namaHari} — ${gcEntry.name}`;
+  }
   return getLiturgicalLabel(dateStr, namaHari);
 }
 
