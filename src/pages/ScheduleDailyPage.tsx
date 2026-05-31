@@ -19,20 +19,20 @@ const WARNA_OPTIONS = ['Hijau','Merah','Putih','Ungu','MerahMuda','Hitam'];
 const MONTHS = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
 // ── GCatholic liturgi fetch (via edge function) ──────────────────────
+// Cache keyed by "year-month". Call clearHarianLiturgiCache(year, month) to force refresh.
 const _harianLiturgiCache: Record<string, Map<string, any>> = {};
-async function fetchHarianLiturgi(
-  supabaseClient: any, year: number, month: number
-): Promise<Map<string, any>> {
+export function clearHarianLiturgiCache(year: number, month: number) {
+  delete _harianLiturgiCache[`${year}-${month}`];
+}
+async function fetchHarianLiturgi(year: number, month: number): Promise<Map<string, any>> {
   const key = `${year}-${month}`;
   if (_harianLiturgiCache[key]) return _harianLiturgiCache[key];
   try {
-    const { data, error } = await supabaseClient.functions.invoke('fetch-gcatholic', {
+    const { data, error } = await supabase.functions.invoke('fetch-gcatholic', {
       body: { year, month },
     });
     if (error || !Array.isArray(data)) return new Map();
     const map = new Map<string, any>();
-    // If multiple entries per date, keep highest rank (already sorted by edge fn)
-    // Edge fn returns one entry per date (best rank). Build date→entry map.
     data.forEach((entry: any) => {
       const existing = map.get(entry.date);
       if (!existing || (entry.rank ?? 5) < (existing.rank ?? 5)) {
@@ -108,6 +108,7 @@ export function ScheduleDailyPage() {
   const [events,   setEvents]   = useState<any[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [generating, setGen]    = useState(false);
+  const [progress, setProgress] = useState<{ label: string; current: number; total: number } | null>(null);
 
   // Opt-in
   const [myOptin,      setMyOptin]    = useState<any>(null);
@@ -281,33 +282,39 @@ export function ScheduleDailyPage() {
     loadEvents();
   }
 
-  // ── Fix liturgi: recalculate warna + perayaan using GCatholic data ──
+  // ── Fix liturgi: recalculate warna + perayaan using fresh GCatholic data ──
   async function fixLiturgi() {
     if (!events.length) return;
     if (!confirm(`Recalculate warna liturgi & perayaan untuk semua ${events.length} event ${MONTHS[month-1]} ${year}?`)) return;
-    const tid = 'fix-liturgi';
-    toast.loading('Mengambil data liturgi...', { id: tid });
-    const liturgiMap = await fetchHarianLiturgi(supabase, year, month);
-    toast.loading(`Memperbarui 0 / ${events.length}...`, { id: tid });
-    let updated = 0, failed = 0;
-    for (let i = 0; i < events.length; i++) {
-      const ev          = events[i];
-      const d           = new Date(ev.tanggal_tugas + 'T00:00:00');
-      const namaHari    = HARI[d.getDay()];
-      const gcEntry     = liturgiMap.get(ev.tanggal_tugas);
-      // Color: use GCatholic-resolved color if available, else static season
-      const newWarna    = gcEntry?.color || getLiturgicalSeasonColor(ev.tanggal_tugas);
-      const newPerayaan = buildPerayaan(ev.tanggal_tugas, namaHari, gcEntry);
-      const { error }   = await supabase.from('events')
-        .update({ warna_liturgi: newWarna, perayaan: newPerayaan })
-        .eq('id', ev.id);
-      if (error) { failed++; console.error('fixLiturgi', ev.tanggal_tugas, error.message); }
-      else updated++;
-      toast.loading(`Memperbarui ${i + 1} / ${events.length}...`, { id: tid });
+    const total = events.length;
+    try {
+      // Always fetch fresh data — clear cache so we get latest GCatholic
+      clearHarianLiturgiCache(year, month);
+      setProgress({ label: 'Mengambil data liturgi GCatholic...', current: 0, total });
+      const liturgiMap = await fetchHarianLiturgi(year, month);
+
+      let updated = 0, failed = 0;
+      for (let i = 0; i < events.length; i++) {
+        setProgress({ label: 'Memperbarui warna & perayaan...', current: i, total });
+        const ev          = events[i];
+        const d           = new Date(ev.tanggal_tugas + 'T00:00:00');
+        const namaHari    = HARI[d.getDay()];
+        const gcEntry     = liturgiMap.get(ev.tanggal_tugas);
+        const newWarna    = gcEntry?.color || getLiturgicalSeasonColor(ev.tanggal_tugas);
+        const newPerayaan = buildPerayaan(ev.tanggal_tugas, namaHari, gcEntry);
+        const { error }   = await supabase.from('events')
+          .update({ warna_liturgi: newWarna, perayaan: newPerayaan })
+          .eq('id', ev.id);
+        if (error) { failed++; console.error('fixLiturgi', ev.tanggal_tugas, error.message); }
+        else updated++;
+      }
+      setProgress({ label: 'Selesai!', current: total, total });
+      if (failed) toast.error(`${failed} gagal. ${updated} berhasil diperbarui.`, { duration: 5000 });
+      else toast.success(`${updated} event diperbarui dengan warna liturgi terbaru ✅`);
+      loadEvents();
+    } finally {
+      setProgress(null);
     }
-    if (failed) toast.error(`${failed} gagal (cek console). ${updated} berhasil.`, { id: tid, duration: 5000 });
-    else toast.success(`${updated} event diperbarui ✅`, { id: tid, duration: 4000 });
-    loadEvents();
   }
 
   // ── Hapus semua Misa Harian bulan ini ───────────────────
@@ -417,7 +424,7 @@ export function ScheduleDailyPage() {
         const d = new Date(ev.tanggal_tugas+'T00:00:00');
         const hari = HARI[d.getDay()].toUpperCase();
         const tgl  = `${d.getDate()} ${MONTHS_ID[d.getMonth()]} ${d.getFullYear()}`;
-        const warna = getLiturgicalSeasonColor(ev.tanggal_tugas);
+        const warna = ev.warna_liturgi || getLiturgicalSeasonColor(ev.tanggal_tugas);
         const bg = LITURGY_BG[warna]||'#ffffff', fg = LITURGY_FG[warna]||'#000';
         const asgns = ev.assignments||[];
         const pic   = (ev.event_pics||[]).find((p:any)=>p.slot===1);
@@ -455,9 +462,9 @@ export function ScheduleDailyPage() {
   // ── Generate Jadwal Harian ───────────────────────────────
   async function generateHarian() {
     setGen(true);
-    const tid = 'gen-harian';
     try {
-      toast.loading('Mengambil pool peserta...', { id: tid });
+      setProgress({ label: 'Menyiapkan pool petugas...', current: 0, total: 1 });
+      const padM = String(month).padStart(2, '0');
       const [{ data: optins }, { data: tarakanita }, { data: pengurusPool }] = await Promise.all([
         supabase.from('misa_harian_availability')
           .select('user_id, status, tanggal_tidak_bisa')
@@ -483,26 +490,40 @@ export function ScheduleDailyPage() {
       [...(tarakanita||[]), ...(optinUsers||[])].forEach((u: any) => { poolMap[u.id] = u; });
       const pool = Object.values(poolMap);
       if (!pool.length) {
-        toast.error('Pool kosong! Tidak ada yang opt-in atau Tarakanita.', { id: tid }); return;
+        toast.error('Pool kosong! Tidak ada yang opt-in atau Tarakanita.');
+        setProgress(null);
+        return;
       }
       const tidakBisaMap: Record<string,any> = {};
       (optins||[]).forEach((o: any) => { if (o.tanggal_tidak_bisa) tidakBisaMap[o.user_id] = o.tanggal_tidak_bisa; });
 
-      const weekdays = getWeekdays(year, month);
-      toast.loading('Mengambil data liturgi GCatholic...', { id: tid });
-      const liturgiMap = await fetchHarianLiturgi(supabase, year, month);
-      toast.loading(`Generate ${weekdays.length} hari (${pool.length} petugas, ${pengurusPool?.length || 0} PIC)...`, { id: tid });
+      setProgress({ label: 'Mengambil data liturgi GCatholic...', current: 0, total: 1 });
+      const liturgiMap = await fetchHarianLiturgi(year, month);
+
+      // Batch-check existing events (1 query, not 1 per day)
+      const { data: existingEvs } = await supabase.from('events')
+        .select('tanggal_tugas')
+        .eq('tipe_event', 'Misa_Harian')
+        .gte('tanggal_tugas', `${year}-${padM}-01`)
+        .lte('tanggal_tugas', `${year}-${padM}-${String(lastDayOfMonth(year, month)).padStart(2,'0')}`);
+      const existingDates = new Set((existingEvs || []).map((e: any) => e.tanggal_tugas));
+
+      const weekdays    = getWeekdays(year, month);
       const firstFriday = getFirstFriday(year, month);
       const sabtuImam   = getSabtuImam(year, month);
-      let poolIdx = 0, picIdx = 0, created = 0, skipped = 0;
+      const workdays    = weekdays.filter(({ date }) =>
+        !HARI_RAYA_NO_HARIAN.includes(date) &&
+        date !== firstFriday &&
+        date !== sabtuImam &&
+        !existingDates.has(date)
+      );
 
-      for (const { date, dow } of weekdays) {
-        if (HARI_RAYA_NO_HARIAN.includes(date)) { skipped++; continue; }
-        if (date === firstFriday) { skipped++; continue; } // Jumat Pertama → mingguan
-        if (date === sabtuImam)   { skipped++; continue; } // Sabtu Imam → mingguan
-        const { data: existing } = await supabase.from('events')
-          .select('id').eq('tipe_event','Misa_Harian').eq('tanggal_tugas', date).maybeSingle();
-        if (existing) continue;
+      setProgress({ label: 'Membuat jadwal misa harian...', current: 0, total: workdays.length });
+      let poolIdx = 0, picIdx = 0, created = 0, skipped = weekdays.length - workdays.length;
+
+      for (let wi = 0; wi < workdays.length; wi++) {
+        const { date, dow } = workdays[wi];
+        setProgress({ label: 'Membuat jadwal misa harian...', current: wi, total: workdays.length });
 
         const namaHari = HARI[dow];
         const gcEntry  = liturgiMap.get(date);
@@ -526,10 +547,10 @@ export function ScheduleDailyPage() {
         const available = pool.filter(u => !(tidakBisaMap[u.id]||[]).includes(date));
         const count     = Math.min(2, available.length);
         const assigns   = [];
-        for (let i = 0; i < count; i++) {
+        for (let ai = 0; ai < count; ai++) {
           const u = available[poolIdx % available.length];
           poolIdx++;
-          assigns.push({ event_id: ev.id, user_id: u.id, slot_number: 1, position: i+1 });
+          assigns.push({ event_id: ev.id, user_id: u.id, slot_number: 1, position: ai+1 });
         }
         if (assigns.length) await supabase.from('assignments').insert(assigns);
 
@@ -547,14 +568,15 @@ export function ScheduleDailyPage() {
         created++;
       }
 
-      toast.success(
-        `✅ ${created} event dibuat${skipped ? `, ${skipped} hari raya diskip` : ''}!`,
-        { id: tid, duration: 5000 }
-      );
+      setProgress({ label: 'Selesai!', current: workdays.length, total: workdays.length });
+      toast.success(`✅ ${created} event dibuat${skipped ? `, ${skipped} dilewati` : ''}!`);
       loadEvents();
     } catch (err: any) {
-      toast.error('Gagal: ' + (err as any).message, { id: tid });
-    } finally { setGen(false); }
+      toast.error('Gagal: ' + (err as any).message);
+    } finally {
+      setGen(false);
+      setProgress(null);
+    }
   }
 
   async function publishAllHarian() {
@@ -598,7 +620,30 @@ export function ScheduleDailyPage() {
   );
   const pgOptin = usePagination(filteredOptin, 20);
 
+  const progressPct = progress
+    ? Math.min(100, Math.round((progress.current / Math.max(1, progress.total)) * 100))
+    : 0;
+
   return (
+    <>
+    {/* Progress overlay — shown during generate / fix-liturgi */}
+    {progress && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm mx-4">
+          <p className="font-semibold text-gray-800 text-sm mb-0.5">{progress.label}</p>
+          <p className="text-xs text-gray-400 mb-3">
+            {progress.current} / {progress.total} selesai
+          </p>
+          <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+            <div
+              className="bg-brand-600 h-3 rounded-full transition-[width] duration-200"
+              style={{ width: `${progressPct}%` }}
+            />
+          </div>
+          <p className="text-right text-xs text-gray-500 mt-1.5 font-medium">{progressPct}%</p>
+        </div>
+      </div>
+    )}
     <div className="space-y-5">
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -1086,6 +1131,7 @@ export function ScheduleDailyPage() {
         </div>
       )}
     </div>
+    </>
   );
 }
 

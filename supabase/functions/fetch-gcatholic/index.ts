@@ -90,75 +90,60 @@ serve(async (req) => {
     const doc  = new DOMParser().parseFromString(html, 'text/html');
     const rows = doc?.querySelectorAll('table tr') || [];
 
-    const result: Array<{date: string, name: string, color: string, type: string}> = [];
-    const targetMonth = String(month).padStart(2, '0');
+    // GCatholic uses <tr id="MMDD"> (e.g. id="0601" for June 1) for every liturgical entry.
+    // Parse ONLY by this id — avoids false date matching from cell text across full-year page.
+    // Multiple <tr> with same id (optional + obligatory feast) → keep best rank (lowest digit).
+    type FeastEntry = { date: string; name: string; color: string; rank: number; type: string };
+    const dateMap = new Map<string, FeastEntry>();
 
-    rows.forEach((row) => {
-      const cells = row.querySelectorAll('td');
-      if (cells.length < 2) return;
-      const dateText = cells[0]?.textContent?.trim() || '';
+    for (let ri = 0; ri < rows.length; ri++) {
+      const row = rows[ri] as any;
+      const id  = (row.getAttribute?.('id') || '').trim();
+      if (!/^\d{4}$/.test(id)) continue;              // skip non-MMDD rows (headers etc.)
 
-      // Try to parse date (format varies: "1 Mar" or "01/03")
-      const dateMatch = dateText.match(/(\d{1,2})[\/\s-]?(\w+)?/);
-      if (!dateMatch) return;
+      const rowMonth = parseInt(id.slice(0, 2), 10);
+      const rowDay   = parseInt(id.slice(2, 4), 10);
+      if (rowMonth !== month || rowDay < 1 || rowDay > 31) continue; // only requested month
 
-      const day      = dateMatch[1].padStart(2, '0');
-      const fullDate = `${year}-${targetMonth}-${day}`;
+      const fullDate = `${year}-${String(rowMonth).padStart(2,'0')}-${String(rowDay).padStart(2,'0')}`;
+      const rowHtml  = (row.innerHTML || '') as string;
 
-      // Extract color from span class (e.g. <span class="feastw">, <span class="feastr">)
-      const rowHtml   = row.innerHTML || '';
-      const spanMatch = rowHtml.match(/class="feast([a-z])"/i);
-      let rawColor    = spanMatch ? (COLOR_MAP[spanMatch[1].toLowerCase()] || 'Hijau') : 'Hijau';
+      // Color: feast[single-letter] span, e.g. class="feastw" or class="feastr"
+      const colorMatch = rowHtml.match(/class="feast([a-z])"/i);
+      const rawColor   = colorMatch ? (COLOR_MAP[colorMatch[1].toLowerCase()] ?? 'Hijau') : 'Hijau';
 
-      // Fallback: try <tr> class
-      if (rawColor === 'Hijau') {
-        const className = (row.getAttribute('class') || '').toLowerCase();
-        for (const [k, v] of Object.entries(COLOR_MAP)) {
-          if (className.includes(k.toLowerCase())) { rawColor = v; break; }
-        }
-      }
-
-      // Extract feast entries with rank from span class="feast[digit]..."
+      // Feast name + rank: feast[digit] spans, e.g. class="feast3" or class="feast3r"
       // Rank 1=Solemnity(H), 2=Feast(Pfak), 3=ObligatoryMemorial(Pw), 4=Optional(P), 5=Feria
-      // When multiple entries exist, pick highest liturgical importance (lowest rank number)
-      interface FeastEntry { rank: number; name: string; }
-      const feastEntries: FeastEntry[] = [];
-      const nameCell = cells[1];
-      nameCell?.querySelectorAll('span').forEach((span: any) => {
-        const cls       = span.getAttribute('class') || '';
-        const rankMatch = cls.match(/^feast(\d)/);
-        if (rankMatch) {
-          const text = (span.textContent || '').replace(/\s+/g, ' ').trim();
-          if (text.length >= 3) feastEntries.push({ rank: parseInt(rankMatch[1], 10), name: text });
-        }
-      });
-      feastEntries.sort((a, b) => a.rank - b.rank);
-      const best = feastEntries[0];
+      const feastRe = /<span[^>]+class="feast(\d)[^"]*"[^>]*>([\s\S]*?)<\/span>/gi;
+      const entries: Array<{ rank: number; name: string }> = [];
+      let fm: RegExpExecArray | null;
+      while ((fm = feastRe.exec(rowHtml)) !== null) {
+        const text = fm[2].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        if (text.length >= 3) entries.push({ rank: parseInt(fm[1], 10), name: text });
+      }
+      if (!entries.length) continue; // row has no parseable feast spans
 
-      // Fall back to full cell text if no feast span found
-      const cleanName = best
-        ? best.name
-        : (nameCell?.textContent || '').replace(/\s+/g, ' ').trim();
-      const rank      = best?.rank ?? 5;
-
-      if (!cleanName || cleanName.length < 3 || !day) return;
-
-      const dayNum      = parseInt(day, 10);
-      const seasonColor = getSeasonColor(year, parseInt(targetMonth, 10), dayNum);
-      const finalColor  = resolveHarianColor(cleanName, rawColor, seasonColor);
-      const isHariRaya  = /hari raya|solemnity/i.test(cleanName);
-
-      result.push({
+      entries.sort((a, b) => a.rank - b.rank);
+      const best        = entries[0];
+      const seasonColor = getSeasonColor(year, rowMonth, rowDay);
+      const finalColor  = resolveHarianColor(best.name, rawColor, seasonColor);
+      const isHariRaya  = /hari raya|solemnity/i.test(best.name);
+      const candidate: FeastEntry = {
         date:  fullDate,
-        name:  cleanName,
+        name:  best.name,
         color: finalColor,
-        rank,
+        rank:  best.rank,
         type:  isHariRaya ? 'HR' : 'HS',
-      });
-    });
+      };
 
-    // Filter to requested month only
-    const monthData = result.filter(r => r.date.startsWith(`${year}-${targetMonth}`));
+      // If date already seen (multiple <tr id="MMDD">), keep the highest-rank entry
+      const existing = dateMap.get(fullDate);
+      if (!existing || candidate.rank < existing.rank) {
+        dateMap.set(fullDate, candidate);
+      }
+    }
+
+    const monthData = Array.from(dateMap.values());
 
     console.log(`[fetch-gcatholic] Found ${monthData.length} entries for ${year}-${targetMonth}`);
 
