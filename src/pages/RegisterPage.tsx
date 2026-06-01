@@ -200,6 +200,7 @@ export default function RegisterPage() {
     hp_anak: '', hp_ortu: '',
     nama_ayah: '', nama_ibu: '',
     alasan_masuk: '', sampai_kapan: '',
+    nomor_data_umat: '',
     sertifikat_komuni: null as File | null,
     signature_data_url: null as string | null,
     signature_child_data_url: null as string | null,
@@ -238,6 +239,7 @@ export default function RegisterPage() {
     if (!form.pendidikan) e.pendidikan = 'Pilih pendidikan';
     if (!form.hp_ortu) e.hp_ortu = 'No. HP Orang Tua wajib';
     if (!form.nama_ayah && !form.nama_ibu) e.nama_ayah = 'Minimal salah satu orang tua';
+    if (!form.nomor_data_umat?.trim()) e.nomor_data_umat = 'Nomor Data Umat wajib diisi. Tanyakan ke PIC Data Umat lingkunganmu.';
     if (!form.signature_child_data_url) e.signature_child = 'Tanda tangan calon misdinar wajib diisi';
     if (!form.signature_data_url) e.signature = 'Tanda tangan orang tua wajib diisi';
     if (!form.declared) e.declared = 'Wajib dicentang sebagai pernyataan';
@@ -301,6 +303,7 @@ export default function RegisterPage() {
         sampai_kapan:          form.sampai_kapan,
         surat_pernyataan_url:  pdfPath,
         sertifikat_komuni_url: sertifikatUrl,
+        nomor_data_umat:       form.nomor_data_umat?.trim() || null,
         pernyataan_declared:   true,
         status:                'Pending',
       });
@@ -483,6 +486,27 @@ export default function RegisterPage() {
             <input className="input" value={form.sampai_kapan}
               onChange={e => setForm(f => ({ ...f, sampai_kapan: e.target.value }))} placeholder="Sampai lulus SMA, dll." />
           </F>
+
+          {/* ── Data Paroki ── */}
+          <div className="border-t border-gray-100 pt-4 space-y-3">
+            <p className="text-sm font-semibold text-gray-700">Data Paroki</p>
+            <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-3">
+              <p className="text-xs font-semibold text-amber-800">Nomor Data Umat wajib diisi</p>
+              <p className="text-xs text-amber-700 mt-1">
+                Tanyakan <strong>Nomor Data Umat</strong> ke <strong>PIC Data Umat lingkunganmu</strong> sebelum mengisi form ini.
+                Nomor ini biasanya berupa 4 angka (contoh: 1111).
+              </p>
+            </div>
+            <F name="nomor_data_umat" label="Nomor Data Umat" required hint="Contoh: 1111 — tanyakan ke PIC Data Umat lingkunganmu">
+              <input
+                className={`input font-mono ${errors.nomor_data_umat ? 'input-error' : ''}`}
+                value={form.nomor_data_umat}
+                onChange={e => setForm(f => ({ ...f, nomor_data_umat: e.target.value }))}
+                placeholder="Contoh: 1111"
+                maxLength={20}
+              />
+            </F>
+          </div>
 
           {/* ── Dokumen ── */}
           <div className="border-t border-gray-100 pt-4">

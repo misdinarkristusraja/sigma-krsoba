@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatHP, PENDIDIKAN_OPTIONS } from '../lib/utils';
 import { LINGKUNGAN_LIST, getWilayah } from '../lib/wilayah';
 import SekolahDropdown from '../components/ui/SekolahDropdown';
-import { RefreshCw, CheckCircle, Lock } from 'lucide-react';
+import { RefreshCw, CheckCircle, Lock, Save, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function ReregistrationPage() {
@@ -14,6 +14,18 @@ export default function ReregistrationPage() {
   const [loading,   setLoading]   = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [alreadyRe, setAlreadyRe] = useState(false);
+  const [nduValue,  setNduValue]  = useState('');
+  const [savingNdu, setSavingNdu] = useState(false);
+
+  async function saveNdu() {
+    if (!nduValue.trim() || !profile) return;
+    setSavingNdu(true);
+    const { error } = await supabase.from('users').update({ nomor_data_umat: nduValue.trim() }).eq('id', profile.id);
+    setSavingNdu(false);
+    if (error) { toast.error('Gagal simpan: ' + error.message); return; }
+    await fetchProfile();
+    toast.success('Nomor Data Umat berhasil disimpan!');
+  }
   const [openDate,  setOpenDate]  = useState<Date | null>(null);
   const [closeDate, setCloseDate] = useState<Date | null>(null);
   const [configLoaded, setConfigLoaded] = useState(false);
@@ -181,18 +193,67 @@ export default function ReregistrationPage() {
 
   // Sudah daftar ulang
   if (alreadyRe || submitted) {
+    const hasNdu = !!(profile as any)?.nomor_data_umat;
     return (
       <div className="space-y-5">
         <h1 className="page-title">Daftar Ulang</h1>
-        <div className="card text-center py-14">
+        <div className="card text-center py-10">
           <CheckCircle size={48} className="mx-auto text-green-500 mb-4" />
           <h2 className="font-bold text-xl text-gray-900">Daftar Ulang Selesai</h2>
           <p className="text-gray-500 text-sm mt-2">
             Kamu sudah melakukan daftar ulang untuk tahun {new Date().getFullYear()}.
           </p>
-          <p className="text-xs text-gray-400 mt-4">
+          <p className="text-xs text-gray-400 mt-2">
             Jika ada perubahan data, hubungi Pengurus secara langsung.
           </p>
+        </div>
+
+        {/* NDU section — selalu tampil di bawah */}
+        <div className={`card space-y-3 ${hasNdu ? 'border-green-200' : 'border-orange-300 border-2'}`}>
+          <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+            {hasNdu
+              ? <CheckCircle size={16} className="text-green-600"/>
+              : <AlertTriangle size={16} className="text-orange-500"/>
+            }
+            Nomor Data Umat
+          </h3>
+
+          {hasNdu ? (
+            <div className="flex items-center gap-3 bg-green-50 rounded-xl px-4 py-3">
+              <span className="text-sm text-gray-600">Nomor kamu:</span>
+              <span className="font-mono font-bold text-brand-800 text-lg">{(profile as any).nomor_data_umat}</span>
+            </div>
+          ) : (
+            <>
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
+                <p className="text-xs font-semibold text-amber-800">Nomor Data Umat belum diisi</p>
+                <p className="text-xs text-amber-700 mt-0.5">
+                  Tanyakan ke <strong>PIC Data Umat lingkunganmu</strong>, lalu isi di bawah ini.
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  className="input font-mono flex-1"
+                  placeholder="Contoh: 1111"
+                  maxLength={20}
+                  value={nduValue}
+                  onChange={e => setNduValue(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveNdu(); }}
+                />
+                <button
+                  onClick={saveNdu}
+                  disabled={savingNdu || !nduValue.trim()}
+                  className="btn-primary gap-2 px-4 disabled:opacity-50"
+                >
+                  {savingNdu
+                    ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                    : <Save size={15}/>
+                  }
+                  Simpan
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
