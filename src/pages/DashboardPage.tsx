@@ -18,10 +18,11 @@ import {
 } from 'recharts';
 import {
   Calendar, Clock, Trophy, ArrowLeftRight, QrCode,
-  CheckCircle, AlertTriangle, ChevronRight, Star, Zap, Bell, PlayCircle,
+  CheckCircle, AlertTriangle, ChevronRight, Star, Zap, Bell, PlayCircle, Save,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 
 const KONDISI_LABELS: Record<string, { label: string; color: string; icon: string }> = {
   K1:  { label: 'Mengganti + Latihan',        color: 'text-purple-600',  icon: '🌟' },
@@ -41,7 +42,7 @@ const KONDISI_LABELS: Record<string, { label: string; color: string; icon: strin
 };
 
 export default function DashboardPage() {
-  const { profile, isPengurus, isPelatih } = useAuth();
+  const { profile, isPengurus, isPelatih, fetchProfile } = useAuth();
 
   const { data: upcomingEvents, loading: loadingEvents } = useEvents(3);
   const { data: swapBoard }                              = useSwapRequests({ mode: 'board', limit: 5 });
@@ -53,6 +54,9 @@ export default function DashboardPage() {
   const [pengurusStats, setPengurusStats]= useState<any>(null);
   const [loadingPStats, setLoadingPStats]= useState(false);
   const [reregBanner,   setReregBanner]  = useState<'open_not_done' | 'open_done' | null>(null);
+  const [nduBanner,     setNduBanner]    = useState(false);
+  const [nduValue,      setNduValue]     = useState('');
+  const [savingNdu,     setSavingNdu]    = useState(false);
 
   useEffect(() => {
     if (!isPengurus) return;
@@ -73,6 +77,27 @@ export default function DashboardPage() {
     if (!cfgRows) return;
     const cfg: Record<string, string> = {};
     cfgRows.forEach((r: any) => { cfg[r.key] = r.value; });
+
+    const tahun = parseInt(cfg.rereg_tahun || String(new Date().getFullYear()));
+    if ((profile as any)?.registration_year === tahun) return;
+
+    const { data: reregData } = await (supabase as any)
+      .from('reregistrations')
+      .select('id')
+      .eq('user_id', profile!.id)
+      .eq('tahun', tahun)
+      .maybeSingle();
+
+    const hasRereg = !!reregData;
+    const hasNdu   = !!(profile as any)?.nomor_data_umat;
+
+    // Sudah rereg tapi belum isi nomor_data_umat → prioritaskan banner NDU
+    if (hasRereg && !hasNdu) {
+      setNduBanner(true);
+      setReregBanner('open_done');
+      return;
+    }
+
     if (!cfg.rereg_open_date || !cfg.rereg_close_date) return;
     const now   = new Date();
     const open  = new Date(cfg.rereg_open_date);
@@ -80,19 +105,21 @@ export default function DashboardPage() {
     if (isNaN(open.getTime()) || isNaN(close.getTime())) return;
     if (now < open || now > close) return;
 
-    const tahun = parseInt(cfg.rereg_tahun || String(now.getFullYear()));
+    setReregBanner(hasRereg ? 'open_done' : 'open_not_done');
+  }
 
-    // Anggota yang mendaftar manual tahun rereg tidak perlu daftar ulang
-    // registration_year null = import/lama → wajib rereg
-    if ((profile as any)?.registration_year === tahun) return;
-
-    const { data } = await (supabase as any)
-      .from('reregistrations')
-      .select('id')
-      .eq('user_id', profile!.id)
-      .eq('tahun', tahun)
-      .maybeSingle();
-    setReregBanner(data ? 'open_done' : 'open_not_done');
+  async function saveNdu() {
+    if (!nduValue.trim() || !profile) return;
+    setSavingNdu(true);
+    const { error } = await (supabase as any)
+      .from('users')
+      .update({ nomor_data_umat: nduValue.trim() })
+      .eq('id', profile.id);
+    setSavingNdu(false);
+    if (error) { toast.error('Gagal simpan: ' + error.message); return; }
+    await fetchProfile();
+    setNduBanner(false);
+    toast.success('Nomor Data Umat berhasil disimpan!');
   }
 
   async function loadPendingRegs() {
@@ -197,12 +224,49 @@ export default function DashboardPage() {
           <ChevronRight size={16} className="text-amber-500 shrink-0" />
         </Link>
       )}
-      {reregBanner === 'open_done' && (
+      {reregBanner === 'open_done' && !nduBanner && (
         <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl px-4 py-4">
           <CheckCircle size={20} className="text-green-600 shrink-0" />
           <div>
             <p className="font-semibold text-green-800 text-sm">Daftar Ulang Selesai</p>
             <p className="text-xs text-green-600 mt-0.5">Kamu sudah berhasil daftar ulang tahun ini.</p>
+          </div>
+        </div>
+      )}
+
+      {/* Banner NDU — wajib isi jika sudah rereg tapi belum ada nomor */}
+      {nduBanner && (
+        <div className="bg-orange-50 border-2 border-orange-300 rounded-2xl px-4 py-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={20} className="text-orange-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="font-bold text-orange-800 text-sm">Lengkapi Nomor Data Umat</p>
+              <p className="text-xs text-orange-700 mt-0.5">
+                Kamu sudah daftar ulang, tapi <strong>Nomor Data Umat</strong> belum diisi.
+                Tanyakan ke <strong>PIC Data Umat</strong>, lalu isi di bawah ini.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <input
+              className="input font-mono text-sm flex-1"
+              placeholder="Contoh: 1111"
+              maxLength={20}
+              value={nduValue}
+              onChange={e => setNduValue(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') saveNdu(); }}
+            />
+            <button
+              onClick={saveNdu}
+              disabled={savingNdu || !nduValue.trim()}
+              className="btn-primary gap-2 px-4 disabled:opacity-50"
+            >
+              {savingNdu
+                ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
+                : <Save size={15}/>
+              }
+              Simpan
+            </button>
           </div>
         </div>
       )}
