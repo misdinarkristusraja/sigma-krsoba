@@ -102,7 +102,7 @@ export default function ReregistrationPage() {
       toast.error('Pendidikan dan lingkungan wajib diisi'); return;
     }
     if (!form.nomor_data_umat?.trim()) {
-      toast.error('Nomor Data Umat wajib diisi. Tanyakan ke PIC Data Umat.'); return;
+      toast.error('Nomor Data Umat wajib diisi. Tanyakan ke PIC Data Umat Lingkungan.'); return;
     }
 
     setLoading(true);
@@ -228,7 +228,7 @@ export default function ReregistrationPage() {
               <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
                 <p className="text-xs font-semibold text-amber-800">Nomor Data Umat belum diisi</p>
                 <p className="text-xs text-amber-700 mt-0.5">
-                  Tanyakan ke <strong>PIC Data Umat lingkunganmu</strong>, lalu isi di bawah ini.
+                  Tanyakan ke <strong>PIC Data Umat Lingkungan</strong>, lalu isi di bawah ini.
                 </p>
               </div>
               <div className="flex gap-2">
@@ -380,7 +380,7 @@ export default function ReregistrationPage() {
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
               <p className="text-xs font-semibold text-amber-800">Nomor Data Umat wajib diisi</p>
               <p className="text-xs text-amber-700 mt-0.5">
-                Belum tahu nomornya? Tanyakan ke <strong>PIC Data Umat</strong> sebelum mengisi form ini.
+                Belum tahu nomornya? Tanyakan ke <strong>PIC Data Umat Lingkungan</strong> sebelum mengisi form ini.
               </p>
             </div>
             <div>

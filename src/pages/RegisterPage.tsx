@@ -239,7 +239,7 @@ export default function RegisterPage() {
     if (!form.pendidikan) e.pendidikan = 'Pilih pendidikan';
     if (!form.hp_ortu) e.hp_ortu = 'No. HP Orang Tua wajib';
     if (!form.nama_ayah && !form.nama_ibu) e.nama_ayah = 'Minimal salah satu orang tua';
-    if (!form.nomor_data_umat?.trim()) e.nomor_data_umat = 'Nomor Data Umat wajib diisi. Tanyakan ke PIC Data Umat lingkunganmu.';
+    if (!form.nomor_data_umat?.trim()) e.nomor_data_umat = 'Nomor Data Umat wajib diisi. Tanyakan ke PIC Data Umat Lingkungan.';
     if (!form.signature_child_data_url) e.signature_child = 'Tanda tangan calon misdinar wajib diisi';
     if (!form.signature_data_url) e.signature = 'Tanda tangan orang tua wajib diisi';
     if (!form.declared) e.declared = 'Wajib dicentang sebagai pernyataan';
@@ -493,11 +493,11 @@ export default function RegisterPage() {
             <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-3">
               <p className="text-xs font-semibold text-amber-800">Nomor Data Umat wajib diisi</p>
               <p className="text-xs text-amber-700 mt-1">
-                Tanyakan <strong>Nomor Data Umat</strong> ke <strong>PIC Data Umat lingkunganmu</strong> sebelum mengisi form ini.
+                Tanyakan <strong>Nomor Data Umat</strong> ke <strong>PIC Data Umat Lingkungan</strong> sebelum mengisi form ini.
                 Nomor ini biasanya berupa 4 angka (contoh: 1111).
               </p>
             </div>
-            <F name="nomor_data_umat" label="Nomor Data Umat" required hint="Contoh: 1111 — tanyakan ke PIC Data Umat lingkunganmu">
+            <F name="nomor_data_umat" label="Nomor Data Umat" required hint="Contoh: 1111 — tanyakan ke PIC Data Umat Lingkungan">
               <input
                 className={`input font-mono ${errors.nomor_data_umat ? 'input-error' : ''}`}
                 value={form.nomor_data_umat}

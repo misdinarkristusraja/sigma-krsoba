@@ -243,7 +243,7 @@ export default function DashboardPage() {
               <p className="font-bold text-orange-800 text-sm">Lengkapi Nomor Data Umat</p>
               <p className="text-xs text-orange-700 mt-0.5">
                 Kamu sudah daftar ulang, tapi <strong>Nomor Data Umat</strong> belum diisi.
-                Tanyakan ke <strong>PIC Data Umat</strong>, lalu isi di bawah ini.
+                Tanyakan ke <strong>PIC Data Umat Lingkungan</strong>, lalu isi di bawah ini.
               </p>
             </div>
           </div>
