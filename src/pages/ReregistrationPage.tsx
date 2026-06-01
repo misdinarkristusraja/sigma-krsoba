@@ -62,8 +62,9 @@ export default function ReregistrationPage() {
         hp_ortu:       profile.hp_ortu        || '',
         nama_ayah:     profile.nama_ayah      || '',
         nama_ibu:      profile.nama_ibu       || '',
-        alasan_masuk:  profile.alasan_masuk   || '',
-        sampai_kapan:  profile.sampai_kapan   || '',
+        alasan_masuk:      profile.alasan_masuk            || '',
+        sampai_kapan:      profile.sampai_kapan            || '',
+        nomor_data_umat:   (profile as any).nomor_data_umat || '',
       });
       // Cek apakah sudah daftar ulang tahun ini
       checkAlreadyReregistered();
@@ -107,9 +108,10 @@ export default function ReregistrationPage() {
         hp_ortu:        form.hp_ortu ? formatHP(form.hp_ortu) : null,
         nama_ayah:      form.nama_ayah,
         nama_ibu:       form.nama_ibu,
-        alasan_masuk:   form.alasan_masuk,
-        sampai_kapan:   form.sampai_kapan,
-        updated_at:     new Date().toISOString(),
+        alasan_masuk:     form.alasan_masuk,
+        sampai_kapan:     form.sampai_kapan,
+        nomor_data_umat:  form.nomor_data_umat || null,
+        updated_at:       new Date().toISOString(),
       }).eq('id', profile!.id);
       if (updateErr) throw updateErr;
 
@@ -306,6 +308,23 @@ export default function ReregistrationPage() {
               <label className="label">Alasan / Motivasi</label>
               <textarea className="input h-24 resize-none" value={form.alasan_masuk || ''}
                 onChange={e => setForm(f => ({...f, alasan_masuk: e.target.value}))} />
+            </div>
+          </div>
+
+          <div className="card space-y-3 border-brand-100">
+            <h3 className="font-semibold text-gray-700">Data Paroki</h3>
+            <div>
+              <label className="label">Nomor Data Umat</label>
+              <input
+                className="input font-mono"
+                value={form.nomor_data_umat || ''}
+                onChange={e => setForm(f => ({...f, nomor_data_umat: e.target.value}))}
+                placeholder="Contoh: 1111"
+                maxLength={20}
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Nomor registrasi umat paroki. Kosongkan jika belum tahu.
+              </p>
             </div>
           </div>
 

@@ -147,33 +147,44 @@ function edgeDataToMap(data: any[], year: number, month: number): Map<string, Gc
 
 /**
  * Fetch liturgical data for a month.
- * 1st try: Supabase edge function (server-side → imankatolik.or.id, always reachable).
- *   Pass the authenticated Supabase client from the calling component so
- *   functions.invoke runs with the correct session context.
- * Fallback: GCatholic via CORS proxy (client-side).
+ * Primary  : Supabase edge function via direct fetch (imankatolik.or.id, server-side).
+ *            Uses VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY from env — no client dependency.
+ * Fallback : GCatholic via CORS proxy (client-side).
  */
 export async function fetchGcatholicMonth(
   year: number, month: number,
-  supabaseClient?: any,
+  _unused?: any, // kept for backward compat
 ): Promise<Map<string, GcatholicEntry>> {
   const key = `${year}-${month}`;
   if (_cache[key]) return _cache[key];
 
-  // ── Primary: edge function → imankatolik.or.id ──────────────────
-  if (supabaseClient) {
-    try {
-      const { data, error } = await supabaseClient.functions.invoke('fetch-gcatholic', {
-        body: { year, month },
+  // ── Primary: direct fetch → edge function → imankatolik.or.id ───
+  try {
+    const projectUrl = import.meta.env.VITE_SUPABASE_URL as string;
+    const anonKey    = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+    if (projectUrl && anonKey) {
+      const res = await fetch(`${projectUrl}/functions/v1/fetch-gcatholic`, {
+        method: 'POST',
+        headers: {
+          'Content-Type':  'application/json',
+          'apikey':        anonKey,
+          'Authorization': `Bearer ${anonKey}`,
+        },
+        body:   JSON.stringify({ year, month }),
+        signal: AbortSignal.timeout(15000),
       });
-      if (!error && Array.isArray(data) && data.length > 0) {
-        const map = edgeDataToMap(data, year, month);
-        if (map.size > 0) {
-          _cache[key] = map;
-          return map;
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          const map = edgeDataToMap(data, year, month);
+          if (map.size > 0) {
+            _cache[key] = map;
+            return map;
+          }
         }
       }
-    } catch { /* fall through */ }
-  }
+    }
+  } catch { /* fall through to CORS proxy */ }
 
   // ── Fallback: GCatholic via CORS proxy ───────────────────────────
   const targetUrl = `https://gcatholic.org/calendar/${year}/ID-id`;

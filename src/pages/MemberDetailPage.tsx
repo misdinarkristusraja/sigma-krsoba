@@ -342,6 +342,9 @@ export default function MemberDetailPage() {
         {member.is_suspended && <span className="badge-red">⛔ Suspended s/d {member.suspended_until}</span>}
         {member.must_change_password && <span className="badge-yellow">🔑 Wajib Ganti Password</span>}
         <span className="badge-gray text-xs font-mono">MyID: {member.myid}</span>
+        {(member as any).nomor_data_umat && (
+          <span className="badge-gray text-xs font-mono">No. Data Umat: {(member as any).nomor_data_umat}</span>
+        )}
       </div>
 
       {/* Tabs */}
@@ -387,6 +390,9 @@ export default function MemberDetailPage() {
             <F label="Sekolah"   name="sekolah"/>
             <F label="Wilayah"   name="wilayah"/>
             <F label="Alamat"    name="alamat" textarea/>
+            {((form as any).nomor_data_umat || editing) && (
+              <F label="No. Data Umat" name="nomor_data_umat"/>
+            )}
           </div>
 
           <div className="space-y-4">

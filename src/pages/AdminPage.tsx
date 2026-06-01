@@ -515,7 +515,7 @@ export default function AdminPage() {
     setReregListLoading(true);
     const { data, error } = await supabase
       .from('reregistrations')
-      .select('id, tahun, submitted_at, users!user_id(nama_panggilan, nickname, lingkungan, pendidikan)')
+      .select('id, tahun, submitted_at, users!user_id(nama_panggilan, nickname, lingkungan, pendidikan, nomor_data_umat)')
       .eq('tahun', parseInt(year))
       .order('submitted_at', { ascending: false });
     if (error) console.error('[loadReregList]', error.message);
@@ -795,6 +795,7 @@ export default function AdminPage() {
                       <th className="px-4 py-2 text-left font-medium">#</th>
                       <th className="px-4 py-2 text-left font-medium">Nama</th>
                       <th className="px-4 py-2 text-left font-medium">Lingkungan</th>
+                      <th className="px-4 py-2 text-left font-medium">No. Data Umat</th>
                       <th className="px-4 py-2 text-left font-medium">Tgl Submit</th>
                       <th className="px-4 py-2"></th>
                     </tr>
@@ -810,6 +811,12 @@ export default function AdminPage() {
                           <span className="text-gray-400 text-xs ml-1.5">@{r.users?.nickname}</span>
                         </td>
                         <td className="px-4 py-2.5 text-gray-500 text-xs">{r.users?.lingkungan || '—'}</td>
+                        <td className="px-4 py-2.5 text-xs">
+                          {r.users?.nomor_data_umat
+                            ? <span className="font-mono font-medium text-brand-800">{r.users.nomor_data_umat}</span>
+                            : <span className="text-gray-300">—</span>
+                          }
+                        </td>
                         <td className="px-4 py-2.5 text-gray-500 text-xs">
                           {r.submitted_at ? new Date(r.submitted_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                         </td>
