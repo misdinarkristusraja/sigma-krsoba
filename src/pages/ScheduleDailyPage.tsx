@@ -104,6 +104,8 @@ export function ScheduleDailyPage() {
   const [addUserId,    setAddUserId]    = useState('');
   const [editPicId,    setEditPicId]    = useState('');
   const [savingEdit,   setSavingEdit]   = useState(false);
+  const [pngModal,     setPngModal]     = useState(false);
+  const [exportingPng, setExportingPng] = useState(false);
 
   // Target bulan opt-in = bulan berikutnya dari bulan yang dipilih
   const nextMonth = month === 12 ? 1  : month + 1;
@@ -335,6 +337,29 @@ export function ScheduleDailyPage() {
   }
 
   // ── Export Excel — HTML-as-XLS with liturgy colors & weekly grouping ──
+  function romanToInt(s: string): number {
+    const m: Record<string,number> = {I:1,V:5,X:10,L:50,C:100,D:500,M:1000};
+    return [...s].reduce((acc,c,i,a) => {
+      const cur=m[c],nxt=m[a[i+1]]; return acc+(nxt&&cur<nxt?-cur:cur);
+    },0);
+  }
+  function weekLabel(mondayISO: string): string {
+    const mon = new Date(mondayISO + 'T00:00:00');
+    const sun = new Date(mon); sun.setDate(mon.getDate()-1);
+    const lit = getLiturgiByDate(toLocalISO(sun));
+    if (lit?.name) {
+      const p = lit.name.split(' ').filter((w:string) => w !== 'Minggu' && w !== 'HR.' && w !== 'HR');
+      if (p[0] === 'Biasa' && p[1]) return `PEKAN BIASA KE ${romanToInt(p[1])}`;
+      return 'PEKAN ' + p.join(' ').toUpperCase();
+    }
+    const w = getLiturgicalSeasonColor(mondayISO);
+    if (w==='Ungu'&&mondayISO>='2026-11-29') return 'PEKAN ADVEN';
+    if (w==='Ungu') return 'PEKAN PRAPASKAH';
+    if (w==='Putih'&&mondayISO>='2026-04-04') return 'PEKAN PASKAH';
+    if (w==='Putih') return 'PEKAN NATAL';
+    return 'PEKAN BIASA';
+  }
+
   function exportExcel() {
     if (!events.length) { toast('Tidak ada data'); return; }
 
@@ -349,38 +374,12 @@ export function ScheduleDailyPage() {
       Ungu:'#4a1f6e', MerahMuda:'#880e4f', Hitam:'#343a40',
     };
 
-    function isoDate(d: Date) {
-      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-    }
-    function romanToInt(s: string): number {
-      const m: Record<string,number> = {I:1,V:5,X:10,L:50,C:100,D:500,M:1000};
-      return [...s].reduce((acc,c,i,a) => {
-        const cur=m[c],nxt=m[a[i+1]]; return acc+(nxt&&cur<nxt?-cur:cur);
-      },0);
-    }
-    function weekLabel(mondayISO: string): string {
-      const mon = new Date(mondayISO + 'T00:00:00');
-      const sun = new Date(mon); sun.setDate(mon.getDate()-1);
-      const lit = getLiturgiByDate(isoDate(sun));
-      if (lit?.name) {
-        const p = lit.name.split(' ').filter((w:string) => w !== 'Minggu' && w !== 'HR.' && w !== 'HR');
-        if (p[0] === 'Biasa' && p[1]) return `PEKAN BIASA KE ${romanToInt(p[1])}`;
-        return 'PEKAN ' + p.join(' ').toUpperCase();
-      }
-      const w = getLiturgicalSeasonColor(mondayISO);
-      if (w==='Ungu'&&mondayISO>='2026-11-29') return 'PEKAN ADVEN';
-      if (w==='Ungu') return 'PEKAN PRAPASKAH';
-      if (w==='Putih'&&mondayISO>='2026-04-04') return 'PEKAN PASKAH';
-      if (w==='Putih') return 'PEKAN NATAL';
-      return 'PEKAN BIASA';
-    }
-
     // Group by ISO week (Monday)
     const weekMap = new Map<string,any[]>();
     events.forEach(ev => {
       const d=new Date(ev.tanggal_tugas+'T00:00:00'), dow=d.getDay();
       const mon=new Date(d); mon.setDate(d.getDate()+(dow===0?-6:1-dow));
-      const k=isoDate(mon);
+      const k=toLocalISO(mon);
       if(!weekMap.has(k)) weekMap.set(k,[]);
       weekMap.get(k)!.push(ev);
     });
@@ -570,14 +569,148 @@ export function ScheduleDailyPage() {
     loadEvents();
   }
 
-  async function exportPNG() {
-    if (!tableRef.current) return;
+  function exportPNG() {
+    if (!events.length) { toast('Tidak ada data'); return; }
+    setPngModal(true);
+  }
+
+  function getWeeksMap(): Map<string, any[]> {
+    const map = new Map<string, any[]>();
+    events.forEach(ev => {
+      const d = new Date(ev.tanggal_tugas + 'T00:00:00'), dow = d.getDay();
+      const mon = new Date(d); mon.setDate(d.getDate() + (dow === 0 ? -6 : 1 - dow));
+      const k = toLocalISO(mon);
+      if (!map.has(k)) map.set(k, []);
+      map.get(k)!.push(ev);
+    });
+    return map;
+  }
+
+  async function doExportPNG(weekKey: string | null) {
+    setPngModal(false);
+    setExportingPng(true);
+
+    const MONTHS_ID = ['Januari','Februari','Maret','April','Mei','Juni',
+                       'Juli','Agustus','September','Oktober','November','Desember'];
+    const LBG: Record<string,string> = {
+      Hijau:'#d4edda', Merah:'#fad7d7', Putih:'#fff9db',
+      Ungu:'#e8d5f5', MerahMuda:'#fce4ec', Hitam:'#e9ecef',
+    };
+    const LFG: Record<string,string> = {
+      Hijau:'#1a5c2a', Merah:'#7b1c1c', Putih:'#7d5a00',
+      Ungu:'#4a1f6e', MerahMuda:'#880e4f', Hitam:'#343a40',
+    };
+    const LDOT: Record<string,string> = {
+      Hijau:'#28a745', Merah:'#dc3545', Putih:'#d4a017',
+      Ungu:'#6f42c1', MerahMuda:'#e91e63', Hitam:'#6c757d',
+    };
+
+    const weeksMap = getWeeksMap();
+    const filteredWeeks = weekKey
+      ? new Map([[weekKey, weeksMap.get(weekKey) || []]])
+      : weeksMap;
+
+    const TH = 'padding:6px 12px;font-size:10px;font-weight:700;color:#6b7280;letter-spacing:0.06em;border-bottom:1px solid #e5e7eb;';
+    const TD = 'border-bottom:1px solid #f0f0f0;vertical-align:middle;padding:9px 12px;';
+
+    let rows = '';
+    for (const [monISO, wkEvs] of filteredWeeks) {
+      rows += `<tr>
+        <td colspan="5" style="background:#f3f4f6;font-weight:700;font-size:11px;padding:8px 14px;color:#374151;border-top:2px solid #e5e7eb;border-bottom:1px solid #e5e7eb;letter-spacing:0.07em;">
+          ${weekLabel(monISO)}
+        </td>
+      </tr>
+      <tr style="background:#f9fafb;">
+        <th style="${TH}width:110px;">TANGGAL</th>
+        <th style="${TH}">WARNA &amp; PERAYAAN</th>
+        <th style="${TH}width:72px;text-align:center;">PIC</th>
+        <th style="${TH}">PETUGAS</th>
+        <th style="${TH}">LINGKUNGAN</th>
+      </tr>`;
+
+      for (const ev of wkEvs) {
+        const d     = new Date(ev.tanggal_tugas + 'T00:00:00');
+        const hari  = HARI[d.getDay()];
+        const tgl   = String(d.getDate()).padStart(2, '0');
+        const mon2  = MONTHS_ID[d.getMonth()];
+        const warna = ev.warna_liturgi || getLiturgicalSeasonColor(ev.tanggal_tugas);
+        const bg    = LBG[warna] || '#fff';
+        const fg    = LFG[warna] || '#111';
+        const dot   = LDOT[warna] || '#999';
+        const asgns = ev.assignments || [];
+        const pic   = (ev.event_pics || []).find((p: any) => p.slot === 1);
+        const rs    = Math.max(asgns.length, 1);
+
+        const dateTD = `<td rowspan="${rs}" style="background:${bg};color:${fg};font-weight:700;${TD}text-align:center;white-space:nowrap;min-width:100px;">
+          <div style="font-size:24px;line-height:1;">${tgl}</div>
+          <div style="font-size:10px;margin-top:3px;letter-spacing:0.05em;">${hari.toUpperCase()}</div>
+          <div style="font-size:9px;color:${fg}99;margin-top:1px;">${mon2}</div>
+        </td>`;
+
+        const warnaTD = `<td rowspan="${rs}" style="${TD}">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px;">
+            <span style="width:9px;height:9px;border-radius:50%;background:${dot};flex-shrink:0;display:inline-block;"></span>
+            <span style="font-size:10px;font-weight:700;color:${fg};">${warna}</span>
+          </div>
+          <div style="font-size:11px;color:#374151;line-height:1.45;">${ev.perayaan || '—'}</div>
+        </td>`;
+
+        const picTD = `<td rowspan="${rs}" style="${TD}font-size:11px;font-weight:600;color:#1a56db;text-align:center;">
+          ${pic ? pic.nama : '<span style="color:#9ca3af;font-style:italic;font-weight:400;">—</span>'}
+        </td>`;
+
+        if (!asgns.length) {
+          rows += `<tr>${dateTD}${warnaTD}${picTD}
+            <td colspan="2" style="${TD}font-style:italic;color:#9ca3af;font-size:11px;">(Kosong)</td>
+          </tr>`;
+        } else {
+          asgns.forEach((a: any, i: number) => {
+            rows += '<tr>';
+            if (i === 0) rows += dateTD + warnaTD + picTD;
+            rows += `<td style="${TD}font-size:12px;font-weight:600;color:#111827;">${a.users?.nama_panggilan || '—'}</td>`;
+            rows += `<td style="${TD}font-size:11px;color:#6b7280;">${a.users?.lingkungan || '—'}</td>`;
+            rows += '</tr>';
+          });
+        }
+      }
+      rows += `<tr><td colspan="5" style="height:10px;border:none;"></td></tr>`;
+    }
+
+    const subtitle = weekKey
+      ? `${weekLabel(weekKey)} · ${MONTHS[month-1]} ${year}`
+      : `${MONTHS[month-1]} ${year}`;
+
+    const html = `
+      <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#fff;width:700px;border-radius:12px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.12);">
+        <div style="background:#7b1c1c;color:#fff;padding:18px 24px;text-align:center;">
+          <div style="font-size:17px;font-weight:900;letter-spacing:0.09em;">JADWAL MISA HARIAN</div>
+          <div style="font-size:13px;margin-top:4px;font-weight:600;color:#fca5a5;">${subtitle.toUpperCase()}</div>
+          <div style="font-size:10px;color:#fca5a5aa;margin-top:2px;">Paroki Kristus Raja Solo Baru</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;">${rows}</table>
+        <div style="background:#f9fafb;padding:8px 20px;text-align:center;font-size:9px;color:#9ca3af;border-top:1px solid #e5e7eb;letter-spacing:0.04em;">
+          SIGMA · Sistem Informasi Misdinar Paroki Kristus Raja Solo Baru
+        </div>
+      </div>`;
+
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'position:fixed;top:-9999px;left:-9999px;z-index:-1;';
+    wrapper.innerHTML = html;
+    document.body.appendChild(wrapper);
     try {
-      const png = await toPng(tableRef.current, { pixelRatio: 2, backgroundColor: '#ffffff' });
+      const el = wrapper.firstElementChild as HTMLElement;
+      const png = await toPng(el, { pixelRatio: 2, backgroundColor: '#ffffff' });
       const a = document.createElement('a');
-      a.href = png; a.download = `jadwal-harian-${MONTHS[month-1]}-${year}.png`; a.click();
+      a.href = png;
+      a.download = `jadwal-harian-${weekKey ? `minggu-${weekKey}` : `${MONTHS[month-1].toLowerCase()}-${year}`}.png`;
+      a.click();
       toast.success('PNG berhasil diunduh!');
-    } catch (e: any) { toast.error('Gagal export'); }
+    } catch (e: any) {
+      toast.error('Gagal export PNG: ' + e.message);
+    } finally {
+      document.body.removeChild(wrapper);
+      setExportingPng(false);
+    }
   }
 
   const draftCount = events.filter(e => e.is_draft).length;
@@ -657,7 +790,9 @@ export function ScheduleDailyPage() {
               )}
               {events.length > 0 && (
                 <div className="flex gap-1">
-                  <button onClick={exportPNG} className="btn-outline gap-1 text-xs px-3"><Download size={14}/> PNG</button>
+                  <button onClick={exportPNG} disabled={exportingPng} className="btn-outline gap-1 text-xs px-3">
+                    {exportingPng ? <div className="w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"/> : <Download size={14}/>} PNG
+                  </button>
                   <button onClick={exportExcel} className="btn-outline gap-1 text-xs px-3"><Download size={14}/> Excel</button>
                 </div>
               )}
@@ -818,6 +953,52 @@ export function ScheduleDailyPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* ─── PNG Export Modal ─── */}
+      {pngModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 className="font-bold text-gray-900 mb-1">Export PNG</h3>
+            <p className="text-sm text-gray-500 mb-4">Pilih rentang jadwal yang ingin diexport:</p>
+            <div className="space-y-2">
+              <button
+                onClick={() => doExportPNG(null)}
+                className="btn-primary w-full gap-2"
+              >
+                <Download size={16}/> Sebulan Penuh — {MONTHS[month-1]} {year}
+              </button>
+              <div className="relative my-3">
+                <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200"/></div>
+                <div className="relative text-center"><span className="bg-white px-2 text-xs text-gray-400">atau pilih per minggu</span></div>
+              </div>
+              {Array.from(getWeeksMap().entries()).map(([monISO, wkEvs]) => (
+                <button
+                  key={monISO}
+                  onClick={() => doExportPNG(monISO)}
+                  className="btn-outline w-full text-sm flex items-center gap-2"
+                >
+                  <CalendarDays size={14} className="flex-shrink-0"/>
+                  <span className="flex-1 text-left">{weekLabel(monISO)}</span>
+                  <span className="text-xs text-gray-400 flex-shrink-0">{wkEvs.length} hari</span>
+                </button>
+              ))}
+            </div>
+            <button onClick={() => setPngModal(false)} className="btn-ghost w-full mt-3 text-sm text-gray-500">
+              Batal
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Exporting overlay */}
+      {exportingPng && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 flex items-center gap-3">
+            <div className="w-5 h-5 border-2 border-brand-600 border-t-transparent rounded-full animate-spin"/>
+            <span className="text-sm font-medium text-gray-700">Membuat PNG...</span>
+          </div>
+        </div>
       )}
 
       {/* ─── Edit Modal ─── */}
