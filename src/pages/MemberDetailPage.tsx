@@ -7,7 +7,7 @@ import { formatDate, buildWALink, PENDIDIKAN_OPTIONS, formatHP, STATUS_LABELS, R
 import { LINGKUNGAN_LIST, getWilayah } from '../lib/wilayah';
 import {
   ArrowLeft, CreditCard, BarChart2, Phone, Edit2, Save, X,
-  ShieldAlert, ShieldCheck, KeyRound, MessageCircle, FileText, Download, ExternalLink,
+  ShieldAlert, ShieldCheck, KeyRound, MessageCircle, FileText, Download, ExternalLink, CalendarDays,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 const ROLES = ['Administrator','Pengurus','Pelatih','Misdinar_Aktif','Misdinar_Retired'];
@@ -464,6 +464,34 @@ export default function MemberDetailPage() {
               </div>
             )}
           </div>
+
+          {/* Pengaturan Jadwal — hanya tampil untuk Pengurus/Admin */}
+          {['Administrator','Pengurus'].includes(member.role) && (
+            <div className="card space-y-3">
+              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+                <CalendarDays size={16} className="text-brand-800"/> Pengaturan Jadwal
+              </h3>
+              <label className="flex items-center justify-between gap-4 cursor-pointer select-none p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
+                <div>
+                  <p className="text-sm font-medium text-gray-800">Dapat jadi PIC Misa Harian</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Jika dimatikan, tidak akan masuk pool PIC saat generate jadwal</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const newVal = !(member as any).dapat_pic_harian;
+                    const { error } = await (supabase as any).from('users').update({ dapat_pic_harian: newVal }).eq('id', member.id);
+                    if (error) { toast.error(error.message); return; }
+                    setMember((m: any) => ({ ...m, dapat_pic_harian: newVal }));
+                    toast.success(newVal ? 'PIC Misa Harian diaktifkan' : 'PIC Misa Harian dinonaktifkan');
+                  }}
+                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${(member as any).dapat_pic_harian !== false ? 'bg-brand-800' : 'bg-gray-300'}`}
+                >
+                  <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${(member as any).dapat_pic_harian !== false ? 'translate-x-5' : 'translate-x-0'}`}/>
+                </button>
+              </label>
+            </div>
+          )}
 
           {/* WA Kredensial */}
           <div className="card space-y-4">

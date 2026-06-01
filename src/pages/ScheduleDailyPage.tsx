@@ -455,7 +455,9 @@ export function ScheduleDailyPage() {
         supabase.from('users')
           .select('id, nama_panggilan, hp_anak, hp_ortu')
           .in('role', ['Administrator','Pengurus'])
-          .eq('status', 'Active').order('nama_panggilan'),
+          .eq('status', 'Active')
+          .eq('dapat_pic_harian', true)
+          .order('nama_panggilan'),
       ]);
       const { data: optinUsers } = optins?.length
         ? await supabase.from('users')
