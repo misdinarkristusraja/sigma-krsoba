@@ -390,9 +390,7 @@ export default function MemberDetailPage() {
             <F label="Sekolah"   name="sekolah"/>
             <F label="Wilayah"   name="wilayah"/>
             <F label="Alamat"    name="alamat" textarea/>
-            {((form as any).nomor_data_umat || editing) && (
-              <F label="No. Data Umat" name="nomor_data_umat"/>
-            )}
+            <F label="No. Data Umat" name="nomor_data_umat"/>
           </div>
 
           <div className="space-y-4">
