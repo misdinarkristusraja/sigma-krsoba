@@ -89,6 +89,9 @@ export default function ReregistrationPage() {
     if (!form.pendidikan || !form.lingkungan) {
       toast.error('Pendidikan dan lingkungan wajib diisi'); return;
     }
+    if (!form.nomor_data_umat?.trim()) {
+      toast.error('Nomor Data Umat wajib diisi. Tanyakan ke PIC Data Umat.'); return;
+    }
 
     setLoading(true);
     try {
@@ -313,18 +316,22 @@ export default function ReregistrationPage() {
 
           <div className="card space-y-3 border-brand-100">
             <h3 className="font-semibold text-gray-700">Data Paroki</h3>
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+              <p className="text-xs font-semibold text-amber-800">Nomor Data Umat wajib diisi</p>
+              <p className="text-xs text-amber-700 mt-0.5">
+                Belum tahu nomornya? Tanyakan ke <strong>PIC Data Umat</strong> sebelum mengisi form ini.
+              </p>
+            </div>
             <div>
-              <label className="label">Nomor Data Umat</label>
+              <label className="label">Nomor Data Umat *</label>
               <input
                 className="input font-mono"
                 value={form.nomor_data_umat || ''}
                 onChange={e => setForm(f => ({...f, nomor_data_umat: e.target.value}))}
                 placeholder="Contoh: 1111"
                 maxLength={20}
+                required
               />
-              <p className="text-xs text-gray-400 mt-1">
-                Nomor registrasi umat paroki. Kosongkan jika belum tahu.
-              </p>
             </div>
           </div>
 
