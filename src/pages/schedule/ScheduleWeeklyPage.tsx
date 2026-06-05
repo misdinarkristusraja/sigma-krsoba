@@ -177,7 +177,7 @@ export default function ScheduleWeeklyPage() {
     const nSlots = ev.tipe_event === 'Misa_Khusus' ? (ev.jumlah_misa || 1) : 4;
     const missingPIC = Array.from({ length: nSlots }, (_, i) => i + 1)
       .filter(s => !pics.some((p: any) => p.slot === s));
-    if (missingPIC.length && !confirm(`Slot ${missingPIC.join(', ')} belum ada PIC. Publish tetap?`)) return;
+    if (missingPIC.length && !confirm(`Misa ${missingPIC.join(', ')} belum ada PIC. Publish tetap?`)) return;
     const { error } = await supabase.from('events').update({ is_draft: false, published_at: new Date().toISOString() }).eq('id', ev.id);
     if (error) { toast.error(error.message); return; }
     toast.success(`"${ev.perayaan}" berhasil dipublish!`);
@@ -530,7 +530,7 @@ export default function ScheduleWeeklyPage() {
                         const slotPics = (ev.event_pics || []).filter((p: any) => p.slot === slot).sort((a: any, b: any) => a.urutan - b.urutan);
                         return (
                           <div key={slot} className="p-3 bg-gray-50 rounded-xl space-y-1">
-                            <p className="text-xs font-bold text-gray-700">{SLOT_INFO[slot]?.time || `Slot ${slot}`}</p>
+                            <p className="text-xs font-bold text-gray-700">{SLOT_INFO[slot]?.time || `Misa ${slot}`}</p>
                             {slotPics.length === 0
                               ? <p className="text-[11px] text-red-400">PIC belum diisi</p>
                               : slotPics.map((p: any, i: number) => (
@@ -550,7 +550,7 @@ export default function ScheduleWeeklyPage() {
                         return (
                           <div key={slot} className="p-3 bg-blue-50 rounded-xl space-y-2">
                             <div className="flex items-center justify-between">
-                              <p className="text-xs font-bold text-gray-700">{SLOT_INFO[slot]?.time || `Slot ${slot}`}</p>
+                              <p className="text-xs font-bold text-gray-700">{SLOT_INFO[slot]?.time || `Misa ${slot}`}</p>
                               <button type="button" onClick={() => addPicInline(slot)} className="text-[11px] text-brand-800 hover:text-brand-600 flex items-center gap-0.5 font-medium">
                                 <Plus size={11}/> Tambah
                               </button>

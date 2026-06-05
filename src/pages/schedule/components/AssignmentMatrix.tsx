@@ -50,7 +50,7 @@ export function AssignmentMatrix({ ev }: AssignmentMatrixProps) {
           tglLabel = sc?.tanggal ? formatDate(sc.tanggal, 'dd MMM yyyy') : '';
         } else {
           const info = SLOT_INFO[slot];
-          jamLabel   = info?.label || `Slot ${slot}`;
+          jamLabel   = info?.label || `Misa ${slot}`;
           tglLabel   = slot === 1 && ev.tanggal_latihan
             ? formatDate(ev.tanggal_latihan, 'EEEE, dd MMM')
             : formatDate(ev.tanggal_tugas, 'EEEE, dd MMM');

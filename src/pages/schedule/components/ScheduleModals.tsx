@@ -347,7 +347,7 @@ export function EditEventModal({ editEvent, setEditEvent, picOptions, loadEvents
       const sc = mkSched.find(s => s.slot === slot);
       return `Misa ${slot}${sc ? ` · ${sc.jam}` : ''}${sc?.tanggal ? ` (${sc.tanggal})` : ''}`;
     }
-    return SLOT_INFO[slot]?.time || `Slot ${slot}`;
+    return SLOT_INFO[slot]?.time || `Misa ${slot}`;
   }
 
   async function handleSaveAll() {

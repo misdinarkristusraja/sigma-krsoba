@@ -418,7 +418,7 @@ export default function DashboardPage() {
                     <CheckCircle size={16} className="text-brand-800 flex-shrink-0" />
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{a.events?.perayaan || a.events?.nama_event}</p>
-                      <p className="text-xs text-gray-500">{formatDate(a.events?.tanggal_tugas, 'EEEE, dd MMM')} · Slot {a.slot_number}</p>
+                      <p className="text-xs text-gray-500">{formatDate(a.events?.tanggal_tugas, 'EEEE, dd MMM')} · Misa {a.slot_number}</p>
                     </div>
                   </div>
                 ))}
@@ -507,7 +507,7 @@ export default function DashboardPage() {
                 {swapBoard.slice(0,3).map((s: any) => (
                   <div key={s.id} className="p-2.5 bg-orange-50 rounded-lg border border-orange-100">
                     <p className="text-xs font-semibold text-gray-800">{s.requester?.nama_panggilan}</p>
-                    <p className="text-xs text-gray-500">{s.assignment?.events?.nama_event} · Slot {s.assignment?.slot_number}</p>
+                    <p className="text-xs text-gray-500">{s.assignment?.events?.nama_event} · Misa {s.assignment?.slot_number}</p>
                   </div>
                 ))}
               </div>

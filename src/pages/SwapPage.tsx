@@ -188,7 +188,7 @@ export default function SwapPage() {
         picWaLink = buildWALink(hp,
           `Halo ${picNick}, saya ${profile!.nama_panggilan} ingin tukar jadwal ` +
           `${ev.perayaan||ev.nama_event} (${formatDate(ev.tanggal_tugas,'dd MMM')}) ` +
-          `Slot ${slot}. Alasan: ${formData.alasan}. Mohon konfirmasi ya 🙏`
+          `Misa ${slot}. Alasan: ${formData.alasan}. Mohon konfirmasi ya 🙏`
         );
       }
     }
@@ -285,10 +285,40 @@ export default function SwapPage() {
   }
 
   // ── WA Template untuk grup ─────────────────────────────────
+  function getCurrentWeekRange(): { start: string; end: string; label: string } {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const dayOfWeek = today.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    // Week: Mon–Sun. If today is Sunday, it's the END of this week.
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() - daysFromMonday);
+    const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+    const sunday = new Date(today);
+    sunday.setDate(today.getDate() + daysUntilSunday);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    // Use local date parts to avoid UTC offset shifting the date string
+    const toLocal = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const fmtShort = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth()+1)}`;
+    const fmtFull  = (d: Date) => `${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`;
+    return {
+      start: toLocal(monday),
+      end:   toLocal(sunday),
+      label: `${fmtShort(monday)} – ${fmtFull(sunday)}`,
+    };
+  }
+
   function buildWATemplate(reqs: any) {
     if (!reqs.length) return '';
-    const lines = ['📋 *REKAP TUKAR JADWAL*', `${formatDate(new Date().toISOString(),'dd MMMM yyyy')}`, ''];
-    reqs.filter((r: any) => r.status !== 'Expired').forEach((r: any) => {
+    const { start, end, label } = getCurrentWeekRange();
+    const inWeek = (r: any) => {
+      const tgl = r.assignment?.events?.tanggal_tugas?.slice(0, 10);
+      return tgl >= start && tgl <= end;
+    };
+    const weekReqs = reqs.filter((r: any) => r.status !== 'Expired' && inWeek(r));
+    if (!weekReqs.length) return `📋 *REKAP TUKAR JADWAL*\nMinggu ${label}\n\nTidak ada request tukar jadwal untuk minggu ini.`;
+    const lines = ['📋 *REKAP TUKAR JADWAL*', `Minggu ${label}`, ''];
+    weekReqs.forEach((r: any) => {
       const ev    = r.assignment?.events;
       const slot  = r.assignment?.slot_number;
       const sc    = STATUS_CONFIG[r.status];
@@ -297,7 +327,7 @@ export default function SwapPage() {
       lines.push(`  Alasan: ${r.alasan}`);
       lines.push('');
     });
-    const offered = reqs.filter((r: any) => r.status === 'Offered');
+    const offered = weekReqs.filter((r: any) => r.status === 'Offered');
     if (offered.length) {
       lines.push('🙋 *PENAWARAN TUGAS (siapa bisa?)*');
       offered.forEach((r: any) => {
@@ -445,7 +475,7 @@ export default function SwapPage() {
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>Anggota</th><th>Jadwal</th><th>Slot</th>
+                  <th>Anggota</th><th>Jadwal</th><th>Misa</th>
                   <th>Alasan</th><th>Status</th><th>Pengganti</th><th>Aksi</th>
                 </tr>
               </thead>

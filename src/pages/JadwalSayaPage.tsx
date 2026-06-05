@@ -140,7 +140,7 @@ export default function JadwalSayaPage() {
           const hp = picUser.hp_anak || picUser.hp_ortu || '';
           picWaLink = buildWALink(hp,
             `Halo ${picNick}, saya ${profile?.nama_panggilan} ingin tukar jadwal ` +
-            `${ev.perayaan || ev.nama_event} (${ev.tanggal_tugas}) Slot ${slot}. ` +
+            `${ev.perayaan || ev.nama_event} (${ev.tanggal_tugas}) Misa ${slot}. ` +
             `Alasan: ${swapAlasan}. Mohon konfirmasi ya 🙏`
           );
         }
@@ -231,7 +231,7 @@ export default function JadwalSayaPage() {
               <tr className="text-xs text-gray-500 uppercase tracking-wide text-left">
                 <th className="px-4 py-3 font-medium">Tanggal Tugas</th>
                 <th className="px-4 py-3 font-medium">Misa / Perayaan</th>
-                <th className="px-4 py-3 font-medium">Slot</th>
+                <th className="px-4 py-3 font-medium">Misa</th>
                 <th className="px-4 py-3 font-medium">Latihan</th>
                 <th className="px-4 py-3 font-medium w-8"></th>
               </tr>
@@ -324,7 +324,7 @@ export default function JadwalSayaPage() {
                           <div className="grid sm:grid-cols-2 gap-4 text-sm">
                             {/* PIC slot ini */}
                             <div>
-                              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">PIC Slot {row.slot_number}</p>
+                              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">PIC Misa {row.slot_number}</p>
                               {picName ? (
                                 <div>
                                   <p className="text-gray-800 font-medium">{picName}</p>
@@ -389,7 +389,7 @@ export default function JadwalSayaPage() {
             <div className="bg-gray-50 rounded-xl p-3 mb-4 text-sm">
               <p className="font-semibold text-gray-800">{swapRow.event.perayaan || swapRow.event.nama_event}</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                {formatTgl(swapRow.event.tanggal_tugas)} · Slot {swapRow.slot_number}
+                {formatTgl(swapRow.event.tanggal_tugas)} · Misa {swapRow.slot_number}
               </p>
             </div>
             <div>

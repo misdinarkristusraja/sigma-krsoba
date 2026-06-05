@@ -1396,7 +1396,7 @@ export function PublicSchedulePage({ internal = false }: { internal?: boolean })
               jamLabel = `Misa ${slot} · ${sc?.jam || '07.00'}`;
               tglLabel = sc?.tanggal ? formatDate(sc.tanggal, 'EEEE, dd MMM') : '';
             } else {
-              jamLabel = SLOT_INFO_PUB[slot]?.label || `Slot ${slot}`;
+              jamLabel = SLOT_INFO_PUB[slot]?.label || `Misa ${slot}`;
               tglLabel = slot === 1 && ev.tanggal_latihan
                 ? formatDate(ev.tanggal_latihan, 'EEEE, dd MMM')
                 : formatDate(ev.tanggal_tugas, 'EEEE, dd MMM');
