@@ -308,17 +308,17 @@ export default function SwapPage() {
     };
   }
 
-  function buildWATemplate(reqs: any) {
-    if (!reqs.length) return '';
+  function buildWATemplate(reqs: any, weekEvents: any[] = []) {
     const { start, end, label } = getCurrentWeekRange();
     const inWeek = (r: any) => {
       const tgl = r.assignment?.events?.tanggal_tugas?.slice(0, 10);
       return tgl >= start && tgl <= end;
     };
-    // Replaced: filter minggu ini saja. Offered: semua yang belum diklaim (bisa event mendatang).
     const replaced = reqs.filter((r: any) => r.status === 'Replaced' && inWeek(r));
-    const offered  = reqs.filter((r: any) => r.status === 'Offered');
-    if (!replaced.length && !offered.length) return `📋 *REKAP TUKAR JADWAL*\nMinggu ${label}\n\nTidak ada tukar jadwal & penawaran aktif minggu ini.`;
+    const offered  = reqs.filter((r: any) => r.status === 'Offered'  && inWeek(r));
+    if (!replaced.length && !offered.length && !weekEvents.length) {
+      return `📋 *REKAP TUKAR JADWAL*\nMinggu ${label}\n\nTidak ada tukar jadwal & penawaran aktif minggu ini.`;
+    }
     const lines = ['📋 *REKAP TUKAR JADWAL*', `Minggu ${label}`, ''];
     if (replaced.length) {
       lines.push('✅ *SUDAH TERGANTIKAN*');
@@ -336,6 +336,27 @@ export default function SwapPage() {
         const slot = r.assignment?.slot_number;
         lines.push(`• ${r.requester?.nama_panggilan} — ${ev?.perayaan||ev?.nama_event||'?'} (${SLOT_LABELS[slot]||'?'}, ${formatDate(ev?.tanggal_tugas,'dd MMM')})`);
       });
+      lines.push('');
+    }
+    // PIC per misa dalam range minggu ini
+    const picLines: string[] = [];
+    weekEvents.forEach((ev: any) => {
+      const evName = ev.perayaan || ev.nama_event || '?';
+      const pics: any[] = ev.event_pics || [];
+      ([1, 2, 3, 4] as const).forEach(slotNum => {
+        const slotPics = pics
+          .filter((p: any) => p.slot === slotNum)
+          .sort((a: any, b: any) => a.urutan - b.urutan);
+        if (slotPics.length) {
+          const pic = slotPics[0];
+          const hp = pic.hp ? ` - ${pic.hp}` : '';
+          picLines.push(`• ${evName} (${SLOT_LABELS[slotNum]||'Slot '+slotNum}): ${pic.nama}${hp}`);
+        }
+      });
+    });
+    if (picLines.length) {
+      lines.push('📞 *PIC MISA MINGGU INI*');
+      lines.push(...picLines);
     }
     return lines.join('\n');
   }
@@ -365,8 +386,16 @@ export default function SwapPage() {
               <button onClick={() => setShowAdminForm(true)} className="btn-outline gap-2">
                 <Shield size={16}/> Catat Manual
               </button>
-              <button onClick={() => {
-                setWaText(buildWATemplate(allReqs));
+              <button onClick={async () => {
+                const { start, end } = getCurrentWeekRange();
+                const { data: weekEvents } = await supabase
+                  .from('events')
+                  .select('id, nama_event, perayaan, tanggal_tugas, event_pics(slot, nama, hp, urutan)')
+                  .gte('tanggal_tugas', start)
+                  .lte('tanggal_tugas', end)
+                  .not('is_draft', 'eq', true)
+                  .order('tanggal_tugas');
+                setWaText(buildWATemplate(allReqs, weekEvents || []));
                 setShowWA(true);
               }} className="btn-outline gap-2">
                 <Send size={16}/> WA Rekap
