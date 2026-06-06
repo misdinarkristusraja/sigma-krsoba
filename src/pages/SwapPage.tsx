@@ -315,7 +315,9 @@ export default function SwapPage() {
       return tgl >= start && tgl <= end;
     };
     const replaced = reqs.filter((r: any) => r.status === 'Replaced' && inWeek(r));
-    const offered  = reqs.filter((r: any) => r.status === 'Offered'  && inWeek(r));
+    // Offered: filter by week if tanggal_tugas available; include if missing (data safety)
+    const offered  = reqs.filter((r: any) => r.status === 'Offered'
+      && (!r.assignment?.events?.tanggal_tugas || inWeek(r)));
     if (!replaced.length && !offered.length && !weekEvents.length) {
       return `📋 *REKAP TUKAR JADWAL*\nMinggu ${label}\n\nTidak ada tukar jadwal & penawaran aktif minggu ini.`;
     }

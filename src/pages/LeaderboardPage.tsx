@@ -11,9 +11,13 @@ function cutoff(months: any) {
 }
 
 // ─── Hitung leaderboard mingguan real-time ────────────────
-function buildLeaderboard({ members, assigns, scans, swaps, dateFrom, dateTo }: any) {
-  const aMap: Record<string,any[]> = {}, sMap: Record<string,any[]> = {}, swMap: Record<string,any[]> = {};
-  members.forEach((m: any) => { aMap[m.id] = []; sMap[m.id] = []; swMap[m.id] = []; });
+function buildLeaderboard({ members, assigns, scans, swaps, bonuses, dateFrom, dateTo }: any) {
+  const aMap: Record<string,any[]> = {};
+  const sMap: Record<string,any[]> = {};
+  const swMap: Record<string,any[]> = {}; // swaps as requester
+  const bonusMap: Record<string,number> = {};
+
+  members.forEach((m: any) => { aMap[m.id] = []; sMap[m.id] = []; swMap[m.id] = []; bonusMap[m.id] = 0; });
 
   assigns.filter((a: any) => a.events).forEach((a: any) => {
     if (aMap[a.user_id]) aMap[a.user_id].push({
@@ -23,11 +27,20 @@ function buildLeaderboard({ members, assigns, scans, swaps, dateFrom, dateTo }: 
       tanggal_latihan: a.events.tanggal_latihan,
     });
   });
-  scans.forEach((s: any)  => { if (sMap[s.user_id]) sMap[s.user_id].push(s); });
+  scans.forEach((s: any)  => { if (sMap[s.user_id])  sMap[s.user_id].push(s); });
   (swaps||[]).forEach((sw: any) => { if (swMap[sw.requester_id]) swMap[sw.requester_id].push(sw); });
+  (bonuses||[]).forEach((b: any) => { if (bonusMap[b.user_id] !== undefined) bonusMap[b.user_id] += (b.poin || 0); });
+
+  // Build lookup: pengganti_id → Set of week_start where they were swap replacement
+  const penggantiWeeks: Record<string, Set<string>> = {};
+  members.forEach((m: any) => { penggantiWeeks[m.id] = new Set(); });
+  (swaps||[]).filter((sw: any) => sw.status === 'Replaced' && sw.pengganti_id && sw.assignments?.events?.tanggal_tugas)
+    .forEach((sw: any) => {
+      const ws = getWeekStartFromDate(sw.assignments.events.tanggal_tugas);
+      if (ws && penggantiWeeks[sw.pengganti_id]) penggantiWeeks[sw.pengganti_id].add(ws);
+    });
 
   return members.map((m: any) => {
-    // ── Replicate exact buildRekap logic from RecapPage ────────
     const replacedIds = new Set(
       swMap[m.id].filter((sw: any) => sw.status === 'Replaced' && sw.assignment_id)
                  .map((sw: any) => sw.assignment_id)
@@ -50,16 +63,15 @@ function buildLeaderboard({ members, assigns, scans, swaps, dateFrom, dateTo }: 
       weeks[ws].is_dijadwalkan = true;
     });
 
-    // Pass 2 — scan
+    // Pass 2 — scan (scans already server-filtered by date range)
     sMap[m.id].forEach((s: any) => {
       const ds = s.timestamp?.split('T')[0];
-      if (!ds || (dateFrom && ds < dateFrom) || (dateTo && ds > dateTo)) return;
+      if (!ds) return;
       const ws = getWeekStartFromDate(ds); if (!ws) return;
       if (!weeks[ws]) weeks[ws] = mkW();
       const t = s.scan_type;
       if (t === 'tugas'   || t === 'walkin_tugas')   weeks[ws].is_hadir_tugas   = true;
       if (t === 'latihan' || t === 'walkin_latihan')  weeks[ws].is_hadir_latihan = true;
-      // Walk-in: walkin_* type OR scan event not in active assignments
       if (t === 'walkin_tugas' || t === 'walkin_latihan') {
         weeks[ws].is_walk_in = true;
       } else if ((t === 'tugas' || t === 'latihan') && s.event_id && !activeEventIds.has(s.event_id)) {
@@ -69,23 +81,26 @@ function buildLeaderboard({ members, assigns, scans, swaps, dateFrom, dateTo }: 
       }
     });
 
-    // Pass 3 — poin
-    let totalPoin = 0, hadirCount = 0, absenCount = 0;
-    Object.values(weeks).forEach((w: any) => {
+    // Pass 3 — poin (with swap_pengganti)
+    let poinMingguan = 0, hadirCount = 0, absenCount = 0;
+    Object.entries(weeks).forEach(([ws, w]: [string, any]) => {
       const { poin, kondisi } = hitungPoin({
-        isDijadwalkan:  w.is_dijadwalkan,
-        isHadirTugas:   w.is_hadir_tugas,
-        isHadirLatihan: w.is_hadir_latihan,
-        isWalkIn:       w.is_walk_in,
+        isDijadwalkan:   w.is_dijadwalkan,
+        isHadirTugas:    w.is_hadir_tugas,
+        isHadirLatihan:  w.is_hadir_latihan,
+        isWalkIn:        w.is_walk_in,
+        isSwapPengganti: penggantiWeeks[m.id]?.has(ws) ?? false,
       });
       if (kondisi !== null) {
-        totalPoin += poin || 0;
+        poinMingguan += poin || 0;
         if (w.is_hadir_tugas || w.is_hadir_latihan) hadirCount++;
         if (kondisi === 'K6') absenCount++;
       }
     });
 
-    return { ...m, totalPoin, hadirCount, absenCount, minggu: Object.keys(weeks).length };
+    const poinBonus  = bonusMap[m.id] || 0;
+    const totalPoin  = poinMingguan + poinBonus;
+    return { ...m, totalPoin, poinMingguan, poinBonus, hadirCount, absenCount, minggu: Object.keys(weeks).length };
   }).sort((a: any, b: any) => b.totalPoin - a.totalPoin);
 }
 
@@ -114,17 +129,21 @@ export default function LeaderboardPage() {
   const [dateFrom, setDateFrom]= useState(cutoff(1));
   const [dateTo,   setDateTo]  = useState(toLocalISO(new Date()));
 
-  // Raw data cache
-  const [members,  setMembers] = useState<any[]>([]);
-  const [assigns,  setAssigns] = useState<any[]>([]);
-  const [scans,    setScans]   = useState<any[]>([]);
-  const [loaded,   setLoaded]  = useState(false);
-  const [swaps,    setSwaps]   = useState<any[]>([]);
+  // Static data (fetch once)
+  const [members,      setMembers]      = useState<any[]>([]);
+  const [assigns,      setAssigns]      = useState<any[]>([]);
+  const [swaps,        setSwaps]        = useState<any[]>([]);
+  const [staticLoaded, setStaticLoaded] = useState(false);
 
-  // Load raw data once
+  // Dynamic data (refetch on date change)
+  const [scans,   setScans]   = useState<any[]>([]);
+  const [bonuses, setBonuses] = useState<any[]>([]);
+  const [loaded,  setLoaded]  = useState(false);
+
+  // Load static data once
   useEffect(() => {
-    async function fetchRaw() {
-      const [{ data: mems }, { data: asgs }, { data: scs }, { data: swps }] = await Promise.all([
+    async function fetchStatic() {
+      const [{ data: mems }, { data: asgs }, { data: swps }] = await Promise.all([
         supabase.from('users')
           .select('id, nama_panggilan, lingkungan, pendidikan')
           .eq('status','Active')
@@ -133,28 +152,50 @@ export default function LeaderboardPage() {
         supabase.from('assignments')
           .select('id, user_id, event_id, events(tanggal_tugas, tanggal_latihan, tipe_event, is_draft)')
           .not('events.tipe_event','eq','Misa_Harian'),
-        supabase.from('scan_records')
-          .select('user_id, scan_type, timestamp, is_walk_in, event_id')
-          .gte('timestamp', '2020-01-01T00:00:00'),
+        // Include pengganti_id + assignment event date for swap_pengganti detection
         supabase.from('swap_requests')
-          .select('requester_id, assignment_id, status'),
+          .select('requester_id, pengganti_id, assignment_id, status, assignments(events(tanggal_tugas))')
+          .eq('status','Replaced'),
       ]);
       setMembers(mems || []);
       setAssigns((asgs||[]).filter((a: any) => a.events && !a.events.is_draft));
-      setScans(scs || []);
       setSwaps(swps || []);
-      setLoaded(true);
+      setStaticLoaded(true);
     }
-    fetchRaw();
+    fetchStatic();
   }, []);
 
-  // Recalculate when tab/dates change
+  // Fetch dynamic data (scans + bonuses) filtered server-side by date range
+  useEffect(() => {
+    if (!staticLoaded) return;
+    setLoaded(false);
+    async function fetchDynamic() {
+      const fromTs = dateFrom + 'T00:00:00';
+      const toTs   = dateTo   + 'T23:59:59';
+      const [{ data: scs }, { data: bons }] = await Promise.all([
+        supabase.from('scan_records')
+          .select('user_id, scan_type, timestamp, is_walk_in, event_id')
+          .gte('timestamp', fromTs)
+          .lte('timestamp', toTs),
+        supabase.from('poin_bonus')
+          .select('user_id, poin, tanggal')
+          .gte('tanggal', dateFrom)
+          .lte('tanggal', dateTo),
+      ]);
+      setScans(scs || []);
+      setBonuses(bons || []);
+      setLoaded(true);
+    }
+    fetchDynamic();
+  }, [staticLoaded, dateFrom, dateTo]);
+
+  // Recalculate when data or tab changes
   useEffect(() => {
     if (!loaded || !members.length) return;
     setLoading(true);
-    setTimeout(() => { // micro async to allow loading indicator
+    setTimeout(() => {
       if (tab === 'mingguan') {
-        const lb = buildLeaderboard({ members, assigns, scans, swaps, dateFrom, dateTo });
+        const lb = buildLeaderboard({ members, assigns, scans, swaps, bonuses, dateFrom, dateTo });
         setData(lb);
       } else {
         const lb = buildLeaderboardHarian({ members, scans, dateFrom, dateTo });
@@ -162,7 +203,7 @@ export default function LeaderboardPage() {
       }
       setLoading(false);
     }, 50);
-  }, [tab, dateFrom, dateTo, loaded]);
+  }, [tab, loaded]);
 
   // Preset periods
   function setPeriod(months: any, year?: any) {
@@ -343,6 +384,11 @@ export default function LeaderboardPage() {
                             <span className={`font-black ${d.totalPoin>0?'text-green-600':d.totalPoin<0?'text-red-600':'text-gray-400'}`}>
                               {d.totalPoin>0?'+':''}{d.totalPoin}
                             </span>
+                            {d.poinBonus !== 0 && (
+                              <span className={`ml-1 text-[10px] font-medium ${d.poinBonus>0?'text-blue-500':'text-red-400'}`}>
+                                ({d.poinBonus>0?'+':''}{d.poinBonus})
+                              </span>
+                            )}
                           </td>
                           <td className="text-center text-sm text-gray-600">{d.hadirCount}</td>
                           <td className="text-center text-sm">{d.absenCount>0?<span className="text-red-500">{d.absenCount}</span>:'—'}</td>
