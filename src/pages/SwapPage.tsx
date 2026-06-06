@@ -47,7 +47,7 @@ export default function SwapPage() {
   // WA template grup
   const [showWA,  setShowWA]  = useState(false);
   const [waText,  setWaText]  = useState('');
-  const [grupWA,  setGrupWA]  = useState('');  // link grup WA
+  const [grupWA,  setGrupWA]  = useState('https://chat.whatsapp.com/KATPS0AwNT2FlMxKqHeG1T');
 
   const pgMy  = usePagination(myReqs,  10);
   const pgBoard = usePagination(board, 10);
