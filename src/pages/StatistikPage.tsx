@@ -59,6 +59,17 @@ export default function StatistikPage() {
       .from('swap_requests')
       .select('requester_id, status, pengganti_id');
 
+    // 5. Poin bonus
+    const { data: bonuses } = await supabase
+      .from('poin_bonus')
+      .select('user_id, poin');
+
+    // Build bonus map
+    const bonusMap: Record<string, number> = {};
+    (bonuses || []).forEach((b: any) => {
+      bonusMap[b.user_id] = (bonusMap[b.user_id] || 0) + (b.poin || 0);
+    });
+
     // Build stats per user
     const statsMap: Record<string,any> = {};
     for (const u of (users || [])) {
@@ -67,7 +78,9 @@ export default function StatistikPage() {
       const userSwaps   = (swaps    || []).filter((s: any) => s.requester_id === u.id);
       const penggantiOf = (swaps    || []).filter((s: any) => s.pengganti_id === u.id);
 
-      const totalPoin  = userRekap.reduce((s: any, r: any) => s + (r.poin || 0), 0);
+      const poinMingguan = userRekap.reduce((s: any, r: any) => s + (r.poin || 0), 0);
+      const poinBonus    = bonusMap[u.id] || 0;
+      const totalPoin    = poinMingguan + poinBonus;
       const kondisiCounts: Record<string,number> = { K1:0, K2a:0, K2b:0, K3a:0, K3b:0, K3c:0, K4a:0, K4c:0, K6:0 };
       userRekap.forEach((r: any) => { if (kondisiCounts[r.kondisi] !== undefined) kondisiCounts[r.kondisi]++; });
 
@@ -84,6 +97,8 @@ export default function StatistikPage() {
       statsMap[u.id] = {
         user: u,
         totalPoin,
+        poinMingguan,
+        poinBonus,
         kondisiCounts,
         totalMinggu,
         dijadwalkan,
@@ -277,6 +292,11 @@ export default function StatistikPage() {
                       </td>
                       <td className={`font-black text-base ${s.totalPoin > 0 ? 'text-green-600' : s.totalPoin < 0 ? 'text-red-600' : 'text-gray-400'}`}>
                         {s.totalPoin > 0 ? '+' : ''}{s.totalPoin}
+                        {s.poinBonus !== 0 && (
+                          <span className={`ml-1 text-[10px] font-medium ${s.poinBonus > 0 ? 'text-blue-500' : 'text-red-400'}`}>
+                            ({s.poinBonus > 0 ? '+' : ''}{s.poinBonus})
+                          </span>
+                        )}
                       </td>
                       {['K1','K2a','K2b','K3a','K3b','K3c','K4a','K4c'].map(k => (
                         <td key={k} className="text-center font-semibold">

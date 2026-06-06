@@ -315,9 +315,9 @@ export default function SwapPage() {
       return tgl >= start && tgl <= end;
     };
     const replaced = reqs.filter((r: any) => r.status === 'Replaced' && inWeek(r));
-    // Offered: filter by week if tanggal_tugas available; include if missing (data safety)
-    const offered  = reqs.filter((r: any) => r.status === 'Offered'
-      && (!r.assignment?.events?.tanggal_tugas || inWeek(r)));
+    // Offered: tampilkan semua yang aktif di papan penawaran (is_penawaran=true),
+    // tidak dibatasi minggu karena item di papan harus selalu diumumkan
+    const offered  = reqs.filter((r: any) => r.status === 'Offered' && r.is_penawaran === true);
     if (!replaced.length && !offered.length && !weekEvents.length) {
       return `📋 *REKAP TUKAR JADWAL*\nMinggu ${label}\n\nTidak ada tukar jadwal & penawaran aktif minggu ini.`;
     }
