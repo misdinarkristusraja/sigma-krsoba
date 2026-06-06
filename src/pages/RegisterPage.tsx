@@ -107,7 +107,7 @@ async function generateSuratPDF(
   y += 7;
 
   const items = [
-    'Bersedia mendorong dan memotivasi anak tersebut untuk ikut ambil bagian dalam pelayanan misdinar dalam periode pelayanan 2025/2026.',
+    'Bersedia mendorong dan memotivasi anak tersebut untuk ikut ambil bagian dalam pelayanan misdinar dalam periode pelayanan 2026/2027.',
     'Bersedia dan memastikan anak tersebut untuk mematuhi seluruh syarat dan aturan dalam SOM (STANDAR OPERASIONAL PROSEDUR MISDINAR) Paroki Kristus Raja Solo Baru (link: s.id/SOMKR).',
     'Apabila di kemudian hari kami dan/atau anak kami terbukti melanggar isi Surat Pernyataan yang telah kami tandatangani, maka kami bersedia menerima segala bentuk sanksi yang diberikan kepada anak kami sesuai ketentuan yang berlaku.',
   ];
