@@ -394,6 +394,7 @@ export default function SwapPage() {
                   .gte('tanggal_tugas', start)
                   .lte('tanggal_tugas', end)
                   .not('is_draft', 'eq', true)
+                  .neq('tipe_event', 'Misa_Harian')
                   .order('tanggal_tugas');
                 setWaText(buildWATemplate(allReqs, weekEvents || []));
                 setShowWA(true);
