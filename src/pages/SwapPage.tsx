@@ -315,25 +315,27 @@ export default function SwapPage() {
       const tgl = r.assignment?.events?.tanggal_tugas?.slice(0, 10);
       return tgl >= start && tgl <= end;
     };
-    const weekReqs = reqs.filter((r: any) => r.status !== 'Expired' && inWeek(r));
-    if (!weekReqs.length) return `📋 *REKAP TUKAR JADWAL*\nMinggu ${label}\n\nTidak ada request tukar jadwal untuk minggu ini.`;
+    const SHOW_STATUSES = ['Replaced', 'Offered'];
+    const weekReqs = reqs.filter((r: any) => SHOW_STATUSES.includes(r.status) && inWeek(r));
+    if (!weekReqs.length) return `📋 *REKAP TUKAR JADWAL*\nMinggu ${label}\n\nTidak ada tukar jadwal minggu ini.`;
     const lines = ['📋 *REKAP TUKAR JADWAL*', `Minggu ${label}`, ''];
-    weekReqs.forEach((r: any) => {
-      const ev    = r.assignment?.events;
-      const slot  = r.assignment?.slot_number;
-      const sc    = STATUS_CONFIG[r.status];
-      lines.push(`• ${r.requester?.nama_panggilan} — ${ev?.perayaan||ev?.nama_event||'?'} (${SLOT_LABELS[slot]||'?'})`);
-      lines.push(`  Status: ${sc?.label||r.status}${r.pengganti?.nama_panggilan ? ` → ${r.pengganti.nama_panggilan}` : ''}`);
-      lines.push(`  Alasan: ${r.alasan}`);
+    const replaced = weekReqs.filter((r: any) => r.status === 'Replaced');
+    if (replaced.length) {
+      lines.push('✅ *SUDAH TERGANTIKAN*');
+      replaced.forEach((r: any) => {
+        const ev   = r.assignment?.events;
+        const slot = r.assignment?.slot_number;
+        lines.push(`• ${r.requester?.nama_panggilan} → ${r.pengganti?.nama_panggilan||'?'} — ${ev?.perayaan||ev?.nama_event||'?'} (${SLOT_LABELS[slot]||'?'}, ${formatDate(ev?.tanggal_tugas,'dd MMM')})`);
+      });
       lines.push('');
-    });
+    }
     const offered = weekReqs.filter((r: any) => r.status === 'Offered');
     if (offered.length) {
-      lines.push('🙋 *PENAWARAN TUGAS (siapa bisa?)*');
+      lines.push('🙋 *PENAWARAN TUGAS (siapa bisa ambil?)*');
       offered.forEach((r: any) => {
         const ev   = r.assignment?.events;
         const slot = r.assignment?.slot_number;
-        lines.push(`• ${ev?.perayaan||ev?.nama_event} — ${SLOT_LABELS[slot]||'?'} (${formatDate(ev?.tanggal_tugas,'dd MMM')})`);
+        lines.push(`• ${r.requester?.nama_panggilan} — ${ev?.perayaan||ev?.nama_event||'?'} (${SLOT_LABELS[slot]||'?'}, ${formatDate(ev?.tanggal_tugas,'dd MMM')})`);
       });
     }
     return lines.join('\n');
