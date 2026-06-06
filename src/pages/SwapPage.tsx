@@ -308,14 +308,14 @@ export default function SwapPage() {
     };
   }
 
-  function buildWATemplate(reqs: any, weekEvents: any[] = []) {
+  function buildWATemplate(reqs: any, weekEvents: any[] = [], offeredItems: any[] = []) {
     const { start, end, label } = getCurrentWeekRange();
     const inWeek = (r: any) => {
       const tgl = r.assignment?.events?.tanggal_tugas?.slice(0, 10);
       return tgl >= start && tgl <= end;
     };
     const replaced = reqs.filter((r: any) => r.status === 'Replaced' && inWeek(r));
-    const offered  = reqs.filter((r: any) => r.status === 'Offered' && inWeek(r));
+    const offered  = offeredItems.filter((r: any) => inWeek(r));
     if (!replaced.length && !offered.length && !weekEvents.length) {
       return `📋 *REKAP TUKAR JADWAL*\nMinggu ${label}\n\nTidak ada tukar jadwal & penawaran aktif minggu ini.`;
     }
@@ -388,15 +388,23 @@ export default function SwapPage() {
               </button>
               <button onClick={async () => {
                 const { start, end } = getCurrentWeekRange();
-                const { data: weekEvents } = await supabase
-                  .from('events')
-                  .select('id, nama_event, perayaan, tanggal_tugas, event_pics(slot, nama, hp, urutan)')
-                  .gte('tanggal_tugas', start)
-                  .lte('tanggal_tugas', end)
-                  .not('is_draft', 'eq', true)
-                  .neq('tipe_event', 'Misa_Harian')
-                  .order('tanggal_tugas');
-                setWaText(buildWATemplate(allReqs, weekEvents || []));
+                const [{ data: weekEvents }, { data: offeredData }] = await Promise.all([
+                  supabase.from('events')
+                    .select('id, nama_event, perayaan, tanggal_tugas, event_pics(slot, nama, hp, urutan)')
+                    .gte('tanggal_tugas', start)
+                    .lte('tanggal_tugas', end)
+                    .not('is_draft', 'eq', true)
+                    .neq('tipe_event', 'Misa_Harian')
+                    .order('tanggal_tugas'),
+                  supabase.from('swap_requests')
+                    .select(`id, status, is_penawaran,
+                      requester:requester_id(nama_panggilan),
+                      pengganti:pengganti_id(nama_panggilan),
+                      assignment:assignment_id(slot_number, events(nama_event, tanggal_tugas, perayaan))`)
+                    .eq('status', 'Offered')
+                    .eq('is_penawaran', true),
+                ]);
+                setWaText(buildWATemplate(allReqs, weekEvents || [], offeredData || []));
                 setShowWA(true);
               }} className="btn-outline gap-2">
                 <Send size={16}/> WA Rekap
