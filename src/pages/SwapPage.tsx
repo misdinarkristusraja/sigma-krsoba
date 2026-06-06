@@ -315,11 +315,11 @@ export default function SwapPage() {
       const tgl = r.assignment?.events?.tanggal_tugas?.slice(0, 10);
       return tgl >= start && tgl <= end;
     };
-    const SHOW_STATUSES = ['Replaced', 'Offered'];
-    const weekReqs = reqs.filter((r: any) => SHOW_STATUSES.includes(r.status) && inWeek(r));
-    if (!weekReqs.length) return `📋 *REKAP TUKAR JADWAL*\nMinggu ${label}\n\nTidak ada tukar jadwal minggu ini.`;
+    // Replaced: filter minggu ini saja. Offered: semua yang belum diklaim (bisa event mendatang).
+    const replaced = reqs.filter((r: any) => r.status === 'Replaced' && inWeek(r));
+    const offered  = reqs.filter((r: any) => r.status === 'Offered');
+    if (!replaced.length && !offered.length) return `📋 *REKAP TUKAR JADWAL*\nMinggu ${label}\n\nTidak ada tukar jadwal & penawaran aktif minggu ini.`;
     const lines = ['📋 *REKAP TUKAR JADWAL*', `Minggu ${label}`, ''];
-    const replaced = weekReqs.filter((r: any) => r.status === 'Replaced');
     if (replaced.length) {
       lines.push('✅ *SUDAH TERGANTIKAN*');
       replaced.forEach((r: any) => {
@@ -329,7 +329,6 @@ export default function SwapPage() {
       });
       lines.push('');
     }
-    const offered = weekReqs.filter((r: any) => r.status === 'Offered');
     if (offered.length) {
       lines.push('🙋 *PENAWARAN TUGAS (siapa bisa ambil?)*');
       offered.forEach((r: any) => {
