@@ -70,13 +70,6 @@ function DocTab({ member, isPengurus }: { member: any; isPengurus: boolean }) {
       color: 'text-brand-800',
       bg: 'bg-brand-50',
     },
-    {
-      key: 'sertifikat_komuni_url',
-      label: 'Sertifikat Komuni Pertama / Baptis Dewasa',
-      icon: FileText,
-      color: 'text-green-700',
-      bg: 'bg-green-50',
-    },
   ];
 
   const hasAny = docs.some(d => !!member[d.key]);

@@ -201,7 +201,6 @@ export default function RegisterPage() {
     nama_ayah: '', nama_ibu: '',
     alasan_masuk: '', sampai_kapan: '',
     nomor_data_umat: '',
-    sertifikat_komuni: null as File | null,
     signature_data_url: null as string | null,
     signature_child_data_url: null as string | null,
     declared: false,
@@ -270,18 +269,7 @@ export default function RegisterPage() {
       });
       if (pdfErr) throw pdfErr;
 
-      // 2. Upload sertifikat komuni (optional)
-      let sertifikatUrl: string | null = null;
-      if (form.sertifikat_komuni) {
-        const file = form.sertifikat_komuni as File;
-        const ext  = file.name.split('.').pop()?.toLowerCase() || 'pdf';
-        const sertPath = `sertifikat/${Date.now()}_${(form.nickname || 'pendaftar').toLowerCase()}_sertifikat.${ext}`;
-        const { error: sertErr } = await supabase.storage.from('documents').upload(sertPath, file);
-        if (sertErr) throw sertErr;
-        sertifikatUrl = sertPath;
-      }
-
-      // 3. Insert registration
+      // 2. Insert registration
       const wilayah = getWilayah(form.lingkungan) || null;
       const isTarakanita = form.is_tarakanita === true;
 
@@ -302,7 +290,6 @@ export default function RegisterPage() {
         alasan_masuk:          form.alasan_masuk,
         sampai_kapan:          form.sampai_kapan,
         surat_pernyataan_url:  pdfPath,
-        sertifikat_komuni_url: sertifikatUrl,
         nomor_data_umat:       form.nomor_data_umat?.trim() || null,
         pernyataan_declared:   true,
         status:                'Pending',
@@ -511,44 +498,6 @@ export default function RegisterPage() {
           {/* ── Dokumen ── */}
           <div className="border-t border-gray-100 pt-4">
             <p className="text-sm font-semibold text-gray-700 mb-3">Dokumen Pendaftaran</p>
-
-            {/* Sertifikat Komuni / Baptis */}
-            <F name="sertifikat_komuni"
-               label="Scan Bukti Sertifikat Komuni Pertama / Baptis Dewasa"
-               hint="Format PDF, JPG, atau PNG · Maks 2 MB">
-              <label className="mt-1 flex items-center gap-3 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-brand-800 transition-colors">
-                {form.sertifikat_komuni ? (
-                  <>
-                    <FileText size={18} className="text-brand-800 shrink-0" />
-                    <span className="text-sm text-brand-800 flex-1 truncate">{(form.sertifikat_komuni as File).name}</span>
-                    <button
-                      type="button"
-                      onClick={e => { e.preventDefault(); setForm(f => ({ ...f, sertifikat_komuni: null })); }}
-                      className="p-1 rounded-full hover:bg-red-50 text-gray-400 hover:text-red-500">
-                      <X size={14} />
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <Upload size={18} className="text-gray-400 shrink-0" />
-                    <span className="text-sm text-gray-500 flex-1">Klik untuk upload...</span>
-                  </>
-                )}
-                <input
-                  type="file"
-                  accept=".pdf,.jpg,.jpeg,.png"
-                  className="hidden"
-                  onChange={e => {
-                    const f = e.target.files?.[0];
-                    if (!f) return;
-                    const ALLOWED_TYPES = ['application/pdf', 'image/jpeg', 'image/png'];
-                    if (!ALLOWED_TYPES.includes(f.type)) { toast.error('Format file tidak didukung. Gunakan PDF, JPG, atau PNG'); return; }
-                    if (f.size > 2 * 1024 * 1024) { toast.error('File terlalu besar (maks 2 MB)'); return; }
-                    setForm(prev => ({ ...prev, sertifikat_komuni: f }));
-                  }}
-                />
-              </label>
-            </F>
 
             {/* ── Preview Surat Pernyataan ── */}
             <div className="mt-4">

@@ -309,6 +309,11 @@ export default function AdminPage() {
   const [recalcRunning,  setRecalcRunning]  = useState(false);
   const [recalcResult,   setRecalcResult]   = useState<{ processed: number } | null>(null);
 
+  // State untuk Reset Tugas Data
+  const [resetTugasRunning, setResetTugasRunning] = useState(false);
+  const [showResetTugasConfirm, setShowResetTugasConfirm] = useState(false);
+  const [resetTugasInput, setResetTugasInput] = useState('');
+
   // ── Fungsi: Load users (tidak berubah) ──────────────────────────────────
   const loadUsers = useCallback(async () => {
     const { data, error } = await supabase
@@ -576,6 +581,50 @@ export default function AdminPage() {
     const processed = Number(data?.processed ?? 0);
     setRecalcResult({ processed });
     toast.success(`Rekap dihitung ulang — ${processed} minggu diproses`);
+  }
+
+  async function exportUserData() {
+    const { data, error } = await supabase
+      .from('users')
+      .select('nickname, nama_panggilan, nama_lengkap, role, status, lingkungan, wilayah, pendidikan, sekolah, tanggal_lahir, hp_anak, hp_ortu, email, nomor_data_umat, created_at')
+      .order('nama_panggilan');
+    if (error) { toast.error('Gagal export: ' + error.message); return; }
+    if (!data?.length) { toast('Tidak ada data'); return; }
+
+    const cols = [
+      'No', 'Nama Panggilan', 'Nama Lengkap', 'Nickname', 'Role', 'Status',
+      'Lingkungan', 'Wilayah', 'Pendidikan', 'Sekolah', 'Tgl Lahir',
+      'HP Anak', 'HP Ortu', 'Email', 'No. Data Umat', 'Tgl Daftar',
+    ];
+    const esc = (v: any) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const rows = data.map((u: any, i: number) => [
+      i + 1, u.nama_panggilan, u.nama_lengkap, u.nickname, u.role, u.status,
+      u.lingkungan, u.wilayah, u.pendidikan, u.sekolah, u.tanggal_lahir,
+      u.hp_anak, u.hp_ortu, u.email, u.nomor_data_umat,
+      u.created_at ? new Date(u.created_at).toLocaleDateString('id-ID') : '',
+    ]);
+
+    const tHead = `<tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr>`;
+    const tBody = rows.map((r: any[]) => `<tr>${r.map((v: any) => `<td>${esc(v)}</td>`).join('')}</tr>`).join('');
+    const html = `<html><head><meta charset="utf-8"/></head><body><table border="1">${tHead}${tBody}</table></body></html>`;
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `data-anggota-sigma-${new Date().toISOString().slice(0,10)}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${data.length} anggota diekspor`);
+  }
+
+  async function resetTugasData() {
+    setResetTugasRunning(true);
+    setShowResetTugasConfirm(false);
+    setResetTugasInput('');
+    const { error } = await supabase.rpc('admin_reset_tugas_data');
+    setResetTugasRunning(false);
+    if (error) { toast.error('Gagal reset: ' + error.message); return; }
+    toast.success('Data tugas, scan, dan poin berhasil direset. Data personal tetap utuh.');
   }
 
   async function autoRetireNonRereg() {
@@ -958,8 +1007,95 @@ export default function AdminPage() {
               </div>
             )}
           </div>
+
+          {/* Export Data Anggota */}
+          <div className="border-t border-gray-100 pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Export Data Anggota</p>
+                <p className="text-xs text-gray-500">
+                  Unduh semua data anggota (nama, kontak, lingkungan, role, status, dll) sebagai file Excel.
+                </p>
+              </div>
+              <button
+                onClick={exportUserData}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-sm font-medium transition-colors"
+              >
+                <Download size={14} /> Export Excel
+              </button>
+            </div>
+          </div>
+
+          {/* Reset Data Tugas */}
+          <div className="border-t border-gray-100 pt-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Reset Data Tugas</p>
+                <p className="text-xs text-gray-500">
+                  Hapus semua data scan, tugas (assignments), jadwal yang sudah digenerate, poin, dan riwayat tukar jadwal.
+                  <span className="text-red-500 font-medium"> Data personal anggota tidak terhapus.</span>
+                </p>
+              </div>
+              <button
+                onClick={() => { setShowResetTugasConfirm(true); setResetTugasInput(''); }}
+                disabled={resetTugasRunning}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+              >
+                {resetTugasRunning
+                  ? <><Loader2 size={14} className="animate-spin" /> Mereset...</>
+                  : <><RotateCcw size={14} /> Reset Data Tugas</>
+                }
+              </button>
+            </div>
+          </div>
         </div>
       </section>
+
+      {/* Modal konfirmasi reset tugas */}
+      {showResetTugasConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-start gap-3">
+              <div className="p-2 bg-red-100 rounded-lg shrink-0"><AlertTriangle className="text-red-600" size={20}/></div>
+              <div>
+                <h3 className="font-bold text-gray-900">Reset Data Tugas</h3>
+                <p className="text-sm text-gray-600 mt-1">
+                  Tindakan ini akan menghapus <strong>permanen</strong>:
+                </p>
+                <ul className="text-sm text-gray-600 mt-2 list-disc pl-4 space-y-0.5">
+                  <li>Semua record scan</li>
+                  <li>Semua assignments (tugas yang sudah digenerate)</li>
+                  <li>Semua rekap &amp; poin</li>
+                  <li>Riwayat tukar jadwal</li>
+                  <li>Absensi latihan</li>
+                </ul>
+                <p className="text-sm text-gray-600 mt-2">Data events (kalender liturgi) dan data personal anggota <strong>tidak</strong> terhapus.</p>
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-gray-700">
+                Ketik <code className="bg-gray-100 px-1 rounded">RESET TUGAS</code> untuk konfirmasi:
+              </label>
+              <input
+                className="input mt-1 w-full font-mono"
+                value={resetTugasInput}
+                onChange={e => setResetTugasInput(e.target.value)}
+                placeholder="RESET TUGAS"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => { setShowResetTugasConfirm(false); setResetTugasInput(''); }} className="btn-outline">Batal</button>
+              <button
+                onClick={resetTugasData}
+                disabled={resetTugasInput !== 'RESET TUGAS'}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium disabled:opacity-40"
+              >
+                <RotateCcw size={14} /> Ya, Reset Sekarang
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Section: Kelola Akun Anggota ── */}
       {(() => {

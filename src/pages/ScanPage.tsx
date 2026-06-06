@@ -474,7 +474,7 @@ export default function ScanPage() {
       is_walk_in:      true,
       walkin_reason:   finalReason,
       timestamp,
-      qr_version:      parsed?.version || 'manual',
+      qr_version:      parsed?.version === 'legacy' ? 'legacy' : 'new',
       raw_qr_value:    raw || member.myid || '',
       is_anomaly:      true,
       anomaly_reason:  auditReason,
@@ -529,7 +529,7 @@ export default function ScanPage() {
       return;
     }
 
-    const fakeParsed = { nickname: member.nickname, myid: member.myid, type: 'tugas', version: 'manual' };
+    const fakeParsed = { nickname: member.nickname, myid: member.myid, type: 'tugas', version: 'new' };
 
     setShowManual(false);
     setManualNick('');
