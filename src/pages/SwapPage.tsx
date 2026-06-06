@@ -12,13 +12,28 @@ import { usePagination } from '../hooks/usePagination';
 import { Pagination } from '../components/ui/Pagination';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  Pending:      { label: 'Menunggu PIC',        color: 'badge-yellow' },
-  Approved_PIC: { label: 'Disetujui PIC',        color: 'badge-blue'   },
-  Rejected_PIC: { label: 'Ditolak PIC',          color: 'badge-red'    },
-  Replaced:     { label: 'Tergantikan',           color: 'badge-green'  },
-  Offered:      { label: 'Di Papan Penawaran',    color: 'badge-purple' },
-  Expired:      { label: 'Kadaluarsa',            color: 'badge-gray'   },
+  Pending:          { label: 'Menunggu PIC',        color: 'badge-yellow' },
+  Approved_PIC:     { label: 'Disetujui PIC',        color: 'badge-blue'   },
+  Rejected_PIC:     { label: 'Ditolak PIC',          color: 'badge-red'    },
+  Replaced:         { label: 'Tergantikan',           color: 'badge-green'  },
+  Offered:          { label: 'Di Papan Penawaran',    color: 'badge-purple' },
+  Expired:          { label: 'Kadaluarsa',            color: 'badge-gray'   },
+  Tidak_Terganti:   { label: 'Tidak Terganti',        color: 'badge-red'    },
 };
+
+// Offered item yang sudah lewat tanggal tugas = "Tidak Terganti"
+const todayStr = () => {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+};
+function getEffectiveStatus(req: any) {
+  if (req.status === 'Offered') {
+    const tgl = req.assignment?.events?.tanggal_tugas?.slice(0, 10);
+    if (tgl && tgl < todayStr()) return 'Tidak_Terganti';
+  }
+  return req.status;
+}
 
 const SLOT_LABELS: Record<number, string> = { 1:'Sabtu 17:30', 2:'Minggu 06:00', 3:'Minggu 08:00', 4:'Minggu 17:30' };
 
@@ -310,12 +325,17 @@ export default function SwapPage() {
 
   function buildWATemplate(reqs: any, weekEvents: any[] = [], offeredItems: any[] = []) {
     const { start, end, label } = getCurrentWeekRange();
+    const today = todayStr();
     const inWeek = (r: any) => {
       const tgl = r.assignment?.events?.tanggal_tugas?.slice(0, 10);
       return tgl >= start && tgl <= end;
     };
     const replaced = reqs.filter((r: any) => r.status === 'Replaced' && inWeek(r));
-    const offered  = offeredItems.filter((r: any) => inWeek(r));
+    // Offered: semua yang aktif di papan, tanggal_tugas >= hari ini (belum lewat)
+    const offered  = offeredItems.filter((r: any) => {
+      const tgl = r.assignment?.events?.tanggal_tugas?.slice(0, 10);
+      return !tgl || tgl >= today;
+    });
     if (!replaced.length && !offered.length && !weekEvents.length) {
       return `📋 *REKAP TUKAR JADWAL*\nMinggu ${label}\n\nTidak ada tukar jadwal & penawaran aktif minggu ini.`;
     }
@@ -435,7 +455,8 @@ export default function SwapPage() {
               <p>Belum ada request tukar jadwal</p>
             </div>
           ) : pgMy.paged.map((req: any) => {
-            const sc = STATUS_CONFIG[req.status] || {};
+            const effStatus = getEffectiveStatus(req);
+            const sc = STATUS_CONFIG[effStatus] || {};
             const ev = req.assignment?.events;
             return (
               <div key={req.id} className="card">
@@ -524,7 +545,8 @@ export default function SwapPage() {
                 ) : allReqs.length === 0 ? (
                   <tr><td colSpan={7} className="text-center py-8 text-gray-400">Belum ada data</td></tr>
                 ) : pgAll.paged.map((req: any) => {
-                  const sc = STATUS_CONFIG[req.status] || {};
+                  const effStatus = getEffectiveStatus(req);
+                  const sc = STATUS_CONFIG[effStatus] || {};
                   const ev = req.assignment?.events;
                   return (
                     <tr key={req.id}>
