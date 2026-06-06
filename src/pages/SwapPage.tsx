@@ -315,11 +315,7 @@ export default function SwapPage() {
       return tgl >= start && tgl <= end;
     };
     const replaced = reqs.filter((r: any) => r.status === 'Replaced' && inWeek(r));
-    // Offered: aktif di papan (is_penawaran=true) + event minggu ini (atau tanggal tidak ada)
-    const offered  = reqs.filter((r: any) =>
-      r.status === 'Offered' &&
-      r.is_penawaran === true &&
-      (!r.assignment?.events?.tanggal_tugas || inWeek(r)));
+    const offered  = reqs.filter((r: any) => r.status === 'Offered' && inWeek(r));
     if (!replaced.length && !offered.length && !weekEvents.length) {
       return `📋 *REKAP TUKAR JADWAL*\nMinggu ${label}\n\nTidak ada tukar jadwal & penawaran aktif minggu ini.`;
     }
