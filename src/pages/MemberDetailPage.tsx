@@ -6,7 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatDate, buildWALink, PENDIDIKAN_OPTIONS, formatHP, STATUS_LABELS, ROLE_LABELS } from '../lib/utils';
 import { LINGKUNGAN_LIST, getWilayah } from '../lib/wilayah';
 import {
-  ArrowLeft, CreditCard, Phone, Edit2, Save, X,
+  ArrowLeft, CreditCard, BarChart2, Phone, Edit2, Save, X,
   ShieldAlert, ShieldCheck, KeyRound, MessageCircle, FileText, Download, ExternalLink, CalendarDays,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -563,7 +563,10 @@ Mohon login... (dst)`
         <Link to={`/kartu?user=${member.id}`} className="btn-primary gap-2">
           <CreditCard size={16}/> Kartu QR
         </Link>
-{isPengurus && hp && (
+        <Link to={`/rekap?user=${member.id}`} className="btn-outline gap-2">
+          <BarChart2 size={16}/> Rekap Poin
+        </Link>
+        {isPengurus && hp && (
           <a href={buildWALink(hp, '')} target="_blank" rel="noopener noreferrer" className="btn-outline gap-2">
             <Phone size={16}/> WA
           </a>
