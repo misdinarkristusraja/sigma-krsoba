@@ -228,10 +228,6 @@ export default function RecapPage() {
   const [lastUpdate,  setLastUpd] = useState<any>(null);
   const [rawRekap,    setRawRekap] = useState<any>(null);  // { jadwal, latihan, tugas, tukar }
 
-  // Leaderboard (non-pengurus uses pre-calculated rekap_poin_mingguan)
-  const [leaderboard,     setLeaderboard]    = useState<any[]>([]);
-  const [leaderLoading,   setLeaderLoading]  = useState(false);
-
   // Load member list
   useEffect(() => {
     if (!isPengurus) return;
@@ -272,20 +268,6 @@ export default function RecapPage() {
       t.success('File .ics diunduh! Buka dengan Google Calendar / iCal')
     );
   }
-
-  // ── Load leaderboard (all authenticated users, from pre-calculated table) ──
-  async function loadLeaderboard() {
-    setLeaderLoading(true);
-    const { data, error } = await supabase.rpc('get_leaderboard', {
-      p_from: dateFrom || null,
-      p_to:   dateTo   || null,
-    });
-    if (!error && data) setLeaderboard(data as any[]);
-    setLeaderLoading(false);
-  }
-  useEffect(() => {
-    if (tab === 'board') loadLeaderboard();
-  }, [tab, dateFrom, dateTo]);
 
   // ── Load personal rekap (real-time) ──────────────────
   const loadPersonal = useCallback(async () => {
@@ -468,12 +450,6 @@ export default function RecapPage() {
 
   const pgRekap      = usePagination(rekapMinggu, 10);
   const pgAllRekap   = usePagination(filteredAll, 10);
-  const filteredBoard = leaderboard.filter((m: any) =>
-    !searchName ||
-    m.nama_panggilan?.toLowerCase().includes(searchName.toLowerCase()) ||
-    m.lingkungan?.toLowerCase().includes(searchName.toLowerCase())
-  );
-  const pgBoard      = usePagination(filteredBoard, 20);
 
   function handleExport() {
     downloadCSV(
@@ -522,7 +498,6 @@ export default function RecapPage() {
         {[
           { key: 'personal', label: 'Pribadi',       show: true },
           { key: 'all',      label: 'Semua Anggota', show: isPengurus },
-          { key: 'board',    label: '🏆 Papan Poin', show: true },
         ].filter(t => t.show).map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab===t.key?'bg-white text-brand-800 shadow-sm':'text-gray-500'}`}>
@@ -809,61 +784,6 @@ export default function RecapPage() {
           {!allLoading && filteredAll.length > 0 && (
             <div className="px-4">
               <Pagination {...pgAllRekap} onPage={pgAllRekap.goTo} label="anggota" />
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ─── TAB PAPAN POIN (all members) ─── */}
-      {tab === 'board' && (
-        <div className="card overflow-hidden p-0">
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
-            <h3 className="font-semibold text-gray-700">🏆 Papan Poin</h3>
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400">{filteredBoard.length} anggota</span>
-              <button onClick={loadLeaderboard} className="btn-ghost p-1.5" title="Refresh"><RefreshCw size={14}/></button>
-            </div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="tbl text-sm">
-              <thead>
-                <tr>
-                  <th className="w-8">#</th>
-                  <th>Nama</th>
-                  <th>Lingkungan</th>
-                  <th>Poin</th>
-                  <th>Hadir</th>
-                  <th className="text-red-600">Absen</th>
-                  <th>Minggu</th>
-                </tr>
-              </thead>
-              <tbody>
-                {leaderLoading ? (
-                  <tr><td colSpan={7} className="text-center py-8 text-gray-400">Memuat papan poin...</td></tr>
-                ) : pgBoard.paged.map((m: any, i: number) => {
-                  const rank = (pgBoard.page - 1) * pgBoard.pageSize + i + 1;
-                  return (
-                    <tr key={m.user_id}>
-                      <td className="text-gray-400 font-mono text-xs">{rank}</td>
-                      <td className="font-semibold text-gray-900">{m.nama_panggilan}</td>
-                      <td className="text-gray-500 text-xs">{m.lingkungan}</td>
-                      <td>
-                        <span className={`font-black text-sm ${m.total_poin>0?'text-green-600':m.total_poin<0?'text-red-600':'text-gray-400'}`}>
-                          {m.total_poin>0?'+':''}{m.total_poin}
-                        </span>
-                      </td>
-                      <td className="text-center text-blue-600">{m.hadir_count}</td>
-                      <td className="text-center text-red-500">{m.k6_count||'—'}</td>
-                      <td className="text-center text-gray-400">{m.minggu_count}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {!leaderLoading && filteredBoard.length > 0 && (
-            <div className="px-4">
-              <Pagination {...pgBoard} onPage={pgBoard.goTo} label="anggota" />
             </div>
           )}
         </div>
