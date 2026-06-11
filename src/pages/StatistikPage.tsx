@@ -7,15 +7,16 @@ import { usePagination } from '../hooks/usePagination';
 import { Pagination } from '../components/ui/Pagination';
 
 const KONDISI_INFO: Record<string, { label: string; poin: string; color: string; dot: string }> = {
-  K1:  { label: 'Mengganti mendadak + Latihan',       poin: '+5', color: 'bg-purple-100 text-purple-800',  dot: 'bg-purple-500'  },
-  K2a: { label: 'Hadir Lengkap (terjadwal normal)',   poin: '+4', color: 'bg-green-100 text-green-800',    dot: 'bg-green-500'   },
-  K2b: { label: 'Hadir Lengkap (pengganti swap)',     poin: '+3', color: 'bg-emerald-100 text-emerald-800',dot: 'bg-emerald-500' },
-  K3a: { label: 'Hadir Tugas saja (terjadwal)',       poin: '+3', color: 'bg-blue-100 text-blue-800',      dot: 'bg-blue-500'    },
-  K3b: { label: 'Mengganti mendadak saja',            poin: '+3', color: 'bg-sky-100 text-sky-800',        dot: 'bg-sky-500'     },
-  K3c: { label: 'Hadir Tugas saja (pengganti swap)',  poin: '+2', color: 'bg-cyan-100 text-cyan-800',      dot: 'bg-cyan-500'    },
-  K4a: { label: 'Hadir Latihan saja (tidak terjadwal)',poin: '+2',color: 'bg-teal-100 text-teal-800',      dot: 'bg-teal-500'    },
-  K4c: { label: 'Hadir Latihan saja (terjadwal)',     poin: '0',  color: 'bg-yellow-100 text-yellow-800',  dot: 'bg-yellow-500'  },
-  K6:  { label: 'Absen (tidak hadir)',                poin: '-1', color: 'bg-red-100 text-red-800',        dot: 'bg-red-500'     },
+  K1:  { label: 'Mengganti mendadak + Latihan',              poin: '+5', color: 'bg-purple-100 text-purple-800',  dot: 'bg-purple-500'  },
+  K2a: { label: 'Hadir Lengkap (terjadwal normal)',          poin: '+4', color: 'bg-green-100 text-green-800',    dot: 'bg-green-500'   },
+  K2b: { label: 'Hadir Lengkap (pengganti swap)',            poin: '+3', color: 'bg-emerald-100 text-emerald-800',dot: 'bg-emerald-500' },
+  K3a: { label: 'Hadir Tugas saja (terjadwal)',              poin: '+3', color: 'bg-blue-100 text-blue-800',      dot: 'bg-blue-500'    },
+  K3b: { label: 'Mengganti mendadak saja',                   poin: '+3', color: 'bg-sky-100 text-sky-800',        dot: 'bg-sky-500'     },
+  K3c: { label: 'Hadir Tugas saja (pengganti swap)',         poin: '+2', color: 'bg-cyan-100 text-cyan-800',      dot: 'bg-cyan-500'    },
+  K4a: { label: 'Hadir Latihan saja (tidak terjadwal)',      poin: '+2', color: 'bg-teal-100 text-teal-800',      dot: 'bg-teal-500'    },
+  K4c: { label: 'Hadir Latihan saja (terjadwal)',            poin: '0',  color: 'bg-yellow-100 text-yellow-800',  dot: 'bg-yellow-500'  },
+  K5:  { label: 'Absen dimaafkan (swap disetujui pengurus)', poin: '0',  color: 'bg-orange-100 text-orange-800',  dot: 'bg-orange-400'  },
+  K6:  { label: 'Absen tanpa keterangan',                    poin: '-1', color: 'bg-red-100 text-red-800',        dot: 'bg-red-500'     },
 };
 
 function pct(val: any, total: any) {
@@ -81,7 +82,7 @@ export default function StatistikPage() {
       const poinMingguan = userRekap.reduce((s: any, r: any) => s + (r.poin || 0), 0);
       const poinBonus    = bonusMap[u.id] || 0;
       const totalPoin    = poinMingguan + poinBonus;
-      const kondisiCounts: Record<string,number> = { K1:0, K2a:0, K2b:0, K3a:0, K3b:0, K3c:0, K4a:0, K4c:0, K6:0 };
+      const kondisiCounts: Record<string,number> = { K1:0, K2a:0, K2b:0, K3a:0, K3b:0, K3c:0, K4a:0, K4c:0, K5:0, K6:0 };
       userRekap.forEach((r: any) => { if (kondisiCounts[r.kondisi] !== undefined) kondisiCounts[r.kondisi]++; });
 
       const totalMinggu      = userRekap.length;
@@ -187,7 +188,8 @@ export default function StatistikPage() {
         'K2a': s.kondisiCounts?.K2a, 'K2b': s.kondisiCounts?.K2b,
         'K3a': s.kondisiCounts?.K3a, 'K3b': s.kondisiCounts?.K3b, 'K3c': s.kondisiCounts?.K3c,
         'K4a': s.kondisiCounts?.K4a, 'K4c': s.kondisiCounts?.K4c,
-        'K6 (Absen)': s.kondisiCounts?.K6,
+        'K5 (Absen Dimaafkan)': s.kondisiCounts?.K5,
+        'K6 (Absen Tanpa Ket)': s.kondisiCounts?.K6,
         'Tukar Jadwal': s.swapCount, 'Berhasil Tukar': s.swapReplaced,
         'Jadi Pengganti': s.penggantiCount,
       };
@@ -269,6 +271,7 @@ export default function StatistikPage() {
                 <th title="Hadir Tugas swap (+2)">K3c</th>
                 <th title="Hadir Latihan tidak terjadwal (+2)">K4a</th>
                 <th title="Hadir Latihan terjadwal (0)">K4c</th>
+                <th title="Absen dimaafkan — swap disetujui (0)" className="text-orange-600">K5</th>
                 <th className="cursor-pointer text-red-600" onClick={() => toggleSort('absen')}>K6 <SortIcon col="absen"/></th>
                 <th className="cursor-pointer" onClick={() => toggleSort('dijadwalkan')}>% Dijadwal <SortIcon col="dijadwalkan"/></th>
                 <th className="cursor-pointer" onClick={() => toggleSort('hadir')}>% Hadir <SortIcon col="hadir"/></th>
@@ -298,7 +301,7 @@ export default function StatistikPage() {
                           </span>
                         )}
                       </td>
-                      {['K1','K2a','K2b','K3a','K3b','K3c','K4a','K4c'].map(k => (
+                      {['K1','K2a','K2b','K3a','K3b','K3c','K4a','K4c','K5'].map(k => (
                         <td key={k} className="text-center font-semibold">
                           {(s.kondisiCounts[k]||0) > 0 ? <span className={`inline-block px-1.5 rounded ${KONDISI_INFO[k]?.color||''}`}>{s.kondisiCounts[k]}</span> : <span className="text-gray-300">0</span>}
                         </td>

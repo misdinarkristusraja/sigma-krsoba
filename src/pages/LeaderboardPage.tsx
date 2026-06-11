@@ -31,7 +31,7 @@ function buildLeaderboard({ members, assigns, scans, swaps, bonuses, dateFrom, d
   (swaps||[]).forEach((sw: any) => { if (swMap[sw.requester_id]) swMap[sw.requester_id].push(sw); });
   (bonuses||[]).forEach((b: any) => { if (bonusMap[b.user_id] !== undefined) bonusMap[b.user_id] += (b.poin || 0); });
 
-  // Build lookup: pengganti_id → Set of week_start where they were swap replacement
+  // penggantiWeeks: user jadi pengganti swap (Replaced) → K2b/K3c
   const penggantiWeeks: Record<string, Set<string>> = {};
   members.forEach((m: any) => { penggantiWeeks[m.id] = new Set(); });
   (swaps||[]).filter((sw: any) => sw.status === 'Replaced' && sw.pengganti_id && sw.assignments?.events?.tanggal_tugas)
@@ -39,6 +39,17 @@ function buildLeaderboard({ members, assigns, scans, swaps, bonuses, dateFrom, d
       const ws = getWeekStartFromDate(sw.assignments.events.tanggal_tugas);
       if (ws && penggantiWeeks[sw.pengganti_id]) penggantiWeeks[sw.pengganti_id].add(ws);
     });
+
+  // excusedWeeks: user punya swap request disetujui PIC/Pengurus tapi belum tergantikan → K5
+  const excusedWeeks: Record<string, Set<string>> = {};
+  members.forEach((m: any) => { excusedWeeks[m.id] = new Set(); });
+  (swaps||[]).filter((sw: any) =>
+    ['Approved_PIC', 'Offered'].includes(sw.status) &&
+    sw.requester_id && sw.assignments?.events?.tanggal_tugas
+  ).forEach((sw: any) => {
+    const ws = getWeekStartFromDate(sw.assignments.events.tanggal_tugas);
+    if (ws && excusedWeeks[sw.requester_id]) excusedWeeks[sw.requester_id].add(ws);
+  });
 
   return members.map((m: any) => {
     const replacedIds = new Set(
@@ -90,6 +101,7 @@ function buildLeaderboard({ members, assigns, scans, swaps, bonuses, dateFrom, d
         isHadirLatihan:  w.is_hadir_latihan,
         isWalkIn:        w.is_walk_in,
         isSwapPengganti: penggantiWeeks[m.id]?.has(ws) ?? false,
+        isExcused:       excusedWeeks[m.id]?.has(ws) ?? false,
       });
       if (kondisi !== null) {
         poinMingguan += poin || 0;
@@ -121,7 +133,7 @@ function buildLeaderboardHarian({ members, scans, dateFrom, dateTo }: any) {
 
 // ═════════════════════════════════════════════════════════
 export default function LeaderboardPage() {
-  const { profile } = useAuth();
+  const { profile, isPengurus } = useAuth();
 
   const [tab,      setTab]    = useState('mingguan');
   const [loading,  setLoading]= useState(true);
@@ -132,7 +144,7 @@ export default function LeaderboardPage() {
   // Static data (fetch once)
   const [members,      setMembers]      = useState<any[]>([]);
   const [assigns,      setAssigns]      = useState<any[]>([]);
-  const [swaps,        setSwaps]        = useState<any[]>([]);
+  const [swaps,        setSwaps]        = useState<any[]>([]);   // all swap statuses
   const [staticLoaded, setStaticLoaded] = useState(false);
 
   // Dynamic data (refetch on date change)
@@ -152,10 +164,10 @@ export default function LeaderboardPage() {
         supabase.from('assignments')
           .select('id, user_id, event_id, events(tanggal_tugas, tanggal_latihan, tipe_event, is_draft)')
           .not('events.tipe_event','eq','Misa_Harian'),
-        // Include pengganti_id + assignment event date for swap_pengganti detection
+        // Fetch all swap statuses: Replaced (penggantiWeeks) + Approved_PIC/Offered (excusedWeeks)
         supabase.from('swap_requests')
           .select('requester_id, pengganti_id, assignment_id, status, assignments(events(tanggal_tugas))')
-          .eq('status','Replaced'),
+          .in('status', ['Replaced', 'Approved_PIC', 'Offered']),
       ]);
       setMembers(mems || []);
       setAssigns((asgs||[]).filter((a: any) => a.events && !a.events.is_draft));
@@ -236,10 +248,75 @@ export default function LeaderboardPage() {
 
   // Top 3 + rest
   const top3 = data.slice(0,3);
-  const rest  = data.slice(3);
   const myRank  = data.findIndex(d => d.id === profile?.id) + 1;
+  const myData  = data.find(d => d.id === profile?.id);
   // Disambiguasi nama yang sama di leaderboard
   const nameTag = tagDuplicateNames(data);
+
+  // Non-pengurus: tampilkan ringkasan pribadi saja (bukan ranking penuh)
+  if (!isPengurus) {
+    return (
+      <div className="space-y-5">
+        <div>
+          <h1 className="page-title flex items-center gap-2">
+            <Trophy size={22} className="text-yellow-400"/> Kehadiran Saya
+          </h1>
+          <p className="page-subtitle">Ringkasan kehadiranmu di misa</p>
+        </div>
+        {loading ? (
+          <div className="space-y-3">{[1,2,3].map(i=><div key={i} className="skeleton h-20 rounded-xl"/>)}</div>
+        ) : myData ? (
+          <div className="space-y-4">
+            {/* Kartu utama */}
+            <div className="card bg-gradient-to-br from-brand-50 to-white border-brand-100 space-y-4">
+              <p className="text-gray-500 text-sm">Halo, <strong>{myData.nama_panggilan}</strong> 👋</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white rounded-xl p-4 text-center shadow-sm">
+                  <p className="text-3xl font-black text-green-600">{myData.hadirCount}</p>
+                  <p className="text-xs text-gray-500 mt-1">Kali hadir misa</p>
+                </div>
+                <div className="bg-white rounded-xl p-4 text-center shadow-sm">
+                  <p className="text-3xl font-black text-gray-700">{myData.minggu}</p>
+                  <p className="text-xs text-gray-500 mt-1">Minggu tercatat</p>
+                </div>
+              </div>
+              {myData.absenCount > 0 && (
+                <div className="bg-orange-50 rounded-xl p-3 text-sm text-orange-700">
+                  {myData.absenCount} minggu belum tercatat kehadirannya. Kalau ada halangan, jangan lupa hubungi pengurus ya 🙏
+                </div>
+              )}
+              <p className="text-xs text-gray-400 italic">
+                Terima kasih sudah setia melayani di {myData.lingkungan}!
+              </p>
+            </div>
+            {/* Filter periode */}
+            <div className="flex gap-2 flex-wrap items-center">
+              <div className="flex gap-1 flex-wrap">
+                {periods.map(p => (
+                  <button key={p.label} onClick={p.action}
+                    className="px-3 py-1.5 rounded-lg text-xs font-medium bg-gray-100 hover:bg-brand-50 hover:text-brand-800 transition-all">
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-500">
+                <input type="date" className="input input-sm text-xs w-32" value={dateFrom}
+                  onChange={e=>setDateFrom(e.target.value)}/>
+                <span>–</span>
+                <input type="date" className="input input-sm text-xs w-32" value={dateTo}
+                  onChange={e=>setDateTo(e.target.value)}/>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="card text-center py-10 text-gray-400">
+            <Trophy size={36} className="mx-auto mb-2 opacity-30"/>
+            <p>Data belum tersedia. Coba refresh.</p>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">

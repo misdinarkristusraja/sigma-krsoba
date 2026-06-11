@@ -35,6 +35,7 @@ const ROLE_VARIANT: Record<UserRole, BadgeVariant> = {
   Administrator:    'danger',
   Pengurus:         'purple',
   Pelatih:          'info',
+  Pendamping:       'info',
   Misdinar_Aktif:   'success',
   Misdinar_Retired: 'default',
 };
@@ -43,6 +44,7 @@ const ROLE_LABEL: Record<UserRole, string> = {
   Administrator:    'Admin',
   Pengurus:         'Pengurus',
   Pelatih:          'Pelatih',
+  Pendamping:       'Pendamping',
   Misdinar_Aktif:   'Aktif',
   Misdinar_Retired: 'Retired',
 };

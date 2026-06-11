@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, RefreshCw, ChevronDown, ChevronUp, ArrowLeftRight, X } from 'lucide-react';
+import { Calendar, RefreshCw, ChevronDown, ChevronUp, ArrowLeftRight, X, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { buildWALink } from '../lib/utils';
 import toast from 'react-hot-toast';
 
@@ -45,12 +45,22 @@ type Row = {
   } | null;
 };
 
+type AvailEntry = { id: string; available: boolean; keterangan: string | null };
+
 export default function JadwalSayaPage() {
   const { user, profile } = useAuth();
   const [rows,    setRows]    = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter,  setFilter]  = useState<'mendatang' | 'semua'>('mendatang');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  // Availability: event_id → entry
+  const [avail, setAvail] = useState<Record<string, AvailEntry>>({});
+
+  // Availability modal
+  const [availModal, setAvailModal] = useState<{ eventId: string; eventLabel: string } | null>(null);
+  const [availKet, setAvailKet]   = useState('');
+  const [availSaving, setAvailSaving] = useState(false);
 
   // Swap modal state
   const [swapRow,    setSwapRow]    = useState<Row | null>(null);
@@ -62,29 +72,41 @@ export default function JadwalSayaPage() {
     setLoading(true);
     try {
       const today = new Date().toISOString().split('T')[0];
-      const { data, error } = await supabase
-        .from('assignments')
-        .select(`
-          id, slot_number,
-          event:events(
-            id, nama_event, perayaan, tipe_event,
-            tanggal_tugas, tanggal_latihan, warna_liturgi,
-            latihan_times,
-            event_pics(slot, nama, hp, urutan)
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('id');
+      const [{ data, error }, { data: availData }] = await Promise.all([
+        supabase
+          .from('assignments')
+          .select(`
+            id, slot_number,
+            event:events(
+              id, nama_event, perayaan, tipe_event,
+              tanggal_tugas, tanggal_latihan, warna_liturgi,
+              latihan_times,
+              event_pics(slot, nama, hp, urutan)
+            )
+          `)
+          .eq('user_id', user.id)
+          .order('id'),
+        supabase
+          .from('user_availability')
+          .select('id, event_id, available, keterangan')
+          .eq('user_id', user.id),
+      ]);
       if (error) throw error;
 
       const filtered = (data || [])
         .filter((r: any) => r.event && r.event.tipe_event !== 'Misa_Harian')
         .filter((r: any) => filter === 'semua' || r.event.tanggal_tugas >= today)
         .sort((a: any, b: any) =>
-          (a.events?.tanggal_tugas || '').localeCompare(b.events?.tanggal_tugas || '')
+          (a.event?.tanggal_tugas || '').localeCompare(b.event?.tanggal_tugas || '')
         );
 
       setRows(filtered as Row[]);
+
+      const map: Record<string, AvailEntry> = {};
+      (availData || []).forEach((a: any) => {
+        map[a.event_id] = { id: a.id, available: a.available, keterangan: a.keterangan };
+      });
+      setAvail(map);
     } catch (err: any) {
       toast.error('Gagal memuat jadwal: ' + err.message);
     } finally {
@@ -115,6 +137,51 @@ export default function JadwalSayaPage() {
       .filter((p: EventPicRow) => p.slot === slot)
       .sort((a: EventPicRow, b: EventPicRow) => a.urutan - b.urutan);
     return pics[0]?.hp || null;
+  }
+
+  async function markUnavailable() {
+    if (!availModal || !user?.id) return;
+    setAvailSaving(true);
+    try {
+      const existing = avail[availModal.eventId];
+      if (existing) {
+        const { error } = await supabase.from('user_availability').update({
+          available: false,
+          keterangan: availKet.trim() || null,
+        }).eq('id', existing.id);
+        if (error) throw error;
+        setAvail(prev => ({ ...prev, [availModal.eventId]: { ...existing, available: false, keterangan: availKet.trim() || null } }));
+      } else {
+        const { data, error } = await supabase.from('user_availability').insert({
+          user_id:    user.id,
+          event_id:   availModal.eventId,
+          available:  false,
+          keterangan: availKet.trim() || null,
+        }).select('id').single();
+        if (error) throw error;
+        setAvail(prev => ({ ...prev, [availModal.eventId]: { id: data.id, available: false, keterangan: availKet.trim() || null } }));
+      }
+      toast.success('Keterangan berhasil disimpan. Jangan lupa kabari PIC ya 🙏');
+      setAvailModal(null);
+      setAvailKet('');
+    } catch (err: any) {
+      toast.error('Gagal menyimpan: ' + err.message);
+    } finally {
+      setAvailSaving(false);
+    }
+  }
+
+  async function clearUnavailable(eventId: string) {
+    const entry = avail[eventId];
+    if (!entry) return;
+    const { error } = await supabase.from('user_availability').delete().eq('id', entry.id);
+    if (error) { toast.error('Gagal: ' + error.message); return; }
+    setAvail(prev => {
+      const next = { ...prev };
+      delete next[eventId];
+      return next;
+    });
+    toast.success('Keterangan dihapus');
   }
 
   async function submitSwap() {
@@ -240,18 +307,20 @@ export default function JadwalSayaPage() {
               {rows.map(row => {
                 const ev = row.event;
                 if (!ev) return null;
-                const isPast   = ev.tanggal_tugas < today;
-                const isExpand = expanded.has(row.id);
-                const warna    = WARNA_DOT[ev.warna_liturgi] || 'bg-gray-100 text-gray-600';
-                const picName  = getPic(ev, row.slot_number);
-                const picHp    = getPicHp(ev, row.slot_number);
+                const isPast    = ev.tanggal_tugas < today;
+                const isExpand  = expanded.has(row.id);
+                const warna     = WARNA_DOT[ev.warna_liturgi] || 'bg-gray-100 text-gray-600';
+                const picName   = getPic(ev, row.slot_number);
+                const picHp     = getPicHp(ev, row.slot_number);
                 const jamLatihan = ev.latihan_times?.[0] || null;
+                const availEntry = avail[ev.id];
+                const isUnavail  = availEntry && !availEntry.available;
 
                 return (
                   <React.Fragment key={row.id}>
                     <tr
                       className={`transition-colors cursor-pointer ${
-                        isPast ? 'bg-gray-50/60 text-gray-400' : 'bg-white hover:bg-blue-50/30'
+                        isPast ? 'bg-gray-50/60 text-gray-400' : isUnavail ? 'bg-amber-50/50 hover:bg-amber-50' : 'bg-white hover:bg-blue-50/30'
                       }`}
                       onClick={() => toggleExpand(row.id)}
                     >
@@ -269,10 +338,19 @@ export default function JadwalSayaPage() {
 
                       {/* Perayaan */}
                       <td className="px-4 py-3">
-                        <p className={`font-medium ${isPast ? 'text-gray-400' : 'text-gray-800'}`}>
-                          {ev.perayaan || ev.nama_event}
-                        </p>
-                        <p className="text-xs text-gray-400">{ev.tipe_event?.replace('_', ' ')}</p>
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <p className={`font-medium ${isPast ? 'text-gray-400' : 'text-gray-800'}`}>
+                              {ev.perayaan || ev.nama_event}
+                            </p>
+                            <p className="text-xs text-gray-400">{ev.tipe_event?.replace('_', ' ')}</p>
+                          </div>
+                          {isUnavail && !isPast && (
+                            <span className="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap">
+                              Tidak bisa
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Slot */}
@@ -319,7 +397,7 @@ export default function JadwalSayaPage() {
 
                     {/* Expanded detail row */}
                     {isExpand && (
-                      <tr className={isPast ? 'bg-gray-50/40' : 'bg-blue-50/20'}>
+                      <tr className={isPast ? 'bg-gray-50/40' : isUnavail ? 'bg-amber-50/30' : 'bg-blue-50/20'}>
                         <td colSpan={5} className="px-6 py-4">
                           <div className="grid sm:grid-cols-2 gap-4 text-sm">
                             {/* PIC slot ini */}
@@ -359,6 +437,52 @@ export default function JadwalSayaPage() {
                                 })}
                               </div>
                             </div>
+
+                            {/* Availability section — hanya untuk mendatang */}
+                            {!isPast && (
+                              <div className="sm:col-span-2 border-t border-gray-100 pt-3">
+                                <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Kehadiran</p>
+                                {isUnavail ? (
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div className="flex items-start gap-2">
+                                      <AlertCircle size={15} className="text-amber-500 mt-0.5 shrink-0" />
+                                      <div>
+                                        <p className="text-sm font-medium text-amber-700">Kamu tandai tidak bisa hadir</p>
+                                        {availEntry.keterangan && (
+                                          <p className="text-xs text-gray-500 mt-0.5">"{availEntry.keterangan}"</p>
+                                        )}
+                                        <p className="text-xs text-gray-400 mt-0.5">Pastikan sudah kabari PIC atau buat request tukar jadwal.</p>
+                                      </div>
+                                    </div>
+                                    <div className="flex gap-2 shrink-0">
+                                      <button
+                                        onClick={e => { e.stopPropagation(); setAvailModal({ eventId: ev.id, eventLabel: ev.perayaan || ev.nama_event }); setAvailKet(availEntry.keterangan || ''); }}
+                                        className="text-xs text-amber-600 hover:underline"
+                                      >
+                                        Edit
+                                      </button>
+                                      <button
+                                        onClick={e => { e.stopPropagation(); clearUnavailable(ev.id); }}
+                                        className="text-xs text-gray-400 hover:text-red-500 hover:underline"
+                                      >
+                                        Hapus
+                                      </button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-3">
+                                    <CheckCircle2 size={15} className="text-green-500 shrink-0" />
+                                    <p className="text-xs text-gray-600">Belum ada keterangan khusus</p>
+                                    <button
+                                      onClick={e => { e.stopPropagation(); setAvailModal({ eventId: ev.id, eventLabel: ev.perayaan || ev.nama_event }); setAvailKet(''); }}
+                                      className="text-xs text-amber-600 hover:underline ml-auto"
+                                    >
+                                      + Tandai tidak bisa hadir
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -370,10 +494,59 @@ export default function JadwalSayaPage() {
           </table>
 
           <div className="px-4 py-2 bg-gray-50 border-t border-gray-100 text-xs text-gray-400">
-            {rows.length} jadwal • Klik baris untuk detail PIC
+            {rows.length} jadwal • Klik baris untuk detail & kehadiran
           </div>
         </div>
       )}
+
+      {/* Availability modal */}
+      {availModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-lg flex items-center gap-2">
+                <AlertCircle size={18} className="text-amber-500" /> Tidak Bisa Hadir
+              </h3>
+              <button onClick={() => setAvailModal(null)} className="p-1 text-gray-400 hover:text-gray-700">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="bg-amber-50 rounded-xl p-3 mb-4 text-sm">
+              <p className="font-semibold text-gray-800">{availModal.eventLabel}</p>
+              <p className="text-xs text-amber-600 mt-0.5">Keterangan ini akan terlihat oleh pengurus saat menyusun jadwal.</p>
+            </div>
+            <div>
+              <label className="label">Alasan / Keterangan</label>
+              <textarea
+                className="input h-20 resize-none"
+                value={availKet}
+                onChange={e => setAvailKet(e.target.value)}
+                placeholder="Contoh: ada acara keluarga, sakit, ujian, dll."
+                autoFocus
+              />
+            </div>
+            <div className="bg-blue-50 rounded-xl p-3 mt-3 text-xs text-blue-700">
+              Menandai "tidak bisa hadir" <strong>bukan</strong> berarti absen otomatis dimaafkan.
+              Tetap buat request tukar jadwal dan kabari PIC ya 🙏
+            </div>
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={markUnavailable}
+                disabled={availSaving}
+                className="btn-primary flex-1 gap-2"
+              >
+                {availSaving
+                  ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  : <AlertCircle size={15} />
+                }
+                Simpan
+              </button>
+              <button onClick={() => setAvailModal(null)} className="btn-secondary">Batal</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Swap request modal */}
       {swapRow && swapRow.event && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">

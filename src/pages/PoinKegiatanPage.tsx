@@ -13,14 +13,14 @@ const KATEGORI_LABELS: Record<string, string> = {
   Prestasi:        'Prestasi / Lomba',
   AOA:             'AOA',
   Kegiatan_Khusus: 'Kegiatan Khusus',
-  Hukuman:         'Hukuman / Penalti',
+  Hukuman:         'Catatan Khusus',  // internal label, tidak ditampilkan ke misdinar
   Lainnya:         'Lainnya',
 };
 const KATEGORI_COLOR: Record<string, string> = {
   Prestasi:        'badge-blue',
   AOA:             'badge-purple',
   Kegiatan_Khusus: 'badge-green',
-  Hukuman:         'badge-red',
+  Hukuman:         'badge-gray',     // tidak merah — tidak perlu mengintimidasi
   Lainnya:         'badge-gray',
 };
 

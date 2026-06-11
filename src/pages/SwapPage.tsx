@@ -337,25 +337,26 @@ export default function SwapPage() {
       return !tgl || tgl >= today;
     });
     if (!replaced.length && !offered.length && !weekEvents.length) {
-      return `📋 *REKAP TUKAR JADWAL*\nMinggu ${label}\n\nTidak ada tukar jadwal & penawaran aktif minggu ini.`;
+      return `🤝 *INFO TUKAR JADWAL*\nMinggu ${label}\n\nTidak ada pertukaran & penawaran aktif saat ini. Sampai jumbo minggu depan! 🙏`;
     }
-    const lines = ['📋 *REKAP TUKAR JADWAL*', `Minggu ${label}`, ''];
+    const lines = ['🤝 *INFO TUKAR JADWAL*', `Minggu ${label}`, ''];
     if (replaced.length) {
-      lines.push('✅ *SUDAH TERGANTIKAN*');
+      lines.push('✅ *SUDAH ADA YANG BANTU (terima kasih!)*');
       replaced.forEach((r: any) => {
         const ev   = r.assignment?.events;
         const slot = r.assignment?.slot_number;
-        lines.push(`• ${r.requester?.nama_panggilan} → ${r.pengganti?.nama_panggilan||'?'} — ${ev?.perayaan||ev?.nama_event||'?'} (${SLOT_LABELS[slot]||'?'}, ${formatDate(ev?.tanggal_tugas,'dd MMM')})`);
+        lines.push(`• ${r.requester?.nama_panggilan} dibantu oleh ${r.pengganti?.nama_panggilan||'?'} — ${ev?.perayaan||ev?.nama_event||'?'} (${SLOT_LABELS[slot]||'?'}, ${formatDate(ev?.tanggal_tugas,'dd MMM')})`);
       });
       lines.push('');
     }
     if (offered.length) {
-      lines.push('🙋 *PENAWARAN TUGAS (siapa bisa ambil?)*');
+      lines.push('🙏 *BUTUH BANTUAN — siapa bisa gantikan?*');
       offered.forEach((r: any) => {
         const ev   = r.assignment?.events;
         const slot = r.assignment?.slot_number;
         lines.push(`• ${r.requester?.nama_panggilan} — ${ev?.perayaan||ev?.nama_event||'?'} (${SLOT_LABELS[slot]||'?'}, ${formatDate(ev?.tanggal_tugas,'dd MMM')})`);
       });
+      lines.push('_Kalau bisa bantu, hubungi PIC atau langsung ambil lewat aplikasi. Terima kasih! 😊_');
       lines.push('');
     }
     // PIC per misa dalam range minggu ini
@@ -375,7 +376,7 @@ export default function SwapPage() {
       });
     });
     if (picLines.length) {
-      lines.push('📞 *PIC MISA MINGGU INI*');
+      lines.push('📞 *HUBUNGI PIC MISA INI*');
       lines.push(...picLines);
     }
     return lines.join('\n');
