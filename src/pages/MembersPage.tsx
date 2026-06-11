@@ -37,6 +37,8 @@ export default function MembersPage() {
   const [resettingId,      setResettingId]      = useState<string | null>(null);
   const [resetResult,      setResetResult]      = useState<{ nickname: string; password: string } | null>(null);
   const [sendPasswordMode, setSendPasswordMode] = useState(false);
+  const [reregSet,         setReregSet]         = useState<Set<string>>(new Set());
+  const [filterRereg,      setFilterRereg]      = useState('');  // '' | 'done' | 'not_done'
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -44,37 +46,42 @@ export default function MembersPage() {
 
     try {
       if (tab === 'pending') {
-        // Load pending registrations
         const { data, error: e } = await supabase
           .from('registrations')
           .select('*')
           .eq('status', 'Pending')
           .order('created_at', { ascending: false });
-
         if (e) throw e;
         setRegs(data || []);
         setMembers([]);
       } else {
-        // Load users — query tanpa filter status dulu untuk tab 'all'
         let q = supabase
           .from('users')
           .select('id, nickname, myid, nama_lengkap, nama_panggilan, pendidikan, sekolah, lingkungan, wilayah, role, status, is_tarakanita, is_suspended, created_at, hp_ortu, hp_anak', { count: 'exact' })
           .order('nama_panggilan', { nullsFirst: false })
-          .order('nickname');  // fallback sort jika nama_panggilan null
+          .order('nickname');
 
-        // Filter per tab
         if (tab === 'active')  q = q.eq('status', 'Active');
         if (tab === 'retired') q = q.eq('status', 'Retired');
-
-        // Filter tambahan
         if (filter.pendidikan) q = q.eq('pendidikan', filter.pendidikan);
 
-        const { data, error: e, count } = await q;
+        const [{ data, error: e, count }, { data: cfgData }, ] = await Promise.all([
+          q,
+          supabase.from('system_config').select('key, value').eq('key', 'rereg_tahun').maybeSingle(),
+        ]);
 
         if (e) throw e;
         setMembers(data || []);
         setTotal(count || 0);
         setRegs([]);
+
+        // Fetch reregistrations for current rereg year
+        const tahun = parseInt((cfgData as any)?.value || String(new Date().getFullYear()));
+        const { data: reregData } = await supabase
+          .from('reregistrations')
+          .select('user_id')
+          .eq('tahun', tahun);
+        setReregSet(new Set((reregData || []).map((r: any) => r.user_id)));
       }
     } catch (err: any) {
       console.error('loadData error:', err);
@@ -87,12 +94,16 @@ export default function MembersPage() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  // Filter client-side berdasarkan search
+  // Filter client-side
   const filtered = members.filter(m => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return [m.nama_panggilan, m.nickname, m.nama_lengkap, m.lingkungan, m.sekolah, m.myid]
-      .some(v => v?.toLowerCase().includes(q));
+    if (search) {
+      const q = search.toLowerCase();
+      if (![m.nama_panggilan, m.nickname, m.nama_lengkap, m.lingkungan, m.sekolah, m.myid]
+            .some(v => v?.toLowerCase().includes(q))) return false;
+    }
+    if (filterRereg === 'done'     && !reregSet.has(m.id)) return false;
+    if (filterRereg === 'not_done' &&  reregSet.has(m.id)) return false;
+    return true;
   });
 
   const pg = usePagination(filtered, 10);
@@ -360,6 +371,13 @@ export default function MembersPage() {
               <option value="">Semua Pendidikan</option>
               {['SD','SMP','SMA','SMK','Lulus'].map(p => <option key={p}>{p}</option>)}
             </select>
+            <select className="input w-auto"
+              value={filterRereg}
+              onChange={e => setFilterRereg(e.target.value)}>
+              <option value="">Semua Daftar Ulang</option>
+              <option value="done">✅ Sudah Daftar Ulang</option>
+              <option value="not_done">❌ Belum Daftar Ulang</option>
+            </select>
           </div>
 
           {/* Count info */}
@@ -383,6 +401,7 @@ export default function MembersPage() {
                     <th>MyID / Checksum</th>
                     <th>Pendidikan</th>
                     <th>Lingkungan</th>
+                    <th>Daftar Ulang</th>
                     <th>Status &amp; Role</th>
                     <th></th>
                   </tr>
@@ -391,14 +410,14 @@ export default function MembersPage() {
                   {loading ? (
                     [...Array(5)].map((_, i) => (
                       <tr key={i}>
-                        {[...Array(7)].map((_, j) => (
+                        {[...Array(8)].map((_, j) => (
                           <td key={j}><div className="skeleton h-4 rounded w-full" /></td>
                         ))}
                       </tr>
                     ))
                   ) : filtered.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="text-center py-10">
+                      <td colSpan={8} className="text-center py-10">
                         <Users size={40} className="mx-auto text-gray-200 mb-2" />
                         <p className="text-gray-400 text-sm">
                           {search ? `Tidak ada hasil untuk "${search}"` : 'Belum ada anggota'}
@@ -438,6 +457,12 @@ export default function MembersPage() {
                         <span className="badge-gray">{m.pendidikan || '—'}</span>
                       </td>
                       <td className="text-gray-600 text-sm">{m.lingkungan || '—'}</td>
+                      <td className="text-center">
+                        {reregSet.has(m.id)
+                          ? <span className="badge-green text-xs">✅ Sudah</span>
+                          : <span className="badge-red text-xs">❌ Belum</span>
+                        }
+                      </td>
                       {/* Status + Role — satu kolom, dua inline edit */}
                       <td>
                         <div className="flex flex-col gap-1">
