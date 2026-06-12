@@ -16,7 +16,7 @@ export default function ChangePasswordPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (newPw.length < 6)  { toast.error('Password minimal 6 karakter'); return; }
+    if (newPw.length < 8)  { toast.error('Password minimal 8 karakter'); return; }
     if (newPw !== confirm) { toast.error('Konfirmasi tidak cocok'); return; }
 
     setLoading(true);
@@ -43,7 +43,7 @@ export default function ChangePasswordPage() {
   }
 
   const strength = [
-    newPw.length >= 6,
+    newPw.length >= 8,
     /[A-Z]/.test(newPw),
     /[0-9]/.test(newPw),
     /[^A-Za-z0-9]/.test(newPw),
@@ -76,7 +76,7 @@ export default function ChangePasswordPage() {
                 <input
                   type={showPw ? 'text' : 'password'}
                   className="input pr-10"
-                  placeholder="Min. 6 karakter"
+                  placeholder="Min. 8 karakter"
                   value={newPw}
                   onChange={e => setNewPw(e.target.value)}
                   autoFocus
@@ -130,7 +130,7 @@ export default function ChangePasswordPage() {
             <button
               type="submit"
               className="btn-primary w-full btn-lg"
-              disabled={loading || newPw !== confirm || newPw.length < 6}>
+              disabled={loading || newPw !== confirm || newPw.length < 8}>
               {loading
                 ? <span className="flex items-center justify-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"/>
