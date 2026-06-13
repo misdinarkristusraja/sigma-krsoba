@@ -128,6 +128,7 @@ export default function SwapPage() {
   }
 
   async function loadBoard() {
+    const today = todayStr(); // local date — consistent with getEffectiveStatus()
     const { data } = await supabase
       .from('swap_requests')
       .select(`*,
@@ -135,8 +136,13 @@ export default function SwapPage() {
         assignment:assignment_id(slot_number, events(nama_event, tanggal_tugas, perayaan))`)
       .eq('is_penawaran', true).eq('status','Offered')
       .neq('requester_id', profile?.id)
-      .order('created_at', { ascending: false }).limit(20);
-    setBoard(data||[]);
+      .order('created_at', { ascending: false }).limit(50);
+    // Exclude items where event date already passed — those are "Tidak Terganti" virtually,
+    // but still have status='Offered' in DB. Filtering here keeps board and admin table in sync.
+    setBoard((data || []).filter((req: any) => {
+      const tgl = req.assignment?.events?.tanggal_tugas?.slice(0, 10);
+      return !tgl || tgl >= today;
+    }));
   }
 
   async function loadMySchedule() {
@@ -237,43 +243,77 @@ export default function SwapPage() {
       toast.error('Status "Tergantikan" membutuhkan pengganti — pilih anggota pengganti'); return;
     }
 
-    const isTerminal  = f.status === 'Replaced';
-    const isOffered   = f.status === 'Offered';
-    const { data: inserted, error } = await supabase.from('swap_requests').insert({
-      requester_id:  f.requester_id,
-      assignment_id: f.assignment_id,
-      alasan:        f.alasan || 'Dicatat oleh penjadwalan',
-      pic_user_id:   null,
-      pic_wa_link:   '',
-      status:        f.status,
-      is_penawaran:  isOffered,                                // ← wajib TRUE agar muncul di papan
-      pengganti_id:  f.pengganti_id || null,
-      pic_approved_at: (isTerminal || isOffered) ? new Date().toISOString() : null,
-      // Terminal/offered entries: expires_at = now (tidak muncul sebagai "segera kadaluarsa")
-      expires_at:    (isTerminal || isOffered) ? new Date().toISOString() : new Date(Date.now() + 24*60*60*1000).toISOString(),
-    }).select('id, status, is_penawaran').single();
+    const isTerminal = f.status === 'Replaced';
+    const isOffered  = f.status === 'Offered';
 
-    if (error) { toast.error(error.message); return; }
+    // Hitung expires_at: terminal = sekarang (sudah selesai), offered = sampai tanggal event,
+    // lainnya = 24 jam dari sekarang (PIC approval window).
+    const asgn      = allAssignments.find((a: any) => a.id === f.assignment_id);
+    const eventDate = asgn?.events?.tanggal_tugas;
+    const expiresAt = isTerminal
+      ? new Date().toISOString()
+      : isOffered && eventDate
+        ? new Date(eventDate + 'T23:59:59+07:00').toISOString()   // sampai hari H
+        : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
-    // Check-and-balance: verifikasi data benar-benar tersimpan sebelum feedback sukses
-    if (isOffered && (!inserted?.is_penawaran || inserted?.status !== 'Offered')) {
-      toast.error('Data tersimpan tapi gagal masuk papan — coba lagi atau hubungi dev');
+    try {
+      // Step 1: INSERT — plain (tanpa .select().single() agar tidak ada
+      // RLS-on-returning edge-case yang menghasilkan error + modal stuck).
+      const { error: insertErr } = await supabase.from('swap_requests').insert({
+        requester_id:  f.requester_id,
+        assignment_id: f.assignment_id,
+        alasan:        f.alasan || 'Dicatat oleh penjadwalan',
+        pic_user_id:   null,
+        pic_wa_link:   '',
+        status:        f.status,
+        is_penawaran:  isOffered,   // wajib TRUE agar muncul di papan
+        pengganti_id:  f.pengganti_id || null,
+        pic_approved_at: (isTerminal || isOffered) ? new Date().toISOString() : null,
+        expires_at:    expiresAt,
+      });
+      if (insertErr) throw new Error(insertErr.message);
+
+      // Step 2: Jika Replaced, update assignment ke pengganti
+      if (isTerminal && f.pengganti_id) {
+        const { error: aErr } = await supabase.from('assignments')
+          .update({ user_id: f.pengganti_id })
+          .eq('id', f.assignment_id);
+        if (aErr) throw new Error('Swap dicatat tapi jadwal gagal diupdate: ' + aErr.message);
+      }
+
+      // Step 3: Check-and-balance — verifikasi via SELECT terpisah (tidak blocking UI)
+      // Jika SELECT gagal, tetap lanjut (data mungkin ada, hanya timing); board akan refresh.
+      if (isOffered) {
+        const { data: verify } = await supabase
+          .from('swap_requests')
+          .select('id, is_penawaran, status')
+          .eq('requester_id', f.requester_id)
+          .eq('assignment_id', f.assignment_id)
+          .eq('status', 'Offered')
+          .eq('is_penawaran', true)
+          .limit(1)
+          .maybeSingle();
+        if (!verify) {
+          // Data mungkin tersimpan tapi tidak terlihat — refresh dan beri warning.
+          // Jangan block UI (modal tetap ditutup di bawah).
+          toast('⚠️ Data dicatat, cek papan penawaran untuk konfirmasi', { icon: '⚠️' });
+        } else {
+          toast.success('Tukar jadwal berhasil dicatat & muncul di papan!');
+        }
+      } else {
+        toast.success('Tukar jadwal berhasil dicatat!');
+      }
+
+      // SUCCESS PATH — selalu tutup modal di sini
+      setShowAdminForm(false);
+      setAdminForm({ requester_id:'', assignment_id:'', alasan:'', pengganti_id:'', status:'Replaced' });
       loadData();
-      return;
-    }
 
-    // Jika langsung Replaced: update assignment ke pengganti
-    if (f.status === 'Replaced' && f.pengganti_id) {
-      const { error: aErr } = await supabase.from('assignments')
-        .update({ user_id: f.pengganti_id })
-        .eq('id', f.assignment_id);
-      if (aErr) { toast.error('Swap dicatat tapi jadwal gagal diupdate: ' + aErr.message); return; }
+    } catch (err: any) {
+      // ERROR PATH — tampilkan pesan, modal TETAP OPEN agar user bisa retry atau tekan Batal.
+      // Modal yang terbuka = user tahu ada masalah; tidak ada overlay tak kasat mata.
+      toast.error(err.message || 'Gagal menyimpan tukar jadwal');
     }
-
-    toast.success('Tukar jadwal berhasil dicatat!');
-    setShowAdminForm(false);
-    setAdminForm({ requester_id:'', assignment_id:'', alasan:'', pengganti_id:'', status:'Replaced' });
-    loadData();
   }
 
   // ── Approve / Reject (pengurus) ────────────────────────────
