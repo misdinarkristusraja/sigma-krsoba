@@ -237,21 +237,30 @@ export default function SwapPage() {
       toast.error('Status "Tergantikan" membutuhkan pengganti — pilih anggota pengganti'); return;
     }
 
-    const isTerminal = f.status === 'Replaced';
-    const { error } = await supabase.from('swap_requests').insert({
+    const isTerminal  = f.status === 'Replaced';
+    const isOffered   = f.status === 'Offered';
+    const { data: inserted, error } = await supabase.from('swap_requests').insert({
       requester_id:  f.requester_id,
       assignment_id: f.assignment_id,
       alasan:        f.alasan || 'Dicatat oleh penjadwalan',
       pic_user_id:   null,
       pic_wa_link:   '',
       status:        f.status,
+      is_penawaran:  isOffered,                                // ← wajib TRUE agar muncul di papan
       pengganti_id:  f.pengganti_id || null,
-      pic_approved_at: isTerminal ? new Date().toISOString() : null,
-      // Retroactive / already-resolved entries should not show as "expiring soon"
-      expires_at:    isTerminal ? new Date().toISOString() : new Date(Date.now() + 24*60*60*1000).toISOString(),
-    });
+      pic_approved_at: (isTerminal || isOffered) ? new Date().toISOString() : null,
+      // Terminal/offered entries: expires_at = now (tidak muncul sebagai "segera kadaluarsa")
+      expires_at:    (isTerminal || isOffered) ? new Date().toISOString() : new Date(Date.now() + 24*60*60*1000).toISOString(),
+    }).select('id, status, is_penawaran').single();
 
     if (error) { toast.error(error.message); return; }
+
+    // Check-and-balance: verifikasi data benar-benar tersimpan sebelum feedback sukses
+    if (isOffered && (!inserted?.is_penawaran || inserted?.status !== 'Offered')) {
+      toast.error('Data tersimpan tapi gagal masuk papan — coba lagi atau hubungi dev');
+      loadData();
+      return;
+    }
 
     // Jika langsung Replaced: update assignment ke pengganti
     if (f.status === 'Replaced' && f.pengganti_id) {
