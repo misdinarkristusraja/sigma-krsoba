@@ -6,6 +6,7 @@ import { formatDate, buildWALink } from '../lib/utils';
 import {
   ArrowLeftRight, MessageCircle, Clock, CheckCircle, XCircle,
   Plus, AlertTriangle, Send, Copy, RefreshCw, Shield, Globe, MessageSquare,
+  Pencil, Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { usePagination } from '../hooks/usePagination';
@@ -37,6 +38,33 @@ function getEffectiveStatus(req: any) {
 
 const SLOT_LABELS: Record<number, string> = { 1:'Sabtu 17:30', 2:'Minggu 06:00', 3:'Minggu 08:00', 4:'Minggu 17:30' };
 
+// Fase 2 — Misa Harian tidak punya struktur slot Sabtu/Minggu. Slot apapun ditulis "Misa N".
+// Misa akhir-pekan (Mingguan/Jumper/Sabtu_Imam) tetap pakai SLOT_LABELS.
+function slotLabel(slot: number | null | undefined, tipeEvent?: string | null): string {
+  if (tipeEvent === 'Misa_Harian') return `Misa ${slot || 1}`;
+  return SLOT_LABELS[slot as number] || `Misa ${slot || 1}`;
+}
+
+// Fase 3 — Misa Mingguan menyimpan SATU tanggal_tugas = hari Minggu, tapi slot 1 adalah
+// Misa antisipasi Sabtu (H-1). Nama perayaan tetap nama Minggu, tapi TANGGAL yang
+// ditampilkan harus ikut hari pelaksanaan: slot 1 = Sabtu (tanggal_tugas−1), slot 2-4 = Minggu.
+// Misa Harian / Misa Khusus = satu hari, tidak ada pergeseran.
+function effectiveDate(
+  tanggalTugas: string | null | undefined,
+  slot: number | null | undefined,
+  tipeEvent?: string | null,
+): string | null | undefined {
+  if (!tanggalTugas) return tanggalTugas;
+  const isWeekend = tipeEvent !== 'Misa_Harian' && tipeEvent !== 'Misa_Khusus';
+  if (isWeekend && slot === 1) {
+    const d = new Date(tanggalTugas.slice(0, 10) + 'T00:00:00'); // parse lokal, hindari UTC shift
+    d.setDate(d.getDate() - 1);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  }
+  return tanggalTugas;
+}
+
 export default function SwapPage() {
   const { profile, isPengurus } = useAuth();
 
@@ -53,6 +81,7 @@ export default function SwapPage() {
 
   // Form: admin add request untuk orang lain
   const [showAdminForm,  setShowAdminForm]  = useState(false);
+  const [editingId,      setEditingId]      = useState<string | null>(null); // null = mode tambah, else mode edit
   const [adminForm,      setAdminForm]      = useState({
     requester_id: '', assignment_id: '', alasan: '', pengganti_id: '', status: 'Replaced',
   });
@@ -95,7 +124,7 @@ export default function SwapPage() {
     // Tidak filter tanggal — admin butuh akses semua jadwal untuk rekap historis.
     (async () => {
       const { data: evData } = await supabase.from('events')
-        .select('id, nama_event, perayaan, tanggal_tugas')
+        .select('id, nama_event, perayaan, tanggal_tugas, tipe_event')
         .order('tanggal_tugas', { ascending: false })
         .limit(120);
       if (!evData?.length) { setAllAssignments([]); return; }
@@ -119,7 +148,7 @@ export default function SwapPage() {
     const { data } = await supabase
       .from('swap_requests')
       .select(`*,
-        assignment:assignment_id(slot_number, events(nama_event, tanggal_tugas, perayaan)),
+        assignment:assignment_id(slot_number, events(nama_event, tanggal_tugas, perayaan, tipe_event)),
         pic:pic_user_id(nama_panggilan, hp_anak, hp_ortu),
         pengganti:pengganti_id(nama_panggilan)`)
       .eq('requester_id', profile!.id)
@@ -133,7 +162,7 @@ export default function SwapPage() {
       .from('swap_requests')
       .select(`*,
         requester:requester_id(nama_panggilan, lingkungan),
-        assignment:assignment_id(slot_number, events(nama_event, tanggal_tugas, perayaan))`)
+        assignment:assignment_id(slot_number, events(nama_event, tanggal_tugas, perayaan, tipe_event))`)
       .eq('is_penawaran', true).eq('status','Offered')
       .neq('requester_id', profile?.id)
       .order('created_at', { ascending: false }).limit(50);
@@ -151,7 +180,7 @@ export default function SwapPage() {
     // Filter .gte('events.tanggal_tugas') di embedded relation tidak reliable di PostgREST.
     const { data: evData } = await supabase
       .from('events')
-      .select('id, nama_event, tanggal_tugas, perayaan, event_pics(slot, nama, hp, urutan)')
+      .select('id, nama_event, tanggal_tugas, perayaan, tipe_event, event_pics(slot, nama, hp, urutan)')
       .gte('tanggal_tugas', today)
       .eq('is_draft', false)
       .order('tanggal_tugas')
@@ -178,7 +207,7 @@ export default function SwapPage() {
       .select(`*,
         requester:requester_id(nama_panggilan, lingkungan, nickname),
         pengganti:pengganti_id(nama_panggilan),
-        assignment:assignment_id(slot_number, events(nama_event, tanggal_tugas, perayaan)),
+        assignment:assignment_id(slot_number, events(nama_event, tanggal_tugas, perayaan, tipe_event)),
         pic:pic_user_id(nama_panggilan)`)
       .order('created_at', { ascending: false }).limit(100);
     setAllReqs(data||[]);
@@ -257,21 +286,31 @@ export default function SwapPage() {
         : new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
 
     try {
-      // Step 1: INSERT — plain (tanpa .select().single() agar tidak ada
-      // RLS-on-returning edge-case yang menghasilkan error + modal stuck).
-      const { error: insertErr } = await supabase.from('swap_requests').insert({
+      // Payload sama untuk insert & update. is_penawaran wajib TRUE saat Offered
+      // agar lolos RLS swap_select_board + query loadBoard.
+      const payload = {
         requester_id:  f.requester_id,
         assignment_id: f.assignment_id,
         alasan:        f.alasan || 'Dicatat oleh penjadwalan',
-        pic_user_id:   null,
-        pic_wa_link:   '',
         status:        f.status,
-        is_penawaran:  isOffered,   // wajib TRUE agar muncul di papan
+        is_penawaran:  isOffered,
         pengganti_id:  f.pengganti_id || null,
         pic_approved_at: (isTerminal || isOffered) ? new Date().toISOString() : null,
         expires_at:    expiresAt,
-      });
-      if (insertErr) throw new Error(insertErr.message);
+      };
+
+      // Step 1: UPDATE (mode edit) atau INSERT (mode tambah).
+      // Plain write tanpa .select().single() — hindari RLS-on-returning edge-case
+      // yang bisa menghasilkan error palsu + modal stuck.
+      if (editingId) {
+        const { error: updErr } = await supabase.from('swap_requests')
+          .update(payload).eq('id', editingId);
+        if (updErr) throw new Error(updErr.message);
+      } else {
+        const { error: insertErr } = await supabase.from('swap_requests')
+          .insert({ ...payload, pic_user_id: null, pic_wa_link: '' });
+        if (insertErr) throw new Error(insertErr.message);
+      }
 
       // Step 2: Jika Replaced, update assignment ke pengganti
       if (isTerminal && f.pengganti_id) {
@@ -296,17 +335,16 @@ export default function SwapPage() {
         if (!verify) {
           // Data mungkin tersimpan tapi tidak terlihat — refresh dan beri warning.
           // Jangan block UI (modal tetap ditutup di bawah).
-          toast('⚠️ Data dicatat, cek papan penawaran untuk konfirmasi', { icon: '⚠️' });
+          toast('⚠️ Data disimpan, cek papan penawaran untuk konfirmasi', { icon: '⚠️' });
         } else {
-          toast.success('Tukar jadwal berhasil dicatat & muncul di papan!');
+          toast.success(editingId ? 'Penawaran diperbarui & muncul di papan!' : 'Tukar jadwal berhasil dicatat & muncul di papan!');
         }
       } else {
-        toast.success('Tukar jadwal berhasil dicatat!');
+        toast.success(editingId ? 'Catatan tukar jadwal diperbarui!' : 'Tukar jadwal berhasil dicatat!');
       }
 
       // SUCCESS PATH — selalu tutup modal di sini
-      setShowAdminForm(false);
-      setAdminForm({ requester_id:'', assignment_id:'', alasan:'', pengganti_id:'', status:'Replaced' });
+      closeAdminForm();
       loadData();
 
     } catch (err: any) {
@@ -314,6 +352,35 @@ export default function SwapPage() {
       // Modal yang terbuka = user tahu ada masalah; tidak ada overlay tak kasat mata.
       toast.error(err.message || 'Gagal menyimpan tukar jadwal');
     }
+  }
+
+  // Tutup + reset form admin (dipakai success path, tombol Batal, dan tombol Catat Manual).
+  function closeAdminForm() {
+    setShowAdminForm(false);
+    setEditingId(null);
+    setAdminForm({ requester_id:'', assignment_id:'', alasan:'', pengganti_id:'', status:'Replaced' });
+  }
+
+  // ── Admin: edit penawaran/catatan tukar (reaktif, lewat DB → loadData) ──────
+  function editPenawaran(req: any) {
+    setEditingId(req.id);
+    setAdminForm({
+      requester_id:  req.requester_id || '',
+      assignment_id: req.assignment_id || '',
+      alasan:        req.alasan || '',
+      pengganti_id:  req.pengganti_id || '',
+      status:        req.status || 'Replaced',
+    });
+    setShowAdminForm(true);
+  }
+
+  // ── Admin: hapus catatan tukar (DELETE → loadData, UI refresh real-time) ────
+  async function hapusPenawaran(req: any) {
+    if (!confirm(`Hapus catatan tukar jadwal milik ${req.requester?.nama_panggilan || 'anggota ini'}? Tindakan ini permanen.`)) return;
+    const { error } = await supabase.from('swap_requests').delete().eq('id', req.id);
+    if (error) { toast.error('Gagal hapus: ' + error.message); return; }
+    toast.success('Catatan tukar jadwal dihapus');
+    loadData();
   }
 
   // ── Approve / Reject (pengurus) ────────────────────────────
@@ -394,7 +461,7 @@ export default function SwapPage() {
       replaced.forEach((r: any) => {
         const ev   = r.assignment?.events;
         const slot = r.assignment?.slot_number;
-        lines.push(`• ${r.requester?.nama_panggilan} dibantu oleh ${r.pengganti?.nama_panggilan||'?'} — ${ev?.perayaan||ev?.nama_event||'?'} (${SLOT_LABELS[slot]||'?'}, ${formatDate(ev?.tanggal_tugas,'dd MMM')})`);
+        lines.push(`• ${r.requester?.nama_panggilan} dibantu oleh ${r.pengganti?.nama_panggilan||'?'} — ${ev?.perayaan||ev?.nama_event||'?'} (${slotLabel(slot, ev?.tipe_event)}, ${formatDate(effectiveDate(ev?.tanggal_tugas, slot, ev?.tipe_event),'dd MMM')})`);
       });
       lines.push('');
     }
@@ -403,7 +470,7 @@ export default function SwapPage() {
       offered.forEach((r: any) => {
         const ev   = r.assignment?.events;
         const slot = r.assignment?.slot_number;
-        lines.push(`• ${r.requester?.nama_panggilan} — ${ev?.perayaan||ev?.nama_event||'?'} (${SLOT_LABELS[slot]||'?'}, ${formatDate(ev?.tanggal_tugas,'dd MMM')})`);
+        lines.push(`• ${r.requester?.nama_panggilan} — ${ev?.perayaan||ev?.nama_event||'?'} (${slotLabel(slot, ev?.tipe_event)}, ${formatDate(effectiveDate(ev?.tanggal_tugas, slot, ev?.tipe_event),'dd MMM')})`);
       });
       lines.push('_Kalau bisa bantu, hubungi PIC atau langsung ambil lewat aplikasi. Terima kasih! 😊_');
       lines.push('');
@@ -453,7 +520,7 @@ export default function SwapPage() {
           )}
           {isPengurus && (
             <>
-              <button onClick={() => setShowAdminForm(true)} className="btn-outline gap-2">
+              <button onClick={() => { closeAdminForm(); setShowAdminForm(true); }} className="btn-outline gap-2">
                 <Shield size={16}/> Catat Manual
               </button>
               <button onClick={async () => {
@@ -470,7 +537,7 @@ export default function SwapPage() {
                     .select(`id, status, is_penawaran,
                       requester:requester_id(nama_panggilan),
                       pengganti:pengganti_id(nama_panggilan),
-                      assignment:assignment_id(slot_number, events(nama_event, tanggal_tugas, perayaan))`)
+                      assignment:assignment_id(slot_number, events(nama_event, tanggal_tugas, perayaan, tipe_event))`)
                     .eq('status', 'Offered')
                     .eq('is_penawaran', true),
                 ]);
@@ -521,7 +588,7 @@ export default function SwapPage() {
                       )}
                     </div>
                     <p className="font-semibold text-gray-900 truncate">{ev?.perayaan||ev?.nama_event||'—'}</p>
-                    <p className="text-sm text-gray-500">{formatDate(ev?.tanggal_tugas,'dd MMM yyyy')} · {SLOT_LABELS[req.assignment?.slot_number]}</p>
+                    <p className="text-sm text-gray-500">{formatDate(effectiveDate(ev?.tanggal_tugas, req.assignment?.slot_number, ev?.tipe_event),'dd MMM yyyy')} · {slotLabel(req.assignment?.slot_number, ev?.tipe_event)}</p>
                     <p className="text-xs text-gray-400 italic mt-1">"{req.alasan}"</p>
                     {req.pengganti?.nama_panggilan && (
                       <p className="text-xs text-green-600 mt-1">✅ Digantikan: {req.pengganti.nama_panggilan}</p>
@@ -563,7 +630,7 @@ export default function SwapPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-gray-900">{ev?.perayaan||ev?.nama_event}</p>
-                    <p className="text-sm text-gray-500">{formatDate(ev?.tanggal_tugas,'EEEE, dd MMM yyyy')} · {SLOT_LABELS[req.assignment?.slot_number]}</p>
+                    <p className="text-sm text-gray-500">{formatDate(effectiveDate(ev?.tanggal_tugas, req.assignment?.slot_number, ev?.tipe_event),'EEEE, dd MMM yyyy')} · {slotLabel(req.assignment?.slot_number, ev?.tipe_event)}</p>
                     <p className="text-xs text-gray-400 mt-1">Dari: <strong>{req.requester?.nama_panggilan}</strong> ({req.requester?.lingkungan})</p>
                     <p className="text-xs text-gray-400 italic">"{req.alasan}"</p>
                   </div>
@@ -604,21 +671,27 @@ export default function SwapPage() {
                         <div className="font-semibold text-sm">{req.requester?.nama_panggilan}</div>
                         <div className="text-xs text-gray-400">{req.requester?.lingkungan}</div>
                       </td>
-                      <td className="text-xs">{ev?.perayaan||ev?.nama_event}<br/>{formatDate(ev?.tanggal_tugas,'dd MMM')}</td>
-                      <td className="text-xs">{SLOT_LABELS[req.assignment?.slot_number]||'—'}</td>
+                      <td className="text-xs">{ev?.perayaan||ev?.nama_event}<br/>{formatDate(effectiveDate(ev?.tanggal_tugas, req.assignment?.slot_number, ev?.tipe_event),'dd MMM')}</td>
+                      <td className="text-xs">{slotLabel(req.assignment?.slot_number, ev?.tipe_event)}</td>
                       <td className="text-xs text-gray-500 max-w-32 truncate">{req.alasan}</td>
                       <td><span className={`badge ${sc.color} text-xs`}>{sc.label}</span></td>
                       <td className="text-xs">{req.pengganti?.nama_panggilan||'—'}</td>
                       <td>
-                        {req.status === 'Pending' && (
-                          <div className="flex gap-1">
-                            <button onClick={() => approveRequest(req)} className="btn-primary btn-sm text-xs">✓ Approve</button>
-                            <button onClick={() => rejectRequest(req)} className="btn-danger btn-sm text-xs">✗ Tolak</button>
-                          </div>
-                        )}
-                        {req.status === 'Approved_PIC' && (
-                          <button onClick={() => offerToBoard(req)} className="btn-outline btn-sm text-xs">Tawarkan</button>
-                        )}
+                        <div className="flex flex-wrap gap-1">
+                          {req.status === 'Pending' && (
+                            <>
+                              <button onClick={() => approveRequest(req)} className="btn-primary btn-sm text-xs">✓ Approve</button>
+                              <button onClick={() => rejectRequest(req)} className="btn-danger btn-sm text-xs">✗ Tolak</button>
+                            </>
+                          )}
+                          {req.status === 'Approved_PIC' && (
+                            <button onClick={() => offerToBoard(req)} className="btn-outline btn-sm text-xs">Tawarkan</button>
+                          )}
+                          <button onClick={() => editPenawaran(req)} title="Edit catatan"
+                            className="btn-ghost btn-sm text-xs p-1.5"><Pencil size={13}/></button>
+                          <button onClick={() => hapusPenawaran(req)} title="Hapus catatan"
+                            className="btn-ghost btn-sm text-xs p-1.5 text-red-500 hover:bg-red-50"><Trash2 size={13}/></button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -647,7 +720,7 @@ export default function SwapPage() {
                   <option value="">— Pilih jadwal —</option>
                   {mySched.map(s => (
                     <option key={s.id} value={s.id}>
-                      {s.events?.perayaan||s.events?.nama_event} · {SLOT_LABELS[s.slot_number]} · {formatDate(s.events?.tanggal_tugas,'dd MMM')}
+                      {s.events?.perayaan||s.events?.nama_event} · {slotLabel(s.slot_number, s.events?.tipe_event)} · {formatDate(effectiveDate(s.events?.tanggal_tugas, s.slot_number, s.events?.tipe_event),'dd MMM')}
                     </option>
                   ))}
                 </select>
@@ -675,7 +748,7 @@ export default function SwapPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-              <Shield size={18} className="text-brand-800"/> Catat Tukar Jadwal Manual
+              <Shield size={18} className="text-brand-800"/> {editingId ? 'Edit Catatan Tukar Jadwal' : 'Catat Tukar Jadwal Manual'}
             </h3>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -710,7 +783,7 @@ export default function SwapPage() {
                       const isPast = a.events?.tanggal_tugas < new Date().toISOString().split('T')[0];
                       return (
                         <option key={a.id} value={a.id}>
-                          {isPast ? '↩ ' : ''}{a.events?.perayaan||a.events?.nama_event} · {SLOT_LABELS[a.slot_number]} · {formatDate(a.events?.tanggal_tugas,'dd MMM yyyy')}
+                          {isPast ? '↩ ' : ''}{a.events?.perayaan||a.events?.nama_event} · {slotLabel(a.slot_number, a.events?.tipe_event)} · {formatDate(effectiveDate(a.events?.tanggal_tugas, a.slot_number, a.events?.tipe_event),'dd MMM yyyy')}
                         </option>
                       );
                     })
@@ -749,16 +822,16 @@ export default function SwapPage() {
               return (
                 <div className="mt-4 p-3 bg-green-50 rounded-xl text-xs text-green-700">
                   Preview: <strong>{req?.nama_panggilan}</strong> tukar dengan <strong>{peng?.nama_panggilan}</strong>
-                  {' '}untuk {asgn?.events?.perayaan||asgn?.events?.nama_event} ({SLOT_LABELS[asgn?.slot_number]})
+                  {' '}untuk {asgn?.events?.perayaan||asgn?.events?.nama_event} ({slotLabel(asgn?.slot_number, asgn?.events?.tipe_event)})
                 </div>
               );
             })()}
 
             <div className="flex gap-2 mt-5">
               <button onClick={submitAdminSwap} className="btn-primary flex-1 gap-2">
-                <Shield size={16}/> Simpan
+                <Shield size={16}/> {editingId ? 'Simpan Perubahan' : 'Simpan'}
               </button>
-              <button onClick={() => setShowAdminForm(false)} className="btn-secondary">Batal</button>
+              <button onClick={closeAdminForm} className="btn-secondary">Batal</button>
             </div>
           </div>
         </div>
