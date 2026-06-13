@@ -320,8 +320,11 @@ export default function SwapPage() {
         if (aErr) throw new Error('Swap dicatat tapi jadwal gagal diupdate: ' + aErr.message);
       }
 
-      // Step 3: Check-and-balance — verifikasi via SELECT terpisah (tidak blocking UI)
-      // Jika SELECT gagal, tetap lanjut (data mungkin ada, hanya timing); board akan refresh.
+      // Step 3: Check-and-balance — verifikasi data tersimpan DAN prediksi apakah
+      // benar-benar akan tampil di papan. Feedback harus JUJUR: papan punya 2 filter
+      // (tanggal >= hari ini, requester != user ini) yang bisa menyembunyikan item
+      // walau tersimpan benar. Sebelumnya toast bilang "muncul di papan" padahal bisa
+      // disembunyikan — itu sumber kebingungan "Simpan tapi tak muncul".
       if (isOffered) {
         const { data: verify } = await supabase
           .from('swap_requests')
@@ -332,12 +335,20 @@ export default function SwapPage() {
           .eq('is_penawaran', true)
           .limit(1)
           .maybeSingle();
+
+        const evTgl          = eventDate?.slice(0, 10);
+        const hiddenByDate   = evTgl && evTgl < todayStr();          // filter loadBoard: tgl >= today
+        const hiddenByOwner  = f.requester_id === profile?.id;        // filter loadBoard: neq requester_id
+
         if (!verify) {
-          // Data mungkin tersimpan tapi tidak terlihat — refresh dan beri warning.
-          // Jangan block UI (modal tetap ditutup di bawah).
-          toast('⚠️ Data disimpan, cek papan penawaran untuk konfirmasi', { icon: '⚠️' });
+          toast('⚠️ Data disimpan tapi gagal dibaca ulang — cek papan manual', { icon: '⚠️' });
+        } else if (hiddenByDate) {
+          toast('✅ Tersimpan, TAPI tidak tampil di papan: tanggal tugas sudah lewat', { icon: '📅', duration: 6000 });
+        } else if (hiddenByOwner) {
+          toast('✅ Tersimpan. Tidak tampil di papan karena anggotanya kamu sendiri — lihat tab "Request Saya"', { duration: 6000 });
         } else {
-          toast.success(editingId ? 'Penawaran diperbarui & muncul di papan!' : 'Tukar jadwal berhasil dicatat & muncul di papan!');
+          toast.success(editingId ? 'Penawaran diperbarui & tampil di papan!' : 'Tukar jadwal tampil di papan!');
+          setTab('board'); // auto-pindah ke Papan Penawaran biar admin langsung lihat hasilnya
         }
       } else {
         toast.success(editingId ? 'Catatan tukar jadwal diperbarui!' : 'Tukar jadwal berhasil dicatat!');
