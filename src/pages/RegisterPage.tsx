@@ -348,17 +348,20 @@ export default function RegisterPage() {
     );
   }
 
-  const F = ({ name, label, required, children, hint }: any) => (
-    <div>
-      <label className="label">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>
-      {children}
-      {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
-      {errors[name] && <p className="text-xs text-red-500 mt-1">{errors[name]}</p>}
-    </div>
-  );
+  const F = ({ name, label, required, children, hint }: any) => {
+    const fieldId = `field-${name}`;
+    return (
+      <div>
+        <label htmlFor={fieldId} className="label">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>
+        {children}
+        {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+        {errors[name] && <p className="text-xs text-red-500 mt-1">{errors[name]}</p>}
+      </div>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-800 to-brand-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-brand-800 to-brand-950 flex flex-col items-center justify-start p-4 py-8 md:justify-center overflow-y-auto">
       <div className="w-full max-w-lg">
         {/* Header */}
         <div className="text-center mb-6">
@@ -379,18 +382,28 @@ export default function RegisterPage() {
 
           {/* ── Data Diri ── */}
           <F name="nama_lengkap" label="Nama Lengkap (dan Baptis)" required>
-            <input className={`input ${errors.nama_lengkap ? 'input-error' : ''}`}
+            <input 
+              id="field-nama_lengkap"
+              type="text"
+              className={`input ${errors.nama_lengkap ? 'input-error' : ''}`}
               value={form.nama_lengkap} onChange={e => handleNamaChange(e.target.value)}
-              placeholder="contoh: Aloysius Giodizio Immanuel Setiyawan" />
+              placeholder="contoh: Aloysius Giodizio Immanuel Setiyawan"
+              autoFocus
+              autoComplete="name"
+            />
           </F>
 
           <F name="nickname" label="Nama Panggilan" required hint="Lowercase, tanpa spasi. Contoh: gio">
             <div className="relative">
               <input
+                id="field-nickname"
+                type="text"
                 className={`input ${errors.nickname ? 'input-error' : ''}`}
                 value={form.nickname}
                 onChange={e => { setForm(f => ({ ...f, nickname: toNickname(e.target.value) })); checkNickname(toNickname(e.target.value)); }}
                 placeholder="contoh: gio"
+                autoComplete="nickname"
+                autoCapitalize="none"
               />
               {nicknameStatus === 'checking' && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-gray-300 border-t-brand-800 rounded-full animate-spin" />
@@ -405,11 +418,16 @@ export default function RegisterPage() {
 
           <div className="grid grid-cols-2 gap-3">
             <F name="tanggal_lahir" label="Tanggal Lahir" required>
-              <input type="date" className={`input ${errors.tanggal_lahir ? 'input-error' : ''}`}
+              <input 
+                id="field-tanggal_lahir"
+                type="date" 
+                className={`input ${errors.tanggal_lahir ? 'input-error' : ''}`}
                 value={form.tanggal_lahir} onChange={e => setForm(f => ({ ...f, tanggal_lahir: e.target.value }))} />
             </F>
             <F name="pendidikan" label="Pendidikan" required>
-              <select className={`input ${errors.pendidikan ? 'input-error' : ''}`}
+              <select 
+                id="field-pendidikan"
+                className={`input ${errors.pendidikan ? 'input-error' : ''}`}
                 value={form.pendidikan} onChange={e => setForm(f => ({ ...f, pendidikan: e.target.value }))}>
                 <option value="">Pilih...</option>
                 {PENDIDIKAN_OPTIONS.map(p => <option key={p}>{p}</option>)}
@@ -426,7 +444,9 @@ export default function RegisterPage() {
           </F>
 
           <F name="lingkungan" label="Lingkungan" required>
-            <select className={`input ${errors.lingkungan ? 'input-error' : ''}`}
+            <select 
+              id="field-lingkungan"
+              className={`input ${errors.lingkungan ? 'input-error' : ''}`}
               value={form.lingkungan}
               onChange={e => {
                 const ling = e.target.value;
@@ -438,39 +458,58 @@ export default function RegisterPage() {
           </F>
 
           <F name="alamat" label="Alamat Rumah">
-            <textarea className="input h-20 resize-none" value={form.alamat}
+            <textarea 
+              id="field-alamat"
+              className="input h-20 resize-none" value={form.alamat}
               onChange={e => setForm(f => ({ ...f, alamat: e.target.value }))} placeholder="Alamat lengkap" />
           </F>
 
           <div className="grid grid-cols-2 gap-3">
             <F name="hp_anak" label="No. HP Anak (opsional)" hint="Kosongkan jika tidak punya HP">
-              <input className="input" value={form.hp_anak}
-                onChange={e => setForm(f => ({ ...f, hp_anak: e.target.value }))} placeholder="08xx..." />
+              <input 
+                id="field-hp_anak"
+                type="tel" 
+                className="input" value={form.hp_anak}
+                onChange={e => setForm(f => ({ ...f, hp_anak: e.target.value }))} placeholder="08xx..." autoComplete="tel" />
             </F>
             <F name="hp_ortu" label="No. HP / WA Orang Tua" required>
-              <input className={`input ${errors.hp_ortu ? 'input-error' : ''}`} value={form.hp_ortu}
-                onChange={e => setForm(f => ({ ...f, hp_ortu: e.target.value }))} placeholder="08xx..." />
+              <input 
+                id="field-hp_ortu"
+                type="tel" 
+                className={`input ${errors.hp_ortu ? 'input-error' : ''}`} value={form.hp_ortu}
+                onChange={e => setForm(f => ({ ...f, hp_ortu: e.target.value }))} placeholder="08xx..." autoComplete="tel" />
             </F>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <F name="nama_ayah" label="Nama Ayah">
-              <input className="input" value={form.nama_ayah}
+              <input 
+                id="field-nama_ayah"
+                type="text" 
+                className="input" value={form.nama_ayah}
                 onChange={e => setForm(f => ({ ...f, nama_ayah: e.target.value }))} placeholder="Nama ayah" />
             </F>
             <F name="nama_ibu" label="Nama Ibu">
-              <input className="input" value={form.nama_ibu}
+              <input 
+                id="field-nama_ibu"
+                type="text" 
+                className="input" value={form.nama_ibu}
                 onChange={e => setForm(f => ({ ...f, nama_ibu: e.target.value }))} placeholder="Nama ibu" />
             </F>
           </div>
 
           <F name="alasan_masuk" label="Alasan Menjadi Misdinar">
-            <textarea className="input h-20 resize-none" value={form.alasan_masuk}
+            <textarea 
+              id="field-alasan_masuk"
+              className="input h-20 resize-none" value={form.alasan_masuk}
               onChange={e => setForm(f => ({ ...f, alasan_masuk: e.target.value }))} placeholder="Motivasi kamu..." />
           </F>
 
           <F name="sampai_kapan" label="Rencana Sampai Kapan">
-            <input className="input" value={form.sampai_kapan}
+            <input 
+              id="field-sampai_kapan"
+              type="text" 
+              className="input" value={form.sampai_kapan}
               onChange={e => setForm(f => ({ ...f, sampai_kapan: e.target.value }))} placeholder="Sampai lulus SMA, dll." />
           </F>
 
@@ -486,6 +525,8 @@ export default function RegisterPage() {
             </div>
             <F name="nomor_data_umat" label="Nomor Data Umat" required hint="Contoh: 1111 — tanyakan ke PIC Data Umat Lingkungan">
               <input
+                id="field-nomor_data_umat"
+                type="text"
                 className={`input font-mono ${errors.nomor_data_umat ? 'input-error' : ''}`}
                 value={form.nomor_data_umat}
                 onChange={e => setForm(f => ({ ...f, nomor_data_umat: e.target.value }))}
