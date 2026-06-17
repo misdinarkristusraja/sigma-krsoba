@@ -18,10 +18,14 @@ export default function SignaturePad({ onChange, height = 160 }: Props) {
     const pad = new SigPad(canvas, { minWidth: 1.2, maxWidth: 3, penColor: '#1e3a5f' });
     padRef.current = pad;
 
+    let lastWidth = canvas.offsetWidth;
     function resize() {
       if (!canvas) return;
-      const ratio = Math.max(window.devicePixelRatio || 1, 1);
       const w = canvas.offsetWidth;
+      if (w === lastWidth) return; // Skip if width didn't change (e.g. keyboard open/close on some browsers)
+      lastWidth = w;
+      
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
       const data = pad.toData();
       canvas.width  = w * ratio;
       canvas.height = height * ratio;

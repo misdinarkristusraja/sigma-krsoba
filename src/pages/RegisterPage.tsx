@@ -348,24 +348,211 @@ export default function RegisterPage() {
     );
   }
 
-  const F = ({ name, label, required, children, hint }: any) => {
-    const fieldId = `field-${name}`;
+// ── Helper Component ─────────────────────────────────────────────
+const F = ({ name, label, required, children, hint, errors }: any) => {
+  const fieldId = `field-${name}`;
+  return (
+    <div>
+      <label htmlFor={fieldId} className="label">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>
+      {children}
+      {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
+      {errors[name] && <p className="text-xs text-red-500 mt-1">{errors[name]}</p>}
+    </div>
+  );
+};
+
+// ── Component ────────────────────────────────────────────────────
+export default function RegisterPage() {
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [nicknameStatus, setNicknameStatus] = useState<'checking' | 'ok' | 'taken' | null>(null);
+  const [regOpenDate,  setRegOpenDate]  = useState<Date | null>(null);
+  const [regCloseDate, setRegCloseDate] = useState<Date | null>(null);
+
+  useEffect(() => {
+    supabase
+      .from('system_config')
+      .select('key, value')
+      .in('key', ['reg_open_date', 'reg_close_date'])
+      .then(({ data }: any) => {
+        const map: Record<string, string> = {};
+        (data || []).forEach((r: any) => { map[r.key] = r.value; });
+        if (map.reg_open_date)  setRegOpenDate(new Date(map.reg_open_date));
+        if (map.reg_close_date) setRegCloseDate(new Date(map.reg_close_date + 'T23:59:59'));
+      });
+  }, []);
+
+  const now = new Date();
+  const regIsOpen = regOpenDate && regCloseDate
+    ? now >= regOpenDate && now <= regCloseDate
+    : true;
+  const nicknameTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [form, setForm] = useState<Record<string, any>>({
+    nama_lengkap: '', nickname: '', tanggal_lahir: '', alamat: '',
+    lingkungan: '', pendidikan: '', sekolah: '',
+    hp_anak: '', hp_ortu: '',
+    nama_ayah: '', nama_ibu: '',
+    alasan_masuk: '', sampai_kapan: '',
+    nomor_data_umat: '',
+    signature_data_url: null as string | null,
+    signature_child_data_url: null as string | null,
+    declared: false,
+  });
+  const [errors, setErrors] = useState<Record<string, any>>({});
+
+  function handleNamaChange(val: string) {
+    setForm(f => {
+      const next = { ...f, nama_lengkap: val };
+      if (!f.nickname) {
+        const suggested = toNickname(val.split(' ')[0]);
+        if (suggested) {
+          next.nickname = suggested;
+          // checkNickname needs to be called outside or in a separate effect
+          // but for brevity we call it here (will use latest suggested)
+          setTimeout(() => checkNickname(suggested), 0);
+        }
+      }
+      return next;
+    });
+  }
+
+  function checkNickname(value: any) {
+    if (nicknameTimer.current) clearTimeout(nicknameTimer.current);
+    if (!value || value.length < 3) { setNicknameStatus(null); return; }
+    setNicknameStatus('checking');
+    nicknameTimer.current = setTimeout(async () => {
+      const { data } = await supabase.from('users').select('id').eq('nickname', value).maybeSingle();
+      setNicknameStatus(data ? 'taken' : 'ok');
+    }, 400);
+  }
+
+  function validate() {
+    const e: Record<string, any> = {};
+    if (!form.nama_lengkap) e.nama_lengkap = 'Wajib diisi';
+    if (!form.nickname || form.nickname.length < 3) e.nickname = 'Min. 3 karakter';
+    if (nicknameStatus === 'taken') e.nickname = 'Sudah dipakai, pilih yang lain';
+    if (!form.tanggal_lahir) e.tanggal_lahir = 'Wajib diisi';
+    if (!form.lingkungan) e.lingkungan = 'Pilih lingkungan';
+    if (!form.pendidikan) e.pendidikan = 'Pilih pendidikan';
+    if (!form.hp_ortu) e.hp_ortu = 'No. HP Orang Tua wajib';
+    if (!form.nama_ayah && !form.nama_ibu) e.nama_ayah = 'Minimal salah satu orang tua';
+    if (!form.nomor_data_umat?.trim()) e.nomor_data_umat = 'Nomor Data Umat wajib diisi. Tanyakan ke PIC Data Umat Lingkungan.';
+    if (!form.signature_child_data_url) e.signature_child = 'Tanda tangan calon misdinar wajib diisi';
+    if (!form.signature_data_url) e.signature = 'Tanda tangan orang tua wajib diisi';
+    if (!form.declared) e.declared = 'Wajib dicentang sebagai pernyataan';
+    return e;
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const e2 = validate();
+    if (Object.keys(e2).length) { setErrors(e2); toast.error('Ada data yang belum lengkap'); return; }
+
+    setLoading(true);
+    try {
+      // 1. Generate signed surat pernyataan PDF
+      const namaOrtu = [form.nama_ayah, form.nama_ibu].filter(Boolean).join(' / ');
+      const pdfBlob  = await generateSuratPDF(
+        form.nama_lengkap,
+        namaOrtu,
+        form.lingkungan,
+        form.hp_ortu              || '',
+        form.hp_anak              || '',
+        form.signature_data_url,
+        form.signature_child_data_url || '',
+      );
+      const pdfPath = `surat/${Date.now()}_${(form.nickname || 'pendaftar').toLowerCase()}_surat_pernyataan.pdf`;
+      const { error: pdfErr } = await supabase.storage.from('documents').upload(pdfPath, pdfBlob, {
+        contentType: 'application/pdf',
+      });
+      if (pdfErr) throw pdfErr;
+
+      // 2. Insert registration
+      const wilayah = getWilayah(form.lingkungan) || null;
+      const isTarakanita = form.is_tarakanita === true;
+
+      const { error } = await supabase.from('registrations').insert({
+        nama_lengkap:          form.nama_lengkap,
+        nickname:              form.nickname.toLowerCase(),
+        tanggal_lahir:         form.tanggal_lahir,
+        alamat:                form.alamat,
+        lingkungan:            form.lingkungan,
+        wilayah,
+        pendidikan:            form.pendidikan,
+        sekolah:               form.sekolah,
+        is_tarakanita:         isTarakanita,
+        hp_anak:               form.hp_anak ? formatHP(form.hp_anak) : null,
+        hp_ortu:               formatHP(form.hp_ortu),
+        nama_ayah:             form.nama_ayah,
+        nama_ibu:              form.nama_ibu,
+        alasan_masuk:          form.alasan_masuk,
+        sampai_kapan:          form.sampai_kapan,
+        surat_pernyataan_url:  pdfPath,
+        nomor_data_umat:       form.nomor_data_umat?.trim() || null,
+        pernyataan_declared:   true,
+        status:                'Pending',
+      });
+
+      if (error) throw error;
+      setStep(3);
+    } catch (err: any) {
+      toast.error('Gagal mendaftar: ' + (err.message || 'Coba lagi'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ── Closed state ────────────────────────────────────────────────
+  if (!regIsOpen) {
+    const openLabel  = regOpenDate  ? regOpenDate.toLocaleDateString('id-ID',  { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+    const closeLabel = regCloseDate ? regCloseDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+    const isPast = regCloseDate && new Date() > regCloseDate;
     return (
-      <div>
-        <label htmlFor={fieldId} className="label">{label}{required && <span className="text-red-500 ml-1">*</span>}</label>
-        {children}
-        {hint && <p className="text-xs text-gray-400 mt-1">{hint}</p>}
-        {errors[name] && <p className="text-xs text-red-500 mt-1">{errors[name]}</p>}
+      <div className="min-h-screen bg-gradient-to-br from-brand-800 to-brand-950 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center">
+          <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl">{isPast ? '🔒' : '⏳'}</span>
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            {isPast ? 'Pendaftaran Sudah Ditutup' : 'Pendaftaran Belum Dibuka'}
+          </h2>
+          <p className="text-gray-500 text-sm mb-2">
+            {isPast
+              ? `Pendaftaran baru telah ditutup pada ${closeLabel}.`
+              : `Pendaftaran baru dibuka ${openLabel} – ${closeLabel}.`}
+          </p>
+          <p className="text-gray-400 text-xs mb-6">Hubungi Pengurus jika perlu informasi lebih lanjut.</p>
+          <Link to="/login" className="btn-primary w-full">Kembali ke Login</Link>
+        </div>
       </div>
     );
-  };
+  }
+
+  // ── Success state ────────────────────────────────────────────────
+  if (step === 3) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-brand-800 to-brand-950 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center">
+          <CheckCircle size={56} className="text-green-500 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Pendaftaran Berhasil!</h2>
+          <p className="text-gray-600 text-sm mb-6">
+            Pendaftaran kamu sudah diterima dan sedang menunggu persetujuan Pengurus.
+            Pengurus akan menghubungi melalui nomor HP yang kamu daftarkan.
+          </p>
+          <p className="text-xs text-gray-400 mb-6 italic">"Serve the Lord with Gladness"</p>
+          <Link to="/jadwal" className="btn-primary w-full">Lihat Jadwal Publik</Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-brand-800 to-brand-950 flex flex-col items-center justify-start p-4 py-8 md:justify-center overflow-y-auto">
-      <div className="w-full max-w-lg">
+    <div className="min-h-screen bg-gradient-to-br from-brand-800 to-brand-950 flex flex-col items-center p-4 pt-10 pb-20 overflow-x-hidden">
+      <div className="w-full max-w-lg relative z-10">
         {/* Header */}
         <div className="text-center mb-6">
-          <div className="inline-flex w-14 h-14 bg-white/15 rounded-2xl items-center justify-center mb-3">
+          <div className="inline-flex w-14 h-14 bg-white/15 rounded-2xl items-center justify-center mb-3 shadow-lg">
             <Church size={24} className="text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">Daftar Misdinar</h1>
@@ -381,26 +568,29 @@ export default function RegisterPage() {
           </div>
 
           {/* ── Data Diri ── */}
-          <F name="nama_lengkap" label="Nama Lengkap (dan Baptis)" required>
+          <F name="nama_lengkap" label="Nama Lengkap (dan Baptis)" required errors={errors}>
             <input 
               id="field-nama_lengkap"
               type="text"
               className={`input ${errors.nama_lengkap ? 'input-error' : ''}`}
               value={form.nama_lengkap} onChange={e => handleNamaChange(e.target.value)}
               placeholder="contoh: Aloysius Giodizio Immanuel Setiyawan"
-              autoFocus
               autoComplete="name"
             />
           </F>
 
-          <F name="nickname" label="Nama Panggilan" required hint="Lowercase, tanpa spasi. Contoh: gio">
+          <F name="nickname" label="Nama Panggilan" required hint="Lowercase, tanpa spasi. Contoh: gio" errors={errors}>
             <div className="relative">
               <input
                 id="field-nickname"
                 type="text"
                 className={`input ${errors.nickname ? 'input-error' : ''}`}
                 value={form.nickname}
-                onChange={e => { setForm(f => ({ ...f, nickname: toNickname(e.target.value) })); checkNickname(toNickname(e.target.value)); }}
+                onChange={e => { 
+                  const v = toNickname(e.target.value);
+                  setForm(f => ({ ...f, nickname: v })); 
+                  checkNickname(v); 
+                }}
                 placeholder="contoh: gio"
                 autoComplete="nickname"
                 autoCapitalize="none"
@@ -417,14 +607,14 @@ export default function RegisterPage() {
           </F>
 
           <div className="grid grid-cols-2 gap-3">
-            <F name="tanggal_lahir" label="Tanggal Lahir" required>
+            <F name="tanggal_lahir" label="Tanggal Lahir" required errors={errors}>
               <input 
                 id="field-tanggal_lahir"
                 type="date" 
                 className={`input ${errors.tanggal_lahir ? 'input-error' : ''}`}
                 value={form.tanggal_lahir} onChange={e => setForm(f => ({ ...f, tanggal_lahir: e.target.value }))} />
             </F>
-            <F name="pendidikan" label="Pendidikan" required>
+            <F name="pendidikan" label="Pendidikan" required errors={errors}>
               <select 
                 id="field-pendidikan"
                 className={`input ${errors.pendidikan ? 'input-error' : ''}`}
@@ -435,7 +625,7 @@ export default function RegisterPage() {
             </F>
           </div>
 
-          <F name="sekolah" label="Sekolah" hint="Pilih jenjang dulu, lalu cari nama sekolah">
+          <F name="sekolah" label="Sekolah" hint="Pilih jenjang dulu, lalu cari nama sekolah" errors={errors}>
             <SekolahDropdown
               pendidikan={form.pendidikan}
               value={form.sekolah}
@@ -443,7 +633,7 @@ export default function RegisterPage() {
             />
           </F>
 
-          <F name="lingkungan" label="Lingkungan" required>
+          <F name="lingkungan" label="Lingkungan" required errors={errors}>
             <select 
               id="field-lingkungan"
               className={`input ${errors.lingkungan ? 'input-error' : ''}`}
@@ -457,7 +647,7 @@ export default function RegisterPage() {
             </select>
           </F>
 
-          <F name="alamat" label="Alamat Rumah">
+          <F name="alamat" label="Alamat Rumah" errors={errors}>
             <textarea 
               id="field-alamat"
               className="input h-20 resize-none" value={form.alamat}
@@ -465,14 +655,14 @@ export default function RegisterPage() {
           </F>
 
           <div className="grid grid-cols-2 gap-3">
-            <F name="hp_anak" label="No. HP Anak (opsional)" hint="Kosongkan jika tidak punya HP">
+            <F name="hp_anak" label="No. HP Anak (opsional)" hint="Kosongkan jika tidak punya HP" errors={errors}>
               <input 
                 id="field-hp_anak"
                 type="tel" 
                 className="input" value={form.hp_anak}
                 onChange={e => setForm(f => ({ ...f, hp_anak: e.target.value }))} placeholder="08xx..." autoComplete="tel" />
             </F>
-            <F name="hp_ortu" label="No. HP / WA Orang Tua" required>
+            <F name="hp_ortu" label="No. HP / WA Orang Tua" required errors={errors}>
               <input 
                 id="field-hp_ortu"
                 type="tel" 
@@ -482,14 +672,14 @@ export default function RegisterPage() {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <F name="nama_ayah" label="Nama Ayah">
+            <F name="nama_ayah" label="Nama Ayah" errors={errors}>
               <input 
                 id="field-nama_ayah"
                 type="text" 
                 className="input" value={form.nama_ayah}
                 onChange={e => setForm(f => ({ ...f, nama_ayah: e.target.value }))} placeholder="Nama ayah" />
             </F>
-            <F name="nama_ibu" label="Nama Ibu">
+            <F name="nama_ibu" label="Nama Ibu" errors={errors}>
               <input 
                 id="field-nama_ibu"
                 type="text" 
@@ -498,14 +688,14 @@ export default function RegisterPage() {
             </F>
           </div>
 
-          <F name="alasan_masuk" label="Alasan Menjadi Misdinar">
+          <F name="alasan_masuk" label="Alasan Menjadi Misdinar" errors={errors}>
             <textarea 
               id="field-alasan_masuk"
               className="input h-20 resize-none" value={form.alasan_masuk}
               onChange={e => setForm(f => ({ ...f, alasan_masuk: e.target.value }))} placeholder="Motivasi kamu..." />
           </F>
 
-          <F name="sampai_kapan" label="Rencana Sampai Kapan">
+          <F name="sampai_kapan" label="Rencana Sampai Kapan" errors={errors}>
             <input 
               id="field-sampai_kapan"
               type="text" 
@@ -523,7 +713,7 @@ export default function RegisterPage() {
                 Nomor ini biasanya berupa 4 angka (contoh: 1111).
               </p>
             </div>
-            <F name="nomor_data_umat" label="Nomor Data Umat" required hint="Contoh: 1111 — tanyakan ke PIC Data Umat Lingkungan">
+            <F name="nomor_data_umat" label="Nomor Data Umat" required hint="Contoh: 1111 — tanyakan ke PIC Data Umat Lingkungan" errors={errors}>
               <input
                 id="field-nomor_data_umat"
                 type="text"
