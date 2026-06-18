@@ -11,6 +11,7 @@ import {
 import toast from 'react-hot-toast';
 import { usePagination } from '../hooks/usePagination';
 import { Pagination } from '../components/ui/Pagination';
+import { Modal } from '../components/ui/Modal';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   Pending:          { label: 'Menunggu PIC',        color: 'badge-yellow' },
@@ -92,6 +93,11 @@ export default function SwapPage() {
   const [showWA,  setShowWA]  = useState(false);
   const [waText,  setWaText]  = useState('');
   const [grupWA,  setGrupWA]  = useState('https://chat.whatsapp.com/KATPS0AwNT2FlMxKqHeG1T');
+
+  // Claim confirmation
+  const [showClaimModal, setShowClaimModal] = useState(false);
+  const [claimingReq,    setClaimingReq]    = useState<any>(null);
+  const [claiming,       setClaiming]       = useState(false);
 
   const pgMy  = usePagination(myReqs,  10);
   const pgBoard = usePagination(board, 10);
@@ -418,12 +424,27 @@ export default function SwapPage() {
   }
 
   async function claimFromBoard(req: any) {
-    if (!confirm(`Konfirmasi: kamu bersedia menggantikan ${req.requester?.nama_panggilan} untuk tugas ini?`)) return;
-    const { data, error } = await supabase.rpc('claim_swap_request', { p_request_id: req.id });
-    if (error) { toast.error('Gagal: ' + error.message); return; }
-    if (!data?.ok) { toast.error(data?.error || 'Gagal mengklaim tugas'); return; }
-    toast.success('Berhasil! Jadwal sudah dipindahkan ke kamu.');
-    loadData();
+    setClaimingReq(req);
+    setShowClaimModal(true);
+  }
+
+  async function confirmClaim() {
+    if (!claimingReq) return;
+    setClaiming(true);
+    try {
+      const { data, error } = await supabase.rpc('claim_swap_request', { p_request_id: claimingReq.id });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.message || data?.error || 'Gagal mengklaim tugas');
+      
+      toast.success('Berhasil! Jadwal sudah dipindahkan ke kamu.');
+      setShowClaimModal(false);
+      setClaimingReq(null);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || 'Gagal mengklaim tugas');
+    } finally {
+      setClaiming(false);
+    }
   }
 
   // ── WA Template untuk grup ─────────────────────────────────
@@ -642,7 +663,7 @@ export default function SwapPage() {
                   <div>
                     <p className="font-semibold text-gray-900">{ev?.perayaan||ev?.nama_event}</p>
                     <p className="text-sm text-gray-500">{formatDate(effectiveDate(ev?.tanggal_tugas, req.assignment?.slot_number, ev?.tipe_event),'EEEE, dd MMM yyyy')} · {slotLabel(req.assignment?.slot_number, ev?.tipe_event)}</p>
-                    <p className="text-xs text-gray-400 mt-1">Dari: <strong>{req.requester?.nama_panggilan}</strong> ({req.requester?.lingkungan})</p>
+                    <p className="text-xs text-gray-400 mt-1">Dari: <strong>{req.requester?.nama_panggilan || 'Anggota'}</strong> ({req.requester?.lingkungan || '—'})</p>
                     <p className="text-xs text-gray-400 italic">"{req.alasan}"</p>
                   </div>
                   <button onClick={() => claimFromBoard(req)} className="btn-primary btn-sm gap-1 flex-shrink-0">
@@ -903,6 +924,46 @@ export default function SwapPage() {
           </div>
         </div>
       )}
+
+      {/* ── MODAL: Konfirmasi Saya Bersedia ── */}
+      <Modal
+        open={showClaimModal}
+        onClose={() => { if (!claiming) { setShowClaimModal(false); setClaimingReq(null); } }}
+        title="Konfirmasi Menggantikan Jadwal"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-gray-600 leading-relaxed">
+            Apakah kamu yakin bisa berkomitmen dengan tugas ini? Silahkan lanjutkan dan pastikan kamu tidak asal klik yaaa.
+          </p>
+          {claimingReq && (
+            <div className="p-3 bg-purple-50 rounded-xl text-xs text-purple-700">
+              <strong>Tugas:</strong> {claimingReq.assignment?.events?.perayaan || claimingReq.assignment?.events?.nama_event}<br/>
+              <strong>Misa:</strong> {slotLabel(claimingReq.assignment?.slot_number, claimingReq.assignment?.events?.tipe_event)}<br/>
+              <strong>Menggantikan:</strong> {claimingReq.requester?.nama_panggilan || 'Anggota'}
+            </div>
+          )}
+          <div className="flex gap-2 justify-end mt-4">
+            <button
+              onClick={() => { setShowClaimModal(false); setClaimingReq(null); }}
+              disabled={claiming}
+              className="btn-secondary text-sm"
+            >
+              Batal
+            </button>
+            <button
+              onClick={confirmClaim}
+              disabled={claiming}
+              className="btn-primary text-sm min-w-[100px] flex items-center justify-center"
+            >
+              {claiming ? (
+                <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin"/>
+              ) : (
+                'Saya Bersedia'
+              )}
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
