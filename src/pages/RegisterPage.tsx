@@ -222,7 +222,7 @@ export default function RegisterPage() {
 
   function handleNamaChange(val: string) {
     setForm(f => {
-      const next = { ...f, nama_lengkap: val };
+      const next: Record<string, any> = { ...f, nama_lengkap: val };
       if (!f.nickname) {
         const suggested = toNickname(val.split(' ')[0]);
         if (suggested) {
