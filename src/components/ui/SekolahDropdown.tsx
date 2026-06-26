@@ -84,6 +84,7 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
   const [loading,   setLoading]  = useState(false);
   const [kabKota,   setKabKota]  = useState('031100'); // default Sukoharjo
   const [error,     setError]    = useState(false);
+  const [isManual,  setIsManual] = useState(false);
   const inputRef     = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -183,6 +184,38 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
   const selectedIsTarakanita = list.find(s => s.sekolah === value)?.isTarakanita
     ?? fullList.find(s => s.sekolah === value)?.isTarakanita;
 
+  if (isManual) {
+    const isManualTarakanita = isTarakanitaSchool('', value);
+    return (
+      <div className="space-y-1">
+        <div className="relative flex gap-2">
+          <input
+            className="input flex-1 pr-24"
+            value={value}
+            onChange={e => onChange(e.target.value, isTarakanitaSchool('', e.target.value))}
+            placeholder={`Ketik nama sekolah ${pendidikan}...`}
+            autoFocus
+          />
+          <button
+            type="button"
+            onClick={() => {
+              setIsManual(false);
+              onChange('', false);
+            }}
+            className="btn-secondary whitespace-nowrap text-xs py-2 px-3 hover:bg-gray-100 transition-colors"
+          >
+            Cari di Daftar
+          </button>
+        </div>
+        {value && isManualTarakanita && (
+          <p className="text-xs text-brand-800 font-semibold mt-1 flex items-center gap-1">
+            <CheckCircle size={11} /> Status Tarakanita otomatis aktif
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div ref={containerRef} className="relative">
       <button
@@ -227,6 +260,18 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
 
           {/* List */}
           <div className="max-h-52 overflow-y-auto">
+            {/* Opsi Ketik Manual Permanen */}
+            <button
+              type="button"
+              onClick={() => {
+                setIsManual(true);
+                setOpen(false);
+              }}
+              className="w-full text-left px-3 py-2 text-xs font-semibold text-brand-800 bg-brand-50 hover:bg-brand-100 flex items-center gap-1.5 border-b border-gray-100 transition-colors"
+            >
+              <span>✍️ Sekolah tidak terdaftar? Klik untuk ketik manual</span>
+            </button>
+
             {loading && fullList.length === 0 && (
               <div className="py-6 text-center text-sm text-gray-400">Memuat daftar sekolah...</div>
             )}
@@ -237,12 +282,32 @@ export default function SekolahDropdown({ pendidikan, value, onChange }: Props) 
             )}
             {!loading && !error && list.length === 0 && fullList.length > 0 && (
               <div className="py-6 text-center text-sm text-gray-400">
-                Sekolah tidak ditemukan di {KAB_KOTA_JATENG.find(k => k.kode === kabKota)?.nama ?? 'daerah ini'}
+                <p className="mb-2">Sekolah tidak ditemukan di {KAB_KOTA_JATENG.find(k => k.kode === kabKota)?.nama ?? 'daerah ini'}</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsManual(true);
+                    setOpen(false);
+                  }}
+                  className="btn-outline btn-xs mx-auto text-xs"
+                >
+                  ✍️ Isi Manual
+                </button>
               </div>
             )}
             {!loading && !error && fullList.length === 0 && !loading && (
               <div className="py-6 text-center text-sm text-gray-400">
-                Tidak ada sekolah {pendidikan} ditemukan di daerah ini
+                <p className="mb-2">Tidak ada sekolah {pendidikan} ditemukan di daerah ini</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsManual(true);
+                    setOpen(false);
+                  }}
+                  className="btn-outline btn-xs mx-auto text-xs"
+                >
+                  ✍️ Isi Manual
+                </button>
               </div>
             )}
             {list.map(s => (
