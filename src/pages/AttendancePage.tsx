@@ -23,6 +23,14 @@ export default function AttendancePage() {
 
   const [events,      setEvents]      = useState<any[]>([]);
   const [selectedEv,  setSelectedEv]  = useState<any>(null);
+
+  const selectedEvRef = useRef<any>(null);
+  const profileRef = useRef<any>(profile);
+  const canScanRef = useRef<boolean>(canScan);
+
+  useEffect(() => { selectedEvRef.current = selectedEv; }, [selectedEv]);
+  useEffect(() => { profileRef.current = profile; }, [profile]);
+  useEffect(() => { canScanRef.current = canScan; }, [canScan]);
   const [loadingEvs,  setLoadingEvs]  = useState(true);
   const [scanning,    setScanning]    = useState(false);
   const [result,      setResult]      = useState<any>(null);
@@ -102,7 +110,7 @@ export default function AttendancePage() {
 
   // ── QR Processing ────────────────────────────────────────────────
   async function processQR(raw: string) {
-    if (!selectedEv) {
+    if (!selectedEvRef.current) {
       showResult({ status: 'error', message: 'Pilih acara dulu sebelum scan.' });
       return;
     }
@@ -128,6 +136,9 @@ export default function AttendancePage() {
   }
 
   async function doScan(nickname: string, myid: string, raw: string) {
+    const currentEv = selectedEvRef.current;
+    if (!currentEv) return;
+
     const { data: member } = await supabase
       .from('users')
       .select('id, nickname, myid, nama_panggilan, lingkungan, status, is_suspended')
@@ -151,7 +162,7 @@ export default function AttendancePage() {
       .from('scan_records')
       .select('id, timestamp')
       .eq('user_id', member.id)
-      .eq('acara_id', selectedEv.id)
+      .eq('acara_id', currentEv.id)
       .gte('timestamp', since)
       .limit(1)
       .maybeSingle();
@@ -167,13 +178,13 @@ export default function AttendancePage() {
     }
 
     // Tentukan scan_type dari tipe acara
-    const scanType = selectedEv.tipe === 'Latihan' ? 'latihan' : 'tugas';
+    const scanType = currentEv.tipe === 'Latihan' ? 'latihan' : 'tugas';
 
     const { error } = await supabase.from('scan_records').insert({
       user_id:         member.id,
       event_id:        null,
-      acara_id:        selectedEv.id,
-      scanner_user_id: profile?.id,
+      acara_id:        currentEv.id,
+      scanner_user_id: profileRef.current?.id,
       scan_type:       scanType,
       is_walk_in:      false,
       walkin_reason:   null,
@@ -210,7 +221,7 @@ export default function AttendancePage() {
         clearInterval(returnRef.current!);
         setResult(null);
         setCountdown(0);
-        if (canScan) startCamera();
+        if (canScanRef.current) startCamera();
       }
     }, 1000);
   }

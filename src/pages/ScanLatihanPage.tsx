@@ -31,6 +31,12 @@ export default function ScanLatihanPage() {
   const [selectedSesi, setSelectedSesi] = useState<any>(null);
   const [loadingSetup, setLoadingSetup] = useState(true);
 
+  const selectedEventRef = useRef<any>(null);
+  const selectedSesiRef = useRef<any>(null);
+
+  useEffect(() => { selectedEventRef.current = selectedEvent; }, [selectedEvent]);
+  useEffect(() => { selectedSesiRef.current = selectedSesi; }, [selectedSesi]);
+
   // ── Scan state ───────────────────────────────────────────────
   const [scanning,  setScanning]  = useState(false);
   const [result,    setResult]    = useState<any>(null);
@@ -158,7 +164,9 @@ export default function ScanLatihanPage() {
   }
 
   async function processNickname(nick: string, raw: string, isManual: boolean) {
-    if (!selectedEvent || !selectedSesi) {
+    const currentEvent = selectedEventRef.current;
+    const currentSesi = selectedSesiRef.current;
+    if (!currentEvent || !currentSesi) {
       toast.error('Pilih event dan sesi latihan dulu');
       return;
     }
@@ -182,7 +190,7 @@ export default function ScanLatihanPage() {
     const { data: existing } = await supabase
       .from('event_latihan_attendance')
       .select('id, marked_at')
-      .eq('latihan_id', selectedSesi.id)
+      .eq('latihan_id', currentSesi.id)
       .eq('user_id', member.id)
       .maybeSingle();
 
@@ -197,7 +205,7 @@ export default function ScanLatihanPage() {
 
     // Catat attendance
     const { error: attErr } = await supabase.from('event_latihan_attendance').upsert({
-      latihan_id:    selectedSesi.id,
+      latihan_id:    currentSesi.id,
       user_id:       member.id,
       hadir:         true,
       marked_by:     profile?.id,
@@ -212,7 +220,7 @@ export default function ScanLatihanPage() {
     // Catat scan_record
     const { data: scanRec } = await supabase.from('scan_records').insert({
       user_id:         member.id,
-      event_id:        selectedEvent.id,
+      event_id:        currentEvent.id,
       scanner_user_id: profile?.id,
       scan_type:       'latihan',
       is_walk_in:      false,
@@ -220,14 +228,14 @@ export default function ScanLatihanPage() {
       qr_version:      'new',
       raw_qr_value:    raw || null,
       is_anomaly:      false,
-      latihan_id:      selectedSesi.id,
+      latihan_id:      currentSesi.id,
     }).select('id').single();
 
     // Update scan_record_id di attendance
     if (scanRec?.id) {
       await supabase.from('event_latihan_attendance')
         .update({ scan_record_id: scanRec.id })
-        .eq('latihan_id', selectedSesi.id)
+        .eq('latihan_id', currentSesi.id)
         .eq('user_id', member.id);
     }
 
