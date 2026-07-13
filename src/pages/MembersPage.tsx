@@ -4,6 +4,7 @@ import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
 import { truncate, ROLE_LABELS, STATUS_LABELS, formatDate, buildWALink, generateMyID } from '../lib/utils';
+import { approveRegistrationAction } from '../lib/registration';
 import {
   Search, CheckCircle, XCircle, Eye,
   Download, RefreshCw, AlertTriangle, Users,
@@ -35,6 +36,7 @@ export default function MembersPage() {
   const [filter,   setFilter]  = useState({ pendidikan: '' });
   const [quickEdit, setQuickEdit] = useState<any>(null); // { id, field } — baris yang sedang diedit
   const [resettingId,      setResettingId]      = useState<string | null>(null);
+  const [approvingId,      setApprovingId]      = useState<string | null>(null);
   const [resetResult,      setResetResult]      = useState<{ nickname: string; password: string } | null>(null);
   const [sendPasswordMode, setSendPasswordMode] = useState(false);
   const [reregSet,         setReregSet]         = useState<Set<string>>(new Set());
@@ -138,22 +140,18 @@ export default function MembersPage() {
 
   // ── Approve Registrasi (via RPC supabase_auth_admin) ───────
   async function approveRegistration(reg: any) {
+    setApprovingId(reg.id);
     try {
-      const myid     = await generateMyID(reg.nickname, reg.tanggal_lahir || '2000-01-01');
-      const tempPass = `sigma${myid.slice(0,6)}`;
-
-      const { data, error } = await supabase.rpc('admin_approve_registration', {
-        p_registration_id: reg.id,
-        p_myid:            myid,
-        p_temp_password:   tempPass,
-      });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.message || data?.error || 'Unknown error');
-
-      toast.success(`✅ ${reg.nickname} disetujui! MyID: ${myid} | Password: ${tempPass}`);
+      const result = await approveRegistrationAction(reg);
+      if (!result.ok) {
+        throw new Error(result.message || 'Gagal menyetujui pendaftaran');
+      }
+      toast.success(`✅ ${reg.nickname} disetujui! MyID: ${result.myid} | Password: ${result.tempPassword}`);
       loadData();
     } catch (err: any) {
       toast.error('Gagal approve: ' + err.message);
+    } finally {
+      setApprovingId(null);
     }
   }
 
@@ -308,12 +306,26 @@ export default function MembersPage() {
                 </div>
                 {isPengurus && (
                   <div className="flex gap-2">
-                    <button onClick={() => approveRegistration(reg)}
-                      className="btn-primary btn-sm gap-1">
-                      <CheckCircle size={13} /> Setuju
+                    <button 
+                      onClick={() => approveRegistration(reg)}
+                      disabled={approvingId !== null}
+                      className="btn-primary btn-sm gap-1 disabled:opacity-50"
+                    >
+                      {approvingId === reg.id ? (
+                        <>
+                          <RefreshCw size={13} className="animate-spin" /> Memproses...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle size={13} /> Setuju
+                        </>
+                      )}
                     </button>
-                    <button onClick={() => rejectRegistration(reg)}
-                      className="btn-danger btn-sm gap-1">
+                    <button 
+                      onClick={() => rejectRegistration(reg)}
+                      disabled={approvingId !== null}
+                      className="btn-danger btn-sm gap-1 disabled:opacity-50"
+                    >
                       <XCircle size={13} /> Tolak
                     </button>
                   </div>
