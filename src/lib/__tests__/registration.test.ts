@@ -23,7 +23,7 @@ describe('approveRegistrationAction', () => {
         ok: true,
         user_id: 'user-uuid-123',
         email: 'test@sigma.krsoba.id',
-        temp_password: 'sigmamyid12',
+        temp_password: 'sigmaMYID12',
         myid: 'MYID123456'
       },
       error: null
@@ -39,14 +39,14 @@ describe('approveRegistrationAction', () => {
       ok: true,
       userId: 'user-uuid-123',
       email: 'test@sigma.krsoba.id',
-      tempPassword: 'sigmamyid12',
+      tempPassword: 'sigmaMYID12',
       myid: 'MYID123456'
     });
 
     expect(supabase.rpc).toHaveBeenCalledWith('admin_approve_registration', {
       p_registration_id: 'reg-uuid-abc',
       p_myid: 'MYID123456',
-      p_temp_password: 'sigmamyid12'
+      p_temp_password: 'sigmaMYID12'
     });
   });
 
