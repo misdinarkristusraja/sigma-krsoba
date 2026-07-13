@@ -1,5 +1,7 @@
-import { supabase } from './supabase';
+import { supabase as supabaseTyped } from './supabase';
 import { generateMyID } from './utils';
+
+const supabase = supabaseTyped as any;
 
 export interface ApproveResult {
   ok: boolean;
