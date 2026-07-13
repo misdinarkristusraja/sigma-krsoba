@@ -11,7 +11,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.3",
@@ -46,6 +47,7 @@
     "tailwindcss": "^3.4.4",
     "typescript": "^6.0.3",
     "vite": "^5.3.1",
-    "vite-plugin-pwa": "^0.20.0"
+    "vite-plugin-pwa": "^0.20.0",
+    "vitest": "^4.1.10"
   }
 }
