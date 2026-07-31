@@ -59,18 +59,37 @@ export default function MembersPage() {
       } else {
         let q = supabase
           .from('users')
-          .select('id, nickname, myid, nama_lengkap, nama_panggilan, pendidikan, sekolah, lingkungan, wilayah, role, status, status_jadwal, divisi, is_tarakanita, is_suspended, created_at, hp_ortu, hp_anak', { count: 'exact' })
-          .order('nama_panggilan', { nullsFirst: false })
-          .order('nickname');
+          .select('id, nickname, myid, nama_lengkap, nama_panggilan, pendidikan, sekolah, lingkungan, wilayah, role, status, status_jadwal, divisi, is_tarakanita, is_suspended, created_at, hp_ortu, hp_anak', { count: 'exact' });
 
         if (tab === 'active')  q = q.eq('status', 'Active');
         if (tab === 'retired') q = q.eq('status', 'Retired');
         if (filter.pendidikan) q = q.eq('pendidikan', filter.pendidikan);
 
-        const [{ data, error: e, count }, { data: cfgData }, ] = await Promise.all([
-          q,
+        q = q.order('nama_panggilan', { nullsFirst: false }).order('nickname');
+
+        const [{ data: cfgData }] = await Promise.all([
           supabase.from('system_config').select('key, value').eq('key', 'rereg_tahun').maybeSingle(),
         ]);
+
+        let { data, error: e, count } = await q;
+
+        // Fallback if status_jadwal / divisi column does not exist yet on Supabase DB
+        if (e && (e.message?.includes('status_jadwal') || e.message?.includes('divisi'))) {
+          let fbQ = supabase
+            .from('users')
+            .select('id, nickname, myid, nama_lengkap, nama_panggilan, pendidikan, sekolah, lingkungan, wilayah, role, status, is_tarakanita, is_suspended, created_at, hp_ortu, hp_anak', { count: 'exact' });
+
+          if (tab === 'active')  fbQ = fbQ.eq('status', 'Active');
+          if (tab === 'retired') fbQ = fbQ.eq('status', 'Retired');
+          if (filter.pendidikan) fbQ = fbQ.eq('pendidikan', filter.pendidikan);
+
+          fbQ = fbQ.order('nama_panggilan', { nullsFirst: false }).order('nickname');
+
+          const fbRes = await fbQ;
+          data = fbRes.data;
+          e = fbRes.error;
+          count = fbRes.count;
+        }
 
         if (e) throw e;
         setMembers(data || []);
@@ -178,7 +197,14 @@ export default function MembersPage() {
         break;
     }
 
-    const { error } = await supabase.from('users').update(updateData).eq('id', memberId);
+    let { error } = await supabase.from('users').update(updateData).eq('id', memberId);
+    if (error && (error.message?.includes('status_jadwal') || error.message?.includes('divisi'))) {
+      const safeData = { ...updateData };
+      delete safeData.status_jadwal;
+      delete safeData.divisi;
+      const fbRes = await supabase.from('users').update(safeData).eq('id', memberId);
+      error = fbRes.error;
+    }
     if (error) { toast.error('Gagal update status: ' + error.message); return; }
     toast.success('Status & Role anggota berhasil diperbarui!');
     setQuickEdit(null);
