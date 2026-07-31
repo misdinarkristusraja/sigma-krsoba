@@ -168,7 +168,7 @@ export default function SwapPage() {
       .from('swap_requests')
       .select(`*,
         requester:requester_id(nama_panggilan, lingkungan),
-        assignment:assignment_id(slot_number, events(nama_event, tanggal_tugas, perayaan, tipe_event))`)
+        assignment:assignment_id(event_id, slot_number, events(nama_event, tanggal_tugas, perayaan, tipe_event))`)
       .eq('is_penawaran', true).eq('status','Offered')
       .neq('requester_id', profile?.id)
       .order('created_at', { ascending: false }).limit(50);
@@ -433,15 +433,30 @@ export default function SwapPage() {
     setClaiming(true);
     try {
       const { data, error } = await supabase.rpc('claim_swap_request', { p_request_id: claimingReq.id });
-      if (error) throw error;
-      if (!data?.ok) throw new Error(data?.message || data?.error || 'Gagal mengklaim tugas');
+      if (error) {
+        if (error.message?.includes('assignments_event_id_user_id_key')) {
+          throw new Error('Kamu tidak dapat mengambil jadwal ini karena kamu sudah terdaftar dalam misa/acara yang sama.');
+        }
+        throw error;
+      }
+      if (!data?.ok) {
+        if (data?.error === 'ALREADY_ASSIGNED_TO_EVENT') {
+          throw new Error(data?.message || 'Kamu tidak dapat mengambil jadwal ini karena kamu sudah terdaftar dalam misa/acara yang sama.');
+        }
+        throw new Error(data?.message || data?.error || 'Gagal mengklaim tugas');
+      }
       
       toast.success('Berhasil! Jadwal sudah dipindahkan ke kamu.');
       setShowClaimModal(false);
       setClaimingReq(null);
       loadData();
     } catch (err: any) {
-      toast.error(err.message || 'Gagal mengklaim tugas');
+      const msg = err.message || 'Gagal mengklaim tugas';
+      if (msg.includes('assignments_event_id_user_id_key')) {
+        toast.error('Kamu tidak dapat mengambil jadwal ini karena kamu sudah terdaftar dalam misa/acara yang sama.');
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setClaiming(false);
     }
@@ -657,6 +672,10 @@ export default function SwapPage() {
             </div>
           ) : pgBoard.paged.map((req: any) => {
             const ev = req.assignment?.events;
+            const isAlreadyAssigned = Boolean(
+              req.assignment?.event_id &&
+              mySched.some((s: any) => s.event_id === req.assignment?.event_id)
+            );
             return (
               <div key={req.id} className="card border-l-4 border-purple-400">
                 <div className="flex items-start justify-between gap-3">
@@ -665,10 +684,21 @@ export default function SwapPage() {
                     <p className="text-sm text-gray-500">{formatDate(effectiveDate(ev?.tanggal_tugas, req.assignment?.slot_number, ev?.tipe_event),'EEEE, dd MMM yyyy')} · {slotLabel(req.assignment?.slot_number, ev?.tipe_event)}</p>
                     <p className="text-xs text-gray-400 mt-1">Dari: <strong>{req.requester?.nama_panggilan || 'Anggota'}</strong> ({req.requester?.lingkungan || '—'})</p>
                     <p className="text-xs text-gray-400 italic">"{req.alasan}"</p>
+                    {isAlreadyAssigned && (
+                      <span className="inline-block mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-medium">
+                        Kamu sudah bertugas di acara ini
+                      </span>
+                    )}
                   </div>
-                  <button onClick={() => claimFromBoard(req)} className="btn-primary btn-sm gap-1 flex-shrink-0">
-                    <CheckCircle size={13}/> Saya Bersedia
-                  </button>
+                  {isAlreadyAssigned ? (
+                    <button disabled className="btn-secondary btn-sm gap-1 flex-shrink-0 opacity-60 cursor-not-allowed text-xs">
+                      Sudah Bertugas
+                    </button>
+                  ) : (
+                    <button onClick={() => claimFromBoard(req)} className="btn-primary btn-sm gap-1 flex-shrink-0">
+                      <CheckCircle size={13}/> Saya Bersedia
+                    </button>
+                  )}
                 </div>
               </div>
             );
