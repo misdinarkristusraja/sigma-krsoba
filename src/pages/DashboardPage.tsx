@@ -18,7 +18,7 @@ import {
 } from 'recharts';
 import {
   Calendar, Clock, Trophy, ArrowLeftRight, QrCode,
-  CheckCircle, AlertTriangle, ChevronRight, Star, Zap, Bell, PlayCircle, Save,
+  CheckCircle, AlertTriangle, ChevronRight, Star, Zap, Bell, PlayCircle, Save, ShieldCheck,
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useState, useEffect } from 'react';
@@ -462,6 +462,16 @@ export default function DashboardPage() {
           <div className="card">
             <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Aksi Cepat</h2>
             <div className="space-y-2">
+              {isPengurus && (
+                <Link to="/pengurus/ketua" className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-red-900 to-purple-900 text-white hover:opacity-95 transition-all shadow-md">
+                  <ShieldCheck size={20} className="text-amber-300 flex-shrink-0" />
+                  <div className="text-left">
+                    <div className="text-sm font-bold leading-tight">Dashboard Pengurus</div>
+                    <div className="text-[10px] text-red-200">Executive &amp; Divisi Suite</div>
+                  </div>
+                  <ChevronRight size={16} className="ml-auto text-amber-300" />
+                </Link>
+              )}
               {isPelatih && (
                 <Link to="/scan-qr" className="flex items-center gap-3 p-3 rounded-xl bg-brand-800 text-white hover:bg-brand-900 transition-colors">
                   <QrCode size={18} />

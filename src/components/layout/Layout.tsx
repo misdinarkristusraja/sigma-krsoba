@@ -9,6 +9,7 @@ import {
   Settings, LogOut, Menu, X, Church, AlertTriangle,
   ClipboardList, RefreshCw, ClipboardCheck, PartyPopper, ListChecks,
   BookUser, Star, Microscope, Globe, ChevronDown, TrendingUp, ShieldCheck,
+  FileText, Wallet, HeartHandshake, Video, Camera, Shirt,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { cn, truncate } from '../../lib/utils';
@@ -88,11 +89,24 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    key: 'pengurus_suite',
+    label: 'Pengurus Suite',
+    icon: ShieldCheck,
+    items: [
+      { icon: ShieldCheck,    label: 'Dashboard Pengurus', path: '/pengurus/ketua',      roles: PENG },
+      { icon: FileText,       label: 'Sekretaris',         path: '/pengurus/sekretaris', roles: PENG },
+      { icon: Wallet,         label: 'Bendahara',          path: '/pengurus/bendahara',  roles: PENG },
+      { icon: HeartHandshake, label: 'Jasmani Rohani',     path: '/pengurus/jasroh',     roles: PENG },
+      { icon: Video,          label: 'Multimedia',         path: '/pengurus/multimedia', roles: PENG },
+      { icon: Camera,         label: 'Sakristan (PIC)',    path: '/pengurus/sakristan',  roles: PENG },
+      { icon: Shirt,          label: 'Putsankris',         path: '/pengurus/putsankris', roles: PENG },
+    ],
+  },
+  {
     key: 'admin',
     label: 'Admin',
     icon: Settings,
     items: [
-      { icon: ShieldCheck, label: 'Dashboard Pengurus', path: '/pengurus/ketua', roles: PENG },
       { icon: Settings, label: 'Admin & Config', path: '/admin',   roles: ADMIN },
     ],
   },
