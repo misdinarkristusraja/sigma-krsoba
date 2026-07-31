@@ -250,47 +250,47 @@ export default function AcaraPage() {
 
         {/* Stats bar */}
         <div className="card py-3 px-4 flex items-center gap-3">
-          <Users size={18} className="text-brand-700" />
-          <span className="font-semibold text-brand-800 text-lg">{peserta.length}</span>
-          <span className="text-gray-500 text-sm">peserta hadir</span>
+          <Users size={18} className="text-brand-700 dark:text-amber-400" />
+          <span className="font-semibold text-brand-800 dark:text-amber-400 text-lg">{peserta.length}</span>
+          <span className="text-gray-500 dark:text-slate-400 text-sm">peserta hadir</span>
         </div>
 
         {/* Peserta list */}
         {loadingPes ? (
-          <div className="card py-12 flex flex-col items-center gap-3 text-gray-400">
+          <div className="card py-12 flex flex-col items-center gap-3 text-gray-400 dark:text-slate-400">
             <Loader2 size={28} className="animate-spin" />
             <span className="text-sm">Memuat daftar hadir...</span>
           </div>
         ) : peserta.length === 0 ? (
-          <div className="card py-12 text-center text-gray-400 text-sm">
+          <div className="card py-12 text-center text-gray-400 dark:text-slate-400 text-sm">
             Belum ada yang hadir tercatat untuk acara ini.
           </div>
         ) : (
           <div className="card p-0 overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-100 text-xs text-gray-400 uppercase tracking-wide text-left">
+                <tr className="border-b border-gray-100 dark:border-slate-800 text-xs text-gray-400 dark:text-slate-400 uppercase tracking-wide text-left">
                   <th className="px-4 py-3 font-medium w-8">#</th>
                   <th className="px-4 py-3 font-medium">Nama</th>
                   <th className="px-4 py-3 font-medium hidden sm:table-cell">Lingkungan</th>
                   <th className="px-4 py-3 font-medium text-right">Waktu</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-slate-800">
                 {peserta.map((p, i) => (
-                  <tr key={p.id} className={p.is_anomaly ? 'bg-yellow-50/50' : 'hover:bg-gray-50/50'}>
-                    <td className="px-4 py-3 text-gray-400 text-xs">{i + 1}</td>
+                  <tr key={p.id} className={p.is_anomaly ? 'bg-yellow-50/50 dark:bg-yellow-950/40' : 'hover:bg-gray-50/50 dark:hover:bg-slate-800/50'}>
+                    <td className="px-4 py-3 text-gray-400 dark:text-slate-500 text-xs">{i + 1}</td>
                     <td className="px-4 py-3">
-                      <p className="font-medium text-gray-800">{p.users?.nama_panggilan}</p>
-                      <p className="text-xs text-gray-400">{p.users?.nickname}</p>
+                      <p className="font-semibold text-gray-900 dark:text-slate-100">{p.users?.nama_panggilan}</p>
+                      <p className="text-xs text-gray-400 dark:text-slate-400">@{p.users?.nickname}</p>
                     </td>
-                    <td className="px-4 py-3 text-gray-500 hidden sm:table-cell">
-                      {p.users?.lingkungan ?? <span className="text-gray-300">—</span>}
+                    <td className="px-4 py-3 text-gray-500 dark:text-slate-400 hidden sm:table-cell">
+                      {p.users?.lingkungan ?? <span className="text-gray-300 dark:text-slate-600">—</span>}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <span className="font-mono text-xs text-gray-600">{fmtTime(p.timestamp)}</span>
+                      <span className="font-mono text-xs text-gray-600 dark:text-slate-300">{fmtTime(p.timestamp)}</span>
                       {p.is_anomaly && (
-                        <span className="ml-1.5 text-[10px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full">
+                        <span className="ml-1.5 text-[10px] bg-yellow-100 dark:bg-yellow-950/80 text-yellow-700 dark:text-yellow-300 px-1.5 py-0.5 rounded-full border border-yellow-200/50">
                           anomali
                         </span>
                       )}

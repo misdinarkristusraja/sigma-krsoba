@@ -352,15 +352,15 @@ export default function MembersPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit flex-wrap">
+      <div className="flex gap-1 bg-gray-100 dark:bg-slate-800 rounded-xl p-1 w-fit flex-wrap">
         {TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-              tab === t.key ? 'bg-white text-brand-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              tab === t.key ? 'bg-white dark:bg-slate-900 text-brand-800 dark:text-amber-400 shadow-sm' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
             }`}>
             {t.label}
             {t.key === 'pending' && regs.length > 0 && (
-              <span className="ml-1.5 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5">
+              <span className="ml-1.5 bg-red-500 text-white text-[10px] rounded-full px-1.5 py-0.5 font-bold">
                 {regs.length}
               </span>
             )}

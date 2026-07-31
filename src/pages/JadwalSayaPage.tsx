@@ -244,13 +244,13 @@ export default function JadwalSayaPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Jadwal Saya</h1>
-          <p className="text-sm text-gray-500">Semua penugasan misa kamu</p>
+          <h1 className="page-title">Jadwal Saya</h1>
+          <p className="page-subtitle">Semua penugasan misa kamu</p>
         </div>
         <button
           onClick={load}
           disabled={loading}
-          className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+          className="p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
           title="Refresh"
         >
           <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
@@ -258,13 +258,13 @@ export default function JadwalSayaPage() {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
+      <div className="flex gap-1 bg-gray-100 dark:bg-slate-800 p-1 rounded-xl w-fit">
         {(['mendatang', 'semua'] as const).map(f => (
           <button
             key={f}
             onClick={() => setFilter(f)}
             className={`px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-              filter === f ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'
+              filter === f ? 'bg-white dark:bg-slate-900 shadow-sm text-gray-900 dark:text-white' : 'text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200'
             }`}
           >
             {f === 'mendatang' ? 'Mendatang' : 'Semua'}
@@ -274,17 +274,17 @@ export default function JadwalSayaPage() {
 
       {/* Loading */}
       {loading && (
-        <div className="flex justify-center py-12 text-gray-400">
+        <div className="flex justify-center py-12 text-gray-400 dark:text-slate-500">
           <RefreshCw size={20} className="animate-spin mr-2" /> Memuat...
         </div>
       )}
 
       {/* Empty */}
       {!loading && rows.length === 0 && (
-        <div className="text-center py-16 text-gray-400">
+        <div className="text-center py-16 text-gray-400 dark:text-slate-500">
           <Calendar size={40} className="mx-auto mb-3 opacity-40" />
-          <p className="font-medium">Belum ada jadwal</p>
-          <p className="text-sm mt-1">
+          <p className="font-semibold text-gray-900 dark:text-slate-200">Belum ada jadwal</p>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
             {filter === 'mendatang' ? 'Tidak ada jadwal mendatang' : 'Belum pernah ditugaskan'}
           </p>
         </div>
@@ -292,10 +292,10 @@ export default function JadwalSayaPage() {
 
       {/* Table */}
       {!loading && rows.length > 0 && (
-        <div className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+        <div className="rounded-2xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-sm bg-white dark:bg-slate-900">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr className="text-xs text-gray-500 uppercase tracking-wide text-left">
+            <thead className="bg-gray-50 dark:bg-slate-800 border-b border-gray-200 dark:border-slate-800">
+              <tr className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide text-left">
                 <th className="px-4 py-3 font-medium">Tanggal Tugas</th>
                 <th className="px-4 py-3 font-medium">Misa / Perayaan</th>
                 <th className="px-4 py-3 font-medium">Misa</th>

@@ -307,23 +307,23 @@ export default function AttendancePage() {
           {result ? (
             <div className={[
               'flex flex-col items-center justify-center py-12 px-6 text-center gap-3',
-              result.status === 'success' ? 'bg-green-50'
-                : result.status === 'warning' ? 'bg-yellow-50'
-                : 'bg-red-50',
+              result.status === 'success' ? 'bg-green-50 dark:bg-green-950/80 border border-green-200 dark:border-green-800'
+                : result.status === 'warning' ? 'bg-yellow-50 dark:bg-yellow-950/80 border border-yellow-200 dark:border-yellow-800'
+                : 'bg-red-50 dark:bg-red-950/80 border border-red-200 dark:border-red-800',
             ].join(' ')}>
               {result.status === 'success' && <CheckCircle size={56} className="text-green-500" />}
               {result.status === 'warning'  && <AlertTriangle size={56} className="text-yellow-500" />}
               {result.status === 'error'    && <XCircle size={56} className="text-red-500" />}
               <p className={[
                 'font-bold text-lg',
-                result.status === 'success' ? 'text-green-800'
-                  : result.status === 'warning' ? 'text-yellow-800'
-                  : 'text-red-800',
+                result.status === 'success' ? 'text-green-900 dark:text-green-200'
+                  : result.status === 'warning' ? 'text-yellow-900 dark:text-yellow-200'
+                  : 'text-red-900 dark:text-red-200',
               ].join(' ')}>{result.message}</p>
               {result.member && (
-                <p className="text-sm text-gray-500">{result.member.lingkungan}</p>
+                <p className="text-sm text-gray-600 dark:text-slate-300">{result.member.lingkungan}</p>
               )}
-              <p className="text-xs text-gray-400">Lanjut otomatis dalam {countdown}s</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">Lanjut otomatis dalam {countdown}s</p>
               <button onClick={handleReset} className="btn-secondary text-sm mt-1 gap-1">
                 <RefreshCw size={14} /> Scan Lagi
               </button>

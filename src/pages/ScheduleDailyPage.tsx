@@ -804,14 +804,14 @@ export function ScheduleDailyPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+      <div className="flex gap-1 bg-gray-100 dark:bg-slate-800 rounded-xl p-1 w-fit">
         {[
           { key: 'jadwal', label: '📅 Jadwal' },
           { key: 'optin',  label: `👥 Opt-in ${MONTHS[nextMonth-1]}` +
             (optinStats.belumIsi > 0 ? ` (${optinStats.belumIsi} belum)` : '') },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab===t.key?'bg-white text-brand-800 shadow-sm':'text-gray-500'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab===t.key?'bg-white dark:bg-slate-900 text-brand-800 dark:text-amber-400 shadow-sm':'text-gray-500 dark:text-slate-400'}`}>
             {t.label}
           </button>
         ))}
@@ -827,11 +827,11 @@ export function ScheduleDailyPage() {
             </div>
           )}
           {!isPengurus && isOptinWindow && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-center gap-3 flex-wrap">
-              <Bell size={18} className="text-blue-600 flex-shrink-0"/>
+            <div className="bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 rounded-xl p-4 flex items-center gap-3 flex-wrap">
+              <Bell size={18} className="text-blue-600 dark:text-blue-400 flex-shrink-0"/>
               <div className="flex-1">
-                <p className="text-sm font-semibold text-blue-800">Isi Opt-in {MONTHS[nextMonth-1]} {nextYear}</p>
-                <p className="text-xs text-blue-600">
+                <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">Isi Opt-in {MONTHS[nextMonth-1]} {nextYear}</p>
+                <p className="text-xs text-blue-600 dark:text-blue-300">
                   Status: {myOptin ? <strong>{OPTIN_LABELS[myOptin.status]?.label}</strong> : <strong className="text-red-500">Belum diisi</strong>}
                 </p>
               </div>
@@ -846,9 +846,9 @@ export function ScheduleDailyPage() {
             </div>
           )}
           {profile?.is_tarakanita && (
-            <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-2">
-              <CheckCircle size={16} className="text-blue-600"/>
-              <p className="text-sm text-blue-700">Kamu Tarakanita — otomatis masuk pool Misa Harian.</p>
+            <div className="bg-blue-50 dark:bg-slate-800 border border-blue-200 dark:border-slate-700 rounded-xl p-3 flex items-center gap-2">
+              <CheckCircle size={16} className="text-blue-600 dark:text-blue-400"/>
+              <p className="text-sm text-blue-700 dark:text-blue-300">Kamu Tarakanita — otomatis masuk pool Misa Harian.</p>
             </div>
           )}
 
@@ -858,11 +858,11 @@ export function ScheduleDailyPage() {
             </div>
             <div className="overflow-x-auto">
               {loading ? (
-                <div className="p-8 text-center text-gray-400">Memuat...</div>
+                <div className="p-8 text-center text-gray-400 dark:text-slate-400">Memuat...</div>
               ) : events.length === 0 ? (
                 <div className="p-10 text-center">
-                  <CalendarDays size={40} className="mx-auto text-gray-300 mb-3"/>
-                  <p className="text-gray-500">Belum ada jadwal Misa Harian {MONTHS[month-1]} {year}</p>
+                  <CalendarDays size={40} className="mx-auto text-gray-300 dark:text-slate-600 mb-3"/>
+                  <p className="text-gray-500 dark:text-slate-300 font-medium">Belum ada jadwal Misa Harian {MONTHS[month-1]} {year}</p>
                   {isPengurus && (
                     <button onClick={generateHarian} disabled={generating} className="btn-primary mt-4 gap-2">
                       <Zap size={16}/> Generate Sekarang
@@ -914,9 +914,9 @@ export function ScheduleDailyPage() {
                           {pic ? (
                             pic.hp
                               ? <a href={`https://wa.me/${pic.hp.replace(/\D/g,'')}`} target="_blank" rel="noreferrer"
-                                  className="text-green-700 hover:underline font-medium">{pic.nama}</a>
-                              : <span className="font-medium text-gray-700">{pic.nama}</span>
-                          ) : <span className="text-gray-300 italic">—</span>}
+                                  className="text-green-700 dark:text-green-400 hover:underline font-medium">{pic.nama}</a>
+                              : <span className="font-medium text-gray-700 dark:text-slate-200">{pic.nama}</span>
+                          ) : <span className="text-gray-300 dark:text-slate-600 italic">—</span>}
                         </td>
                       );
 
@@ -942,8 +942,8 @@ export function ScheduleDailyPage() {
                             <td rowSpan={rs} className="text-xs">{ev.perayaan||'—'}</td>
                             {picCell}
                           </>}
-                          <td className="font-medium text-sm">{a.users?.nama_panggilan||'—'}</td>
-                          <td className="text-xs text-gray-500">{a.users?.lingkungan||'—'}</td>
+                          <td className="font-semibold text-sm text-gray-900 dark:text-slate-100">{a.users?.nama_panggilan||'—'}</td>
+                          <td className="text-xs text-gray-500 dark:text-slate-400">{a.users?.lingkungan||'—'}</td>
                           {i===0 && <td rowSpan={rs}>{statusBadge}</td>}
                           {i===0 && actionCell}
                         </tr>
