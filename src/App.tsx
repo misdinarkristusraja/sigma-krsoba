@@ -35,6 +35,15 @@ const PublicSchedule     = lazy(() => import('./pages/ScheduleDailyPage').then(m
 const JadwalMisa         = lazy(() => import('./pages/ScheduleDailyPage').then(m => ({ default: m.InternalSchedulePage })));
 const NotFound           = lazy(() => import('./pages/ScheduleDailyPage').then(m => ({ default: m.NotFoundPage })));
 
+const PengurusLayout    = lazy(() => import('./pages/pengurus/PengurusDashboardLayout'));
+const KetuaPage         = lazy(() => import('./pages/pengurus/KetuaPage'));
+const SekretarisPage    = lazy(() => import('./pages/pengurus/SekretarisPage'));
+const BendaharaPage     = lazy(() => import('./pages/pengurus/BendaharaPage'));
+const JasrohPage        = lazy(() => import('./pages/pengurus/JasrohPage'));
+const MultimediaPage    = lazy(() => import('./pages/pengurus/MultimediaPage'));
+const SakristanPage     = lazy(() => import('./pages/pengurus/SakristanPage'));
+const PutsankrisPage    = lazy(() => import('./pages/pengurus/PutsankrisPage'));
+
 const ADMIN = ['Administrator'];
 const PENG  = ['Administrator', 'Pengurus', 'Pendamping'];
 const STAFF = ['Administrator', 'Pengurus', 'Pendamping', 'Pelatih'];
@@ -145,6 +154,19 @@ function AppRoutes() {
             <Route path="/direktori"       element={<ProtectedRoute roles={PENG}><ErrorBoundary><DirectoryPage/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/analisis"        element={<ProtectedRoute roles={PENG}><ErrorBoundary><AnalisisPage/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/admin"           element={<ProtectedRoute roles={ADMIN}><ErrorBoundary><AdminPage/></ErrorBoundary></ProtectedRoute>}/>
+
+            {/* Pengurus Suite — PENG / STAFF roles only */}
+            <Route path="/pengurus" element={<ProtectedRoute roles={PENG}><ErrorBoundary><PengurusLayout/></ErrorBoundary></ProtectedRoute>}>
+              <Route index element={<Navigate to="/pengurus/ketua" replace/>}/>
+              <Route path="ketua" element={<KetuaPage/>}/>
+              <Route path="sekretaris" element={<SekretarisPage/>}/>
+              <Route path="bendahara" element={<BendaharaPage/>}/>
+              <Route path="penjadwalan" element={<Navigate to="/jadwal-mingguan" replace/>}/>
+              <Route path="jasroh" element={<JasrohPage/>}/>
+              <Route path="multimedia" element={<MultimediaPage/>}/>
+              <Route path="sakristan" element={<SakristanPage/>}/>
+              <Route path="putsankris" element={<PutsankrisPage/>}/>
+            </Route>
           </Route>
 
           <Route path="*" element={<NotFound/>}/>

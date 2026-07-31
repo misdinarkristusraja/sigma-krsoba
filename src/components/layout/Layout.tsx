@@ -8,7 +8,7 @@ import {
   ArrowLeftRight, BarChart2, CreditCard,
   Settings, LogOut, Menu, X, Church, AlertTriangle,
   ClipboardList, RefreshCw, ClipboardCheck, PartyPopper, ListChecks,
-  BookUser, Star, Microscope, Globe, ChevronDown, TrendingUp,
+  BookUser, Star, Microscope, Globe, ChevronDown, TrendingUp, ShieldCheck,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { cn, truncate } from '../../lib/utils';
@@ -92,6 +92,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Admin',
     icon: Settings,
     items: [
+      { icon: ShieldCheck, label: 'Dashboard Pengurus', path: '/pengurus/ketua', roles: PENG },
       { icon: Settings, label: 'Admin & Config', path: '/admin',   roles: ADMIN },
     ],
   },

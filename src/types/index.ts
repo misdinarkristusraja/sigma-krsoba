@@ -28,6 +28,8 @@ export interface Profile {
   sampai_kapan?: string;
   role: UserRole;
   status: UserStatus;
+  divisi?: string;
+  status_jadwal?: string;
   is_suspended: boolean;
   suspended_until?: string;
   surat_pernyataan_url?: string;

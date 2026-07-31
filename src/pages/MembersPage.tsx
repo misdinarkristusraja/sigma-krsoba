@@ -111,7 +111,7 @@ export default function MembersPage() {
   const pg = usePagination(filtered, 10);
 
   // ── Quick inline change status/role ───────────────────────
-  const ALLOWED_QUICK_FIELDS = ['status', 'role'] as const;
+  const ALLOWED_QUICK_FIELDS = ['status', 'role', 'status_jadwal', 'divisi'] as const;
   async function quickChange(memberId: string, field: typeof ALLOWED_QUICK_FIELDS[number], value: string) {
     if (!(ALLOWED_QUICK_FIELDS as readonly string[]).includes(field)) { toast.error('Field tidak valid'); return; }
     const { error } = await supabase
@@ -119,7 +119,7 @@ export default function MembersPage() {
       .update({ [field]: value, updated_at: new Date().toISOString() })
       .eq('id', memberId);
     if (error) { toast.error('Gagal: ' + error.message); return; }
-    toast.success(`${field === 'status' ? 'Status' : 'Role'} diperbarui`);
+    toast.success(`${field} diperbarui`);
     setQuickEdit(null);
     loadData();
   }
@@ -475,51 +475,100 @@ export default function MembersPage() {
                           : <span className="badge-red text-xs">❌ Belum</span>
                         }
                       </td>
-                      {/* Status + Role — satu kolom, dua inline edit */}
+                      {/* Status, Role, Status Jadwal, & Divisi */}
                       <td>
                         <div className="flex flex-col gap-1">
-                          {/* Status */}
+                          {/* Akses System */}
                           {isPengurus && quickEdit?.id === m.id && quickEdit?.field === 'status' ? (
                             <select className="input text-xs py-0.5 w-28" autoFocus
                               defaultValue={m.status}
                               onChange={e => quickChange(m.id, 'status', e.target.value)}
                               onBlur={() => setQuickEdit(null)}>
-                              <option value="Active">Aktif</option>
+                              <option value="Active">Active (Dapat Login)</option>
                               <option value="Pending">Pending</option>
-                              <option value="Retired">Alumni</option>
+                              <option value="Disabled">Disabled</option>
                             </select>
                           ) : (
                             <button
                               onClick={() => isPengurus && setQuickEdit({ id: m.id, field: 'status' })}
                               className={`badge flex items-center gap-1 w-fit ${
-                                m.is_suspended ? 'badge-red' :
                                 m.status === 'Active'  ? 'badge-green' :
                                 m.status === 'Pending' ? 'badge-yellow' :
                                 'badge-gray'
                               } ${isPengurus ? 'cursor-pointer hover:opacity-80' : ''}`}
-                              title={isPengurus ? 'Klik untuk ubah status' : ''}>
-                              {m.is_suspended ? '⛔ Suspended' : (STATUS_LABELS[m.status] || m.status)}
+                              title={isPengurus ? 'Akses System Login: Klik untuk ubah' : ''}>
+                              {m.status === 'Active' ? '🟢 Active' : m.status === 'Pending' ? '⏳ Pending' : '🔴 Disabled'}
                               {isPengurus && <ChevronDown size={10}/>}
                             </button>
                           )}
+
+                          {/* Status Jadwal */}
+                          {isPengurus && quickEdit?.id === m.id && quickEdit?.field === 'status_jadwal' ? (
+                            <select className="input text-xs py-0.5 w-32" autoFocus
+                              defaultValue={m.status_jadwal || 'Siap_Bertugas'}
+                              onChange={e => quickChange(m.id, 'status_jadwal', e.target.value)}
+                              onBlur={() => setQuickEdit(null)}>
+                              <option value="Siap_Bertugas">Siap Bertugas</option>
+                              <option value="Cuti">Cuti / Libur</option>
+                              <option value="Suspended">Suspended</option>
+                              <option value="Pensiun">Pensiun</option>
+                            </select>
+                          ) : (
+                            <button
+                              onClick={() => isPengurus && setQuickEdit({ id: m.id, field: 'status_jadwal' })}
+                              className={`text-[11px] font-medium flex items-center gap-1 w-fit px-1.5 py-0.5 rounded ${
+                                m.status_jadwal === 'Cuti' ? 'bg-amber-100 text-amber-800' :
+                                m.status_jadwal === 'Suspended' ? 'bg-red-100 text-red-800' :
+                                m.status_jadwal === 'Pensiun' ? 'bg-gray-100 text-gray-700' :
+                                'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              } ${isPengurus ? 'cursor-pointer hover:opacity-80' : ''}`}
+                              title={isPengurus ? 'Status Kelayakan Penjadwalan: Klik untuk ubah' : ''}>
+                              📅 {m.status_jadwal ? m.status_jadwal.replace('_',' ') : 'Siap Bertugas'}
+                              {isPengurus && <ChevronDown size={9}/>}
+                            </button>
+                          )}
+
                           {/* Role */}
                           {isAdmin && quickEdit?.id === m.id && quickEdit?.field === 'role' ? (
                             <select className="input text-xs py-0.5 w-36" autoFocus
                               defaultValue={m.role}
                               onChange={e => quickChange(m.id, 'role', e.target.value)}
                               onBlur={() => setQuickEdit(null)}>
-                              {['Administrator','Pengurus','Pendamping','Pelatih','Misdinar_Aktif','Misdinar_Retired'].map(r => (
+                              {['Administrator','Pengurus','Pendamping','Pelatih','Misdinar'].map(r => (
                                 <option key={r} value={r}>{ROLE_LABELS[r]||r}</option>
                               ))}
                             </select>
                           ) : (
                             <button
                               onClick={() => isAdmin && setQuickEdit({ id: m.id, field: 'role' })}
-                              className={`text-xs text-gray-500 flex items-center gap-1 w-fit ${isAdmin ? 'cursor-pointer hover:text-brand-800' : ''}`}
-                              title={isAdmin ? 'Klik untuk ubah role' : ''}>
-                              {ROLE_LABELS[m.role] || m.role}
+                              className={`text-xs text-gray-600 font-semibold flex items-center gap-1 w-fit ${isAdmin ? 'cursor-pointer hover:text-brand-800' : ''}`}
+                              title={isAdmin ? 'Role System: Klik untuk ubah' : ''}>
+                              👤 {ROLE_LABELS[m.role] || m.role}
                               {isAdmin && <ChevronDown size={10} className="opacity-50"/>}
                             </button>
+                          )}
+
+                          {/* Divisi Pengurus */}
+                          {(m.role === 'Pengurus' || m.role === 'Administrator') && (
+                            isAdmin && quickEdit?.id === m.id && quickEdit?.field === 'divisi' ? (
+                              <select className="input text-xs py-0.5 w-32" autoFocus
+                                defaultValue={m.divisi || ''}
+                                onChange={e => quickChange(m.id, 'divisi', e.target.value)}
+                                onBlur={() => setQuickEdit(null)}>
+                                <option value="">Tanpa Divisi</option>
+                                {['Ketua','Sekretaris','Bendahara','Penjadwalan','Jasroh','Multimedia','Sakristan','Putsankris'].map(d => (
+                                  <option key={d} value={d}>{d}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <button
+                                onClick={() => isAdmin && setQuickEdit({ id: m.id, field: 'divisi' })}
+                                className={`text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded flex items-center gap-1 w-fit ${isAdmin ? 'cursor-pointer hover:bg-purple-100' : ''}`}
+                                title={isAdmin ? 'Divisi Pengurus: Klik untuk ubah' : ''}>
+                                🏷️ Divisi: {m.divisi || 'Belum di-set'}
+                                {isAdmin && <ChevronDown size={9}/>}
+                              </button>
+                            )
                           )}
                         </div>
                       </td>
