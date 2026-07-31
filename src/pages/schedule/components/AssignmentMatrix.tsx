@@ -57,34 +57,34 @@ export function AssignmentMatrix({ ev }: AssignmentMatrixProps) {
         }
 
         return (
-          <div key={slot} className="bg-gray-50 rounded-xl p-3 space-y-2">
-            <div className="pb-2 border-b border-gray-200/70">
-              <p className="text-xs font-bold text-gray-700">{jamLabel}</p>
-              <p className="text-[10px] text-gray-500">{tglLabel}</p>
+          <div key={slot} className="bg-gray-50 dark:bg-slate-800/90 rounded-xl p-3 space-y-2 border border-gray-100 dark:border-slate-700">
+            <div className="pb-2 border-b border-gray-200/70 dark:border-slate-700">
+              <p className="text-xs font-bold text-gray-700 dark:text-slate-200">{jamLabel}</p>
+              <p className="text-[10px] text-gray-500 dark:text-slate-400">{tglLabel}</p>
               {picNames ? (
                 <div className="mt-1">
-                  <p className="text-[11px] text-brand-700 flex items-center gap-1">
+                  <p className="text-[11px] text-brand-700 dark:text-amber-400 flex items-center gap-1 font-medium">
                     <UserCheck size={11} />PIC: {picNames}
                   </p>
-                  {hpA && <p className="text-[10px] text-gray-400 ml-3.5">📱 <a href={`https://wa.me/${hpA.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="text-green-600 hover:underline">{hpA}</a></p>}
+                  {hpA && <p className="text-[10px] text-gray-400 dark:text-slate-400 ml-3.5">📱 <a href={`https://wa.me/${hpA.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="text-green-600 dark:text-green-400 hover:underline">{hpA}</a></p>}
                 </div>
               ) : (
-                <p className="text-[11px] text-red-400 flex items-center gap-1 mt-0.5">
+                <p className="text-[11px] text-red-400 dark:text-red-300 flex items-center gap-1 mt-0.5">
                   <AlertTriangle size={10} />PIC belum diisi
                 </p>
               )}
             </div>
             <div className="space-y-0.5">
               {people.length === 0
-                ? <p className="text-xs text-gray-400 italic">Belum ada petugas</p>
+                ? <p className="text-xs text-gray-400 dark:text-slate-500 italic">Belum ada petugas</p>
                 : people.map((a: any, i: number) => (
                   <div key={i} className="flex items-center gap-1.5">
-                    <span className="text-[10px] text-gray-400 w-4 text-right shrink-0">{i + 1}.</span>
+                    <span className="text-[10px] text-gray-400 dark:text-slate-400 w-4 text-right shrink-0">{i + 1}.</span>
                     <div>
-                      <p className="text-xs font-medium text-gray-800 leading-none">
+                      <p className="text-xs font-semibold text-gray-900 dark:text-slate-100 leading-none">
                         {(a.users?.nickname ? (nameTag as Record<string, string>)[a.users.nickname] : null) || a.users?.nama_panggilan}
                       </p>
-                      <p className="text-[10px] text-gray-400">{a.users?.pendidikan} · {a.users?.lingkungan}</p>
+                      <p className="text-[10px] text-gray-400 dark:text-slate-400">{a.users?.pendidikan} · {a.users?.lingkungan}</p>
                     </div>
                   </div>
                 ))

@@ -1365,15 +1365,15 @@ export function PublicSchedulePage({ internal = false }: { internal?: boolean })
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${lc.dot}`}/>
-              <h3 className="font-bold text-gray-900 text-base">{ev.perayaan || ev.nama_event}</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white text-base">{ev.perayaan || ev.nama_event}</h3>
             </div>
-            <p className="text-sm text-gray-500 mt-0.5 ml-[18px]">
+            <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5 ml-[18px]">
               {ev.tanggal_latihan
                 ? `${formatDate(ev.tanggal_latihan, 'dd MMM')} – ${formatDate(ev.tanggal_tugas, 'dd MMM yyyy')}`
                 : formatDate(ev.tanggal_tugas, 'EEEE, dd MMMM yyyy')}
             </p>
             {ev.tanggal_latihan && !ev.tanpa_latihan && (
-              <p className="text-xs text-teal-600 mt-0.5 ml-[18px]">
+              <p className="text-xs text-teal-600 dark:text-teal-400 mt-0.5 ml-[18px]">
                 🏃 Latihan: {latihanHari}{latihanJam ? ` (${latihanJam})` : ''}
               </p>
             )}
@@ -1403,18 +1403,18 @@ export function PublicSchedulePage({ internal = false }: { internal?: boolean })
             }
 
             return (
-              <div key={slot} className="bg-gray-50 rounded-xl p-3 space-y-2">
-                <div className="pb-2 border-b border-gray-200/70">
-                  <p className="text-xs font-bold text-gray-700">{jamLabel}</p>
-                  <p className="text-[10px] text-gray-500">{tglLabel}</p>
+              <div key={slot} className="bg-gray-50 dark:bg-slate-800/90 rounded-xl p-3 space-y-2 border border-gray-100 dark:border-slate-700">
+                <div className="pb-2 border-b border-gray-200/70 dark:border-slate-700">
+                  <p className="text-xs font-bold text-gray-700 dark:text-slate-200">{jamLabel}</p>
+                  <p className="text-[10px] text-gray-500 dark:text-slate-400">{tglLabel}</p>
                   {picNames ? (
                     <div className="mt-1">
-                      <p className="text-[11px] text-brand-700 flex items-center gap-1">
+                      <p className="text-[11px] text-brand-700 dark:text-amber-400 flex items-center gap-1 font-medium">
                         👤 PIC: {picNames}
                       </p>
                       {hpA && (
-                        <p className="text-[10px] text-gray-400 ml-3.5">
-                          📱 <a href={`https://wa.me/${hpA.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="text-green-600 hover:underline">{hpA}</a>
+                        <p className="text-[10px] text-gray-400 dark:text-slate-400 ml-3.5">
+                          📱 <a href={`https://wa.me/${hpA.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="text-green-600 dark:text-green-400 hover:underline">{hpA}</a>
                         </p>
                       )}
                     </div>
@@ -1422,13 +1422,13 @@ export function PublicSchedulePage({ internal = false }: { internal?: boolean })
                 </div>
                 <div className="space-y-0.5">
                   {people.length === 0
-                    ? <p className="text-xs text-gray-400 italic">Belum ada petugas</p>
+                    ? <p className="text-xs text-gray-400 dark:text-slate-500 italic">Belum ada petugas</p>
                     : people.map((a: any, i: number) => (
                       <div key={i} className="flex items-start gap-1.5">
-                        <span className="text-[10px] text-gray-400 w-4 text-right shrink-0 mt-0.5">{i + 1}.</span>
+                        <span className="text-[10px] text-gray-400 dark:text-slate-400 w-4 text-right shrink-0 mt-0.5">{i + 1}.</span>
                         <div>
-                          <p className="text-xs font-medium text-gray-800 leading-none">{a.users?.nama_panggilan || '—'}</p>
-                          {a.users?.lingkungan && <p className="text-[10px] text-gray-400 mt-0.5">· {a.users.lingkungan}</p>}
+                          <p className="text-xs font-semibold text-gray-900 dark:text-slate-100 leading-none">{a.users?.nama_panggilan || '—'}</p>
+                          {a.users?.lingkungan && <p className="text-[10px] text-gray-400 dark:text-slate-400 mt-0.5">· {a.users.lingkungan}</p>}
                         </div>
                       </div>
                     ))

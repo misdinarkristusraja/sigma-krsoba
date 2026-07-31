@@ -373,10 +373,10 @@ export default function DashboardPage() {
           {/* Upcoming events */}
           <div className="card">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-gray-900 flex items-center gap-2">
-                <Calendar size={18} className="text-brand-800" /> Misa Mendatang
+              <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                <Calendar size={18} className="text-brand-800 dark:text-brand-400" /> Misa Mendatang
               </h2>
-              <Link to="/jadwal" className="text-xs text-brand-800 hover:underline flex items-center gap-1">
+              <Link to="/jadwal" className="text-xs text-brand-800 dark:text-amber-400 font-semibold hover:underline flex items-center gap-1">
                 Lihat semua <ChevronRight size={14} />
               </Link>
             </div>
@@ -398,11 +398,11 @@ export default function DashboardPage() {
                     key={ev.id}
                     custom={i}
                     variants={rowVariants}
-                    className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-100/60 transition-colors"
+                    className="flex items-center gap-4 p-3 rounded-xl border border-gray-100 dark:border-slate-800 bg-gray-50/80 dark:bg-slate-800/80 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-gray-500 font-medium">{formatDate(ev.tanggal_tugas, 'EEEE, dd MMM yyyy')}</p>
-                      <p className="font-semibold text-gray-900 text-sm truncate">{ev.perayaan || ev.nama_event}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">{formatDate(ev.tanggal_tugas, 'EEEE, dd MMM yyyy')}</p>
+                      <p className="font-semibold text-gray-900 dark:text-slate-100 text-sm truncate">{ev.perayaan || ev.nama_event}</p>
                     </div>
                     <LiturgyBadge warna={ev.warna_liturgi} />
                   </motion.div>
@@ -415,20 +415,20 @@ export default function DashboardPage() {
           {mySchedule.length > 0 && (
             <div className="card">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-bold text-gray-900 flex items-center gap-2">
-                  <Clock size={18} className="text-brand-800" /> Jadwal Kamu
+                <h2 className="font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Clock size={18} className="text-brand-800 dark:text-brand-400" /> Jadwal Kamu
                 </h2>
-                <Link to="/jadwal-saya" className="text-xs text-brand-800 hover:underline flex items-center gap-1">
+                <Link to="/jadwal-saya" className="text-xs text-brand-800 dark:text-amber-400 font-semibold hover:underline flex items-center gap-1">
                   Lihat semua <ChevronRight size={14} />
                 </Link>
               </div>
               <div className="space-y-2">
                 {mySchedule.map((a, i) => (
-                  <div key={i} className="flex items-center gap-3 p-3 bg-brand-50 rounded-xl">
-                    <CheckCircle size={16} className="text-brand-800 flex-shrink-0" />
+                  <div key={i} className="flex items-center gap-3 p-3 bg-brand-50 dark:bg-slate-800/90 rounded-xl border border-brand-100 dark:border-slate-700">
+                    <CheckCircle size={16} className="text-brand-800 dark:text-amber-400 flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-semibold text-gray-900">{a.events?.perayaan || a.events?.nama_event}</p>
-                      <p className="text-xs text-gray-500">{formatDate(a.events?.tanggal_tugas, 'EEEE, dd MMM')} · Misa {a.slot_number}</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">{a.events?.perayaan || a.events?.nama_event}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400">{formatDate(a.events?.tanggal_tugas, 'EEEE, dd MMM')} · Misa {a.slot_number}</p>
                     </div>
                   </div>
                 ))}
@@ -439,7 +439,7 @@ export default function DashboardPage() {
           {/* Poin mini chart */}
           {chartData.length > 1 && (
             <motion.div className="card" variants={fadeIn} initial="hidden" animate="visible">
-              <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <h2 className="font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <Trophy size={18} className="text-yellow-500" /> Tren Poin 8 Minggu
               </h2>
               <ResponsiveContainer width="100%" height={120}>
@@ -450,16 +450,13 @@ export default function DashboardPage() {
                       <stop offset="95%" stopColor="#7c1d1d" stopOpacity={0}/>
                     </linearGradient>
                   </defs>
-                  <XAxis dataKey="week" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip
-                    contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e5e7eb' }}
-                    formatter={(v: any) => [`${v} poin`, 'Poin']}
-                  />
-                  <Area type="monotone" dataKey="poin" stroke="#7c1d1d" fill="url(#poinGrad)" strokeWidth={2} dot={{ r: 3 }} />
+                  <XAxis dataKey="week" stroke="#9ca3af" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#9ca3af" fontSize={10} tickLine={false} axisLine={false} />
+                  <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '11px' }} />
+                  <Area type="monotone" dataKey="poin" stroke="#8B0000" fillOpacity={1} fill="url(#poinGrad)" strokeWidth={2} />
                 </AreaChart>
               </ResponsiveContainer>
-              <Link to="/rekap" className="mt-2 text-xs text-brand-800 hover:underline flex items-center gap-1">
+              <Link to="/rekap" className="mt-2 text-xs text-brand-800 dark:text-amber-400 hover:underline flex items-center gap-1">
                 Lihat rekap lengkap <ChevronRight size={12} />
               </Link>
             </motion.div>
@@ -470,7 +467,7 @@ export default function DashboardPage() {
         <div className="space-y-4">
           {/* Quick actions */}
           <div className="card">
-            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Aksi Cepat</h2>
+            <h2 className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide mb-3">Aksi Cepat</h2>
             <div className="space-y-2">
               {isPengurus && (
                 <Link to="/pengurus/ketua" className="flex items-center gap-3 p-3 rounded-xl bg-gradient-to-r from-red-900 to-purple-900 text-white hover:opacity-95 transition-all shadow-md">
@@ -483,33 +480,33 @@ export default function DashboardPage() {
                 </Link>
               )}
               {isPelatih && (
-                <Link to="/scan-qr" className="flex items-center gap-3 p-3 rounded-xl bg-brand-800 text-white hover:bg-brand-900 transition-colors">
+                <Link to="/scan-qr" className="flex items-center gap-3 p-3 rounded-xl bg-brand-800 dark:bg-amber-600 text-white dark:text-slate-950 hover:bg-brand-900 transition-colors font-bold">
                   <QrCode size={18} />
-                  <span className="text-sm font-semibold">Scan QR Absensi</span>
+                  <span className="text-sm">Scan QR Absensi</span>
                   <ChevronRight size={16} className="ml-auto" />
                 </Link>
               )}
               {isPengurus && (
-                <Link to="/jadwal-mingguan" className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-                  <Calendar size={18} className="text-brand-800" />
-                  <span className="text-sm font-medium text-gray-700">Buat Jadwal</span>
-                  <ChevronRight size={16} className="ml-auto text-gray-400" />
+                <Link to="/jadwal-mingguan" className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-slate-800/90 border border-gray-100 dark:border-slate-700 text-gray-900 dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+                  <Calendar size={18} className="text-brand-800 dark:text-amber-400" />
+                  <span className="text-sm font-semibold">Buat Jadwal</span>
+                  <ChevronRight size={16} className="ml-auto text-gray-400 dark:text-slate-400" />
                 </Link>
               )}
-              <Link to="/tukar-jadwal" className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-                <ArrowLeftRight size={18} className="text-brand-800" />
-                <span className="text-sm font-medium text-gray-700">Tukar Jadwal</span>
-                <ChevronRight size={16} className="ml-auto text-gray-400" />
+              <Link to="/tukar-jadwal" className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-slate-800/90 border border-gray-100 dark:border-slate-700 text-gray-900 dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+                <ArrowLeftRight size={18} className="text-brand-800 dark:text-amber-400" />
+                <span className="text-sm font-semibold">Tukar Jadwal</span>
+                <ChevronRight size={16} className="ml-auto text-gray-400 dark:text-slate-400" />
               </Link>
-              <Link to="/kartu" className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-                <QrCode size={18} className="text-brand-800" />
-                <span className="text-sm font-medium text-gray-700">Kartu Anggota</span>
-                <ChevronRight size={16} className="ml-auto text-gray-400" />
+              <Link to="/kartu" className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-slate-800/90 border border-gray-100 dark:border-slate-700 text-gray-900 dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+                <QrCode size={18} className="text-brand-800 dark:text-amber-400" />
+                <span className="text-sm font-semibold">Kartu Anggota</span>
+                <ChevronRight size={16} className="ml-auto text-gray-400 dark:text-slate-400" />
               </Link>
-              <a href="https://youtu.be/zVN7jL6fUqQ" target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
-                <PlayCircle size={18} className="text-brand-800" />
-                <span className="text-sm font-medium text-gray-700">Video Tutorial</span>
-                <ChevronRight size={16} className="ml-auto text-gray-400" />
+              <a href="https://youtu.be/zVN7jL6fUqQ" target="_blank" rel="noreferrer" className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-slate-800/90 border border-gray-100 dark:border-slate-700 text-gray-900 dark:text-slate-100 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
+                <PlayCircle size={18} className="text-brand-800 dark:text-amber-400" />
+                <span className="text-sm font-semibold">Video Tutorial</span>
+                <ChevronRight size={16} className="ml-auto text-gray-400 dark:text-slate-400" />
               </a>
             </div>
           </div>
@@ -518,16 +515,16 @@ export default function DashboardPage() {
           {swapBoard.length > 0 && (
             <div className="card">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="font-bold text-gray-900 text-sm flex items-center gap-2">
+                <h2 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
                   <AlertTriangle size={16} className="text-orange-500" /> Penawaran Tugas
                 </h2>
-                <Link to="/tukar-jadwal" className="text-xs text-brand-800 hover:underline">Lihat semua</Link>
+                <Link to="/tukar-jadwal" className="text-xs text-brand-800 dark:text-amber-400 hover:underline font-semibold">Lihat semua</Link>
               </div>
               <div className="space-y-2">
                 {swapBoard.slice(0,3).map((s: any) => (
-                  <div key={s.id} className="p-2.5 bg-orange-50 rounded-lg border border-orange-100">
-                    <p className="text-xs font-semibold text-gray-800">{s.requester?.nama_panggilan}</p>
-                    <p className="text-xs text-gray-500">{s.assignment?.events?.nama_event} · Misa {s.assignment?.slot_number}</p>
+                  <div key={s.id} className="p-2.5 bg-orange-50 dark:bg-orange-950/40 rounded-lg border border-orange-100 dark:border-orange-900/60">
+                    <p className="text-xs font-semibold text-gray-800 dark:text-slate-100">{s.requester?.nama_panggilan}</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">{s.assignment?.events?.nama_event} · Misa {s.assignment?.slot_number}</p>
                   </div>
                 ))}
               </div>
