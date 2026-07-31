@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { supabase as supabaseTyped } from '../../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../../contexts/AuthContext';
-import { Camera, CheckCircle, Upload, AlertTriangle, RefreshCw, BarChart2, ShieldCheck, MapPin } from 'lucide-react';
+import { Camera, CheckCircle, Upload, AlertTriangle, RefreshCw, BarChart2, ShieldCheck, MapPin, Eye } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function SakristanPage() {
@@ -18,6 +18,7 @@ export default function SakristanPage() {
   const [submitting, setSubmitting] = useState(false);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [previewModalUrl, setPreviewModalUrl] = useState<string | null>(null);
 
   const startCamera = async () => {
     setCameraError(null);
@@ -61,9 +62,10 @@ export default function SakristanPage() {
   const loadLogs = useCallback(async () => {
     setLoading(true);
     try {
+      // Dedicated query to pengurus_presence_logs (separate from misdinar scan_records)
       const { data } = await supabase
-        .from('scan_records')
-        .select('*, user:user_id(nama_panggilan, role)')
+        .from('pengurus_presence_logs')
+        .select('*, user:user_id(nama_panggilan, role, divisi)')
         .order('timestamp', { ascending: false })
         .limit(50);
       setLogs(data || []);
@@ -76,26 +78,22 @@ export default function SakristanPage() {
 
   useEffect(() => { loadLogs(); }, [loadLogs]);
 
-  // Stamp Auto-Watermark on canvas
   const drawWatermark = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
     const nowStr = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'medium' });
     const locationStr = '📍 Paroki Kristus Raja Solo Baru - Presensi PIC/Pengurus Sakristan';
 
-    // Dark semi-transparent banner
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-    ctx.fillRect(0, height - 70, width, 70);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.75)';
+    ctx.fillRect(0, height - 75, width, 75);
 
-    // Watermark text
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 15px sans-serif';
-    ctx.fillText(`🕒 ${nowStr}`, 15, height - 42);
+    ctx.fillText(`🕒 ${nowStr}`, 15, height - 45);
 
-    ctx.fillStyle = '#fde047'; // Amber yellow
+    ctx.fillStyle = '#fde047';
     ctx.font = '13px sans-serif';
-    ctx.fillText(locationStr, 15, height - 18);
+    ctx.fillText(locationStr, 15, height - 20);
   };
 
-  // Capture frame from live video
   const captureFrame = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -114,7 +112,6 @@ export default function SakristanPage() {
     setCapturedPhoto(dataUrl);
   };
 
-  // Fallback: Handle Image Upload from gallery/camera app
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -145,18 +142,17 @@ export default function SakristanPage() {
     if (!capturedPhoto) { toast.error('Ambil foto presensi terlebih dahulu'); return; }
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('scan_records').insert({
+      // Save dedicated Pengurus presence log
+      const { error } = await supabase.from('pengurus_presence_logs').insert({
         user_id: profile?.id,
-        scan_type: 'tugas',
-        is_walk_in: false,
-        timestamp: new Date().toISOString(),
-        qr_version: 'new',
-        is_anomaly: false,
-        anomaly_reason: `Presensi PIC Sakristan dengan Foto Watermark (WIB)`
+        tipe: 'PIC_Sakristan',
+        foto_url: capturedPhoto,
+        keterangan: `Presensi Watermark PIC Sakristan (${profile?.nama_panggilan})`,
+        timestamp: new Date().toISOString()
       });
 
       if (error) throw error;
-      toast.success('Presensi PIC Sakristan dengan Foto Berhasil!');
+      toast.success('Presensi PIC Sakristan Berhasil Di-log!');
       setCapturedPhoto(null);
       loadLogs();
     } catch (err: any) {
@@ -171,7 +167,7 @@ export default function SakristanPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="font-bold text-gray-900 text-base">Divisi Sakristan &amp; PIC Latihan</h2>
-          <p className="text-xs text-gray-500">Presensi Pengurus/PIC Misa &amp; Latihan berbasis Foto Kamera + Watermark Otomatis.</p>
+          <p className="text-xs text-gray-500">Log Presensi Khusus Pengurus &amp; PIC Sakristan berbasis Kamera Watermark (Terpisah dari presensi misdinar).</p>
         </div>
 
         <div className="flex gap-2">
@@ -179,7 +175,7 @@ export default function SakristanPage() {
             <Camera size={15} /> Presensi Kamera
           </button>
           <button onClick={() => setTab('analytics')} className={`btn-sm gap-1 ${tab === 'analytics' ? 'btn-primary' : 'btn-outline'}`}>
-            <BarChart2 size={15} /> Analisis Kehadiran
+            <BarChart2 size={15} /> Analisis Kehadiran Pengurus
           </button>
         </div>
       </div>
@@ -251,7 +247,7 @@ export default function SakristanPage() {
                     Ulangi Foto
                   </button>
                   <button onClick={handleSavePresensi} disabled={submitting} className="btn-primary flex-1">
-                    Simpan Presensi
+                    Simpan Presensi PIC
                   </button>
                 </div>
               </div>
@@ -267,31 +263,69 @@ export default function SakristanPage() {
 
       {tab === 'analytics' && (
         <div className="card p-0 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 font-bold text-gray-900 text-sm">
-            Riwayat Presensi Pengurus Sakristan
+          <div className="p-4 border-b border-gray-100 font-bold text-gray-900 text-sm flex justify-between items-center">
+            <span>Riwayat Presensi Pengurus &amp; PIC Sakristan</span>
+            <span className="text-xs text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full font-bold">
+              Database Terpisah: pengurus_presence_logs
+            </span>
           </div>
           <table className="tbl">
             <thead>
               <tr>
                 <th>Waktu</th>
                 <th>Pengurus / PIC</th>
-                <th>Status Scan</th>
-                <th>Keterangan Audit</th>
+                <th>Tipe Presensi</th>
+                <th>Status Audit</th>
+                <th>Bukti Foto</th>
               </tr>
             </thead>
             <tbody>
-              {logs.map(l => (
+              {logs.length === 0 ? (
+                <tr><td colSpan={5} className="text-center py-8 text-gray-400">Belum ada riwayat presensi pengurus</td></tr>
+              ) : logs.map(l => (
                 <tr key={l.id}>
                   <td className="text-xs text-gray-500">{new Date(l.timestamp).toLocaleString('id-ID')}</td>
-                  <td className="text-sm font-semibold text-gray-900">{l.user?.nama_panggilan || '—'}</td>
                   <td>
-                    <span className="badge-green text-xs">✓ Presensi Valid</span>
+                    <div className="font-semibold text-gray-900 text-sm">{l.user?.nama_panggilan || '—'}</div>
+                    <div className="text-[10px] text-purple-700 font-medium">Divisi: {l.user?.divisi || 'Pengurus'}</div>
                   </td>
-                  <td className="text-xs text-gray-600">{l.anomaly_reason || 'Foto Watermark Verified'}</td>
+                  <td>
+                    <span className="badge-purple text-xs">{l.tipe || 'PIC Sakristan'}</span>
+                  </td>
+                  <td>
+                    <span className="badge-green text-xs">✓ Presensi Verified</span>
+                  </td>
+                  <td>
+                    {l.foto_url ? (
+                      <button onClick={() => setPreviewModalUrl(l.foto_url)} className="btn-ghost btn-xs text-brand-800 gap-1">
+                        <Eye size={12} /> Lihat Foto
+                      </button>
+                    ) : (
+                      <span className="text-xs text-gray-400">—</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Modal Preview Foto */}
+      {previewModalUrl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="bg-white rounded-2xl p-4 max-w-lg w-full space-y-3 shadow-2xl">
+            <div className="flex justify-between items-center">
+              <h3 className="font-bold text-gray-900 text-sm">Bukti Foto Watermark Presensi PIC</h3>
+              <button onClick={() => setPreviewModalUrl(null)} className="btn-ghost btn-xs">✕ Tutup</button>
+            </div>
+            <div className="rounded-xl overflow-hidden border">
+              <img src={previewModalUrl} alt="Presensi Watermark" className="w-full h-auto" />
+            </div>
+            <button onClick={() => setPreviewModalUrl(null)} className="btn-primary w-full text-xs">
+              Tutup Pratinjau
+            </button>
+          </div>
         </div>
       )}
     </div>
