@@ -29,25 +29,47 @@ export default function NotificationAdminPage() {
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
-  // Robust multi-schema insert helper
+  // Adaptive multi-schema insert helper (handles link_url / judul / title / body variations)
   const insertNotifications = async (rows: any[]) => {
-    // Attempt 1: Standard schema (judul, pesan)
+    // Attempt 1: Standard schema (judul, pesan, link_url)
     let { error } = await supabase.from('notifications').insert(rows);
-    if (error && (error.message?.includes('judul') || error.message?.includes('schema cache') || error.code === 'PGRST204')) {
-      // Attempt 2: Alternative schema (title, body)
-      const fallbackRows = rows.map((r: any) => ({
-        user_id: r.user_id,
-        tipe: r.tipe || r.type,
-        type: r.tipe || r.type,
-        title: r.judul || r.title,
-        body: r.pesan || r.body,
-        link_url: r.link_url,
-        is_read: r.is_read ?? false,
-      }));
-      const { error: fbErr } = await supabase.from('notifications').insert(fallbackRows);
-      error = fbErr;
-    }
-    if (error) throw error;
+    if (!error) return;
+
+    // Attempt 2: Standard schema without link_url (if link_url column does not exist)
+    const noLinkRows = rows.map((r: any) => ({
+      user_id: r.user_id,
+      tipe: r.tipe || 'ANNOUNCEMENT',
+      judul: r.judul || 'Pengumuman',
+      pesan: r.pesan || '',
+      is_read: false,
+    }));
+    let { error: err2 } = await supabase.from('notifications').insert(noLinkRows);
+    if (!err2) return;
+
+    // Attempt 3: English schema (title, body, type, link_url)
+    const engRows = rows.map((r: any) => ({
+      user_id: r.user_id,
+      type: r.tipe || 'ANNOUNCEMENT',
+      title: r.judul || 'Pengumuman',
+      body: r.pesan || '',
+      link_url: r.link_url,
+      is_read: false,
+    }));
+    let { error: err3 } = await supabase.from('notifications').insert(engRows);
+    if (!err3) return;
+
+    // Attempt 4: English schema without link_url
+    const engNoLinkRows = rows.map((r: any) => ({
+      user_id: r.user_id,
+      type: r.tipe || 'ANNOUNCEMENT',
+      title: r.judul || 'Pengumuman',
+      body: r.pesan || '',
+      is_read: false,
+    }));
+    let { error: err4 } = await supabase.from('notifications').insert(engNoLinkRows);
+    if (!err4) return;
+
+    throw error || err2 || err3 || err4;
   };
 
   // 1. Send Manual Broadcast
@@ -102,10 +124,10 @@ export default function NotificationAdminPage() {
     try {
       const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      // Fetch tomorrow's active events (valid columns: id, nama_event, perayaan, tanggal_tugas, tanggal_latihan, lokasi)
+      // Fetch tomorrow's active events (valid columns: id, nama_event, perayaan, tanggal_tugas, tanggal_latihan)
       const { data: events, error: evErr } = await supabase
         .from('events')
-        .select('id, nama_event, perayaan, tanggal_tugas, tanggal_latihan, lokasi')
+        .select('id, nama_event, perayaan, tanggal_tugas, tanggal_latihan')
         .or(`tanggal_tugas.eq.${tomorrow},tanggal_latihan.eq.${tomorrow}`);
 
       if (evErr) throw evErr;
