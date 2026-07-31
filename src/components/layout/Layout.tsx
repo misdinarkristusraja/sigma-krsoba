@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import NotificationBell from '../ui/NotificationBell';
+import DarkModeToggle from '../ui/DarkModeToggle';
+import NotificationPromptModal from '../ui/NotificationPromptModal';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import {
@@ -9,7 +11,7 @@ import {
   Settings, LogOut, Menu, X, Church, AlertTriangle,
   ClipboardList, RefreshCw, ClipboardCheck, PartyPopper, ListChecks,
   BookUser, Star, Microscope, Globe, ChevronDown, TrendingUp, ShieldCheck,
-  FileText, Wallet, HeartHandshake, Video, Camera, Shirt,
+  FileText, Wallet, HeartHandshake, Video, Camera, Shirt, Bell,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { cn, truncate } from '../../lib/utils';
@@ -100,6 +102,7 @@ const NAV_GROUPS: NavGroup[] = [
       { icon: Video,          label: 'Multimedia',         path: '/pengurus/multimedia', roles: PENG },
       { icon: Camera,         label: 'Sakristan (PIC)',    path: '/pengurus/sakristan',  roles: PENG },
       { icon: Shirt,          label: 'Putsankris',         path: '/pengurus/putsankris', roles: PENG },
+      { icon: Bell,           label: 'Pusat Notifikasi',   path: '/pengurus/notifikasi', roles: PENG },
     ],
   },
   {
@@ -375,6 +378,8 @@ export default function Layout() {
           </div>
         </nav>
       </div>
+      <DarkModeToggle />
+      <NotificationPromptModal />
     </div>
   );
 }

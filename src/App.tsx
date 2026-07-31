@@ -45,6 +45,7 @@ const JasrohPage        = lazy(() => import('./pages/pengurus/JasrohPage'));
 const MultimediaPage    = lazy(() => import('./pages/pengurus/MultimediaPage'));
 const SakristanPage     = lazy(() => import('./pages/pengurus/SakristanPage'));
 const PutsankrisPage    = lazy(() => import('./pages/pengurus/PutsankrisPage'));
+const NotificationAdminPage = lazy(() => import('./pages/pengurus/NotificationAdminPage'));
 
 const ADMIN = ['Administrator'];
 const PENG  = ['Administrator', 'Pengurus', 'Pendamping'];
@@ -136,6 +137,7 @@ export default function App() {
                 <Route path="multimedia" element={<MultimediaPage />} />
                 <Route path="sakristan" element={<SakristanPage />} />
                 <Route path="putsankris" element={<PutsankrisPage />} />
+                <Route path="notifikasi" element={<NotificationAdminPage />} />
               </Route>
             </Route>
 

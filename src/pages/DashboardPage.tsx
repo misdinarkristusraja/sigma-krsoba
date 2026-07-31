@@ -195,21 +195,31 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="page-title">
-            {greeting()}{nama ? `, ${nama}` : ''}!
-          </h1>
-          <p className="page-subtitle">Serve the Lord with Gladness</p>
+      {/* Majestic Royal Welcome Banner */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-900 via-brand-800 to-amber-700 p-6 sm:p-8 text-white shadow-2xl">
+        <div className="absolute -right-10 -bottom-10 opacity-15 pointer-events-none">
+          <Star size={240} className="text-amber-300" />
         </div>
+        <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <span className="inline-block px-3 py-1 bg-amber-500/20 text-amber-300 rounded-full text-xs font-semibold tracking-wide border border-amber-300/30">
+              ✨ SIGMA v.2 — Kristus Raja
+            </span>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+              Berkah Dalem{nama ? `, ${nama}` : ''}! 👋
+            </h1>
+            <p className="text-brand-100 text-xs sm:text-sm font-medium">
+              "Serve the Lord with Gladness" — Melayani dengan Sukacita dan Kesetiaan.
+            </p>
+          </div>
 
-        {isPengurus && pendingRegs > 0 && (
-          <Link to="/anggota" className="flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-xl px-3 py-2 hover:bg-yellow-100 transition-colors">
-            <Bell size={16} className="text-yellow-600" />
-            <span className="text-sm font-semibold text-yellow-700">{pendingRegs} pendaftar baru</span>
-          </Link>
-        )}
+          {isPengurus && pendingRegs > 0 && (
+            <Link to="/anggota" className="flex items-center gap-2 bg-amber-400 text-slate-950 font-bold rounded-2xl px-4 py-2.5 shadow-lg hover:bg-amber-300 transition-all hover:scale-105">
+              <Bell size={16} className="animate-bounce" />
+              <span className="text-xs">{pendingRegs} Pendaftar Baru</span>
+            </Link>
+          )}
+        </div>
       </div>
 
       {/* Banner Daftar Ulang */}
