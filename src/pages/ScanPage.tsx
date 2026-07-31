@@ -163,18 +163,22 @@ export default function ScanPage() {
   } | null>(null);
 
   // Form state di dalam override panel
-  const [ovEventId,    setOvEventId]    = useState('');
-  const [ovDatetime,   setOvDatetime]   = useState(''); // "YYYY-MM-DDTHH:mm" WIB
-  const [ovReason,     setOvReason]     = useState('');
-  const [ovCustom,     setOvCustom]     = useState('');
-  const [ovScanType,   setOvScanType]   = useState<'tugas'|'latihan'>('tugas');
-  const [ovSubmitting, setOvSubmitting] = useState(false);
+  const [ovEventId,        setOvEventId]        = useState('');
+  const [ovDatetime,       setOvDatetime]       = useState(''); // "YYYY-MM-DDTHH:mm" WIB
+  const [ovReason,         setOvReason]         = useState('');
+  const [ovCustom,         setOvCustom]         = useState('');
+  const [ovScanType,       setOvScanType]       = useState<'tugas'|'latihan'>('tugas');
+  const [ovSubmitting,     setOvSubmitting]     = useState(false);
+  const [unscannedMembers, setUnscannedMembers] = useState<any[]>([]);
+  const [ovReplacedUserId, setOvReplacedUserId] = useState<string | null>(null);
+  const [overrideTab,      setOverrideTab]      = useState<'substitusi' | 'walkin' | 'manual'>('substitusi');
 
   // Preset alasan override
   const OVERRIDE_PRESETS = [
+    'Substitusi Mendadak (Tukar di Tempat)',
+    'Tugas Tambahan Sukarela (Walk-In)',
     'Hadir tapi lupa scan',
     'Scan telat setelah misa',
-    'Menggantikan mendadak',
     'Kamera tidak bisa baca QR',
     'Lainnya...',
   ];
@@ -435,25 +439,43 @@ export default function ScanPage() {
     const nowWIB = new Date(Date.now() + 7 * 3600 * 1000);
     const localStr = nowWIB.toISOString().slice(0, 16); // "YYYY-MM-DDTHH:mm"
     setOverride({ ...opts, scanTypeHint: hint });
-    setOvEventId(opts.events?.[0]?.id || '');
+    const targetEvId = opts.events?.[0]?.id || '';
+    setOvEventId(targetEvId);
     setOvDatetime(localStr);
     setOvReason('');
     setOvCustom('');
     setOvScanType(hint);
     setOvSubmitting(false);
+    setOvReplacedUserId(null);
+    setOverrideTab('substitusi');
+    setUnscannedMembers([]);
+
+    if (targetEvId) {
+      supabase.from('assignments')
+        .select('id, user_id, slot_number, users(id, nama_panggilan, lingkungan)')
+        .eq('event_id', targetEvId)
+        .then(({ data: asgData }: any) => {
+          if (asgData?.length) {
+            setUnscannedMembers(asgData.map((a: any) => ({
+              id: a.users?.id || a.user_id,
+              nama_panggilan: a.users?.nama_panggilan || 'Anggota',
+              lingkungan: a.users?.lingkungan || '',
+              slot: a.slot_number
+            })));
+          }
+        });
+    }
   }
 
   // ── Konfirmasi override ─────────────────────────────────────
-  async function doOverride() {
+  async function doOverride(customReasonStr?: string, customReplacedId?: string) {
     if (!override) return;
-    const finalReason = ovReason === 'Lainnya...' ? ovCustom.trim() : ovReason;
+    const finalReason = customReasonStr || (ovReason === 'Lainnya...' ? ovCustom.trim() : ovReason);
     if (!finalReason) { toast.error('Pilih atau isi alasan override'); return; }
     if (!ovEventId)   { toast.error('Pilih event / acara yang sesuai'); return; }
 
     setOvSubmitting(true);
 
-    // Parse datetime WIB → UTC ISO
-    // ovDatetime = "YYYY-MM-DDTHH:mm" WIB, convert ke UTC
     let timestamp: string;
     try {
       const wibMs = new Date(ovDatetime).getTime() - 7 * 3600 * 1000;
@@ -462,22 +484,24 @@ export default function ScanPage() {
       timestamp = new Date().toISOString();
     }
 
-    const { member, parsed, raw, isAnomaly } = override;
+    const { member, parsed, raw } = override;
     const scanType = ovScanType === 'latihan' ? 'walkin_latihan' : 'walkin_tugas';
     const auditReason = `Override oleh ${profile?.nama_panggilan} (${profile?.role}): ${finalReason}`;
+    const replacedId = customReplacedId || ovReplacedUserId;
 
     const { error } = await supabase.from('scan_records').insert({
-      user_id:         member.id,
-      event_id:        ovEventId,
-      scanner_user_id: profile?.id,
-      scan_type:       scanType,
-      is_walk_in:      true,
-      walkin_reason:   finalReason,
+      user_id:          member.id,
+      event_id:         ovEventId,
+      scanner_user_id:  profile?.id,
+      scan_type:        scanType,
+      is_walk_in:       true,
+      walkin_reason:    finalReason,
+      replaced_user_id: replacedId || null,
       timestamp,
-      qr_version:      parsed?.version === 'legacy' ? 'legacy' : 'new',
-      raw_qr_value:    raw || member.myid || '',
-      is_anomaly:      true,
-      anomaly_reason:  auditReason,
+      qr_version:       parsed?.version === 'legacy' ? 'legacy' : 'new',
+      raw_qr_value:     raw || member.myid || '',
+      is_anomaly:       true,
+      anomaly_reason:   auditReason,
     });
 
     setOvSubmitting(false);
@@ -736,45 +760,142 @@ export default function ScanPage() {
                 </div>
               </div>
 
-              {/* Alasan */}
+              {/* Smart 2-Mode Mode Switcher */}
               <div>
-                <label className="text-gray-400 text-xs mb-1 block">
-                  Alasan <span className="text-red-400">*</span>
-                </label>
-                <div className="grid grid-cols-2 gap-1.5 mb-2">
-                  {OVERRIDE_PRESETS.map(p => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setOvReason(p)}
-                      className={[
-                        'text-left px-3 py-2 rounded-lg text-xs border transition-colors leading-tight',
-                        ovReason === p
-                          ? 'bg-brand-900 border-brand-600 text-white'
-                          : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-600',
-                        p === 'Lainnya...' ? 'col-span-2' : '',
-                      ].join(' ')}
-                    >
-                      {p}
-                    </button>
-                  ))}
+                <label className="text-gray-400 text-xs mb-1 block">Mode Override &amp; Walk-In Presensi</label>
+                <div className="flex gap-1.5 bg-gray-800 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={() => setOverrideTab('substitusi')}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      overrideTab === 'substitusi' ? 'bg-purple-700 text-white shadow-sm' : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    🔄 Substitusi Mendadak
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOverrideTab('walkin')}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      overrideTab === 'walkin' ? 'bg-blue-700 text-white shadow-sm' : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    ➕ Tugas Tambahan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setOverrideTab('manual')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                      overrideTab === 'manual' ? 'bg-gray-700 text-white shadow-sm' : 'text-gray-400 hover:text-white'
+                    }`}
+                  >
+                    ⚙️ Preset
+                  </button>
                 </div>
-                {ovReason === 'Lainnya...' && (
-                  <input
-                    className="w-full bg-gray-800 text-white rounded-xl px-3 py-2.5 text-sm border border-gray-700 focus:border-brand-500 focus:outline-none placeholder-gray-500"
-                    placeholder="Tulis alasan..."
-                    value={ovCustom}
-                    onChange={e => setOvCustom(e.target.value)}
-                    autoFocus
-                  />
-                )}
               </div>
+
+              {/* MODE A: Substitusi Mendadak 1-Tap List */}
+              {overrideTab === 'substitusi' && (
+                <div className="bg-purple-950/40 border border-purple-800/50 rounded-xl p-3 space-y-2">
+                  <p className="text-xs text-purple-200 font-semibold">
+                    Pilih nama misdinar yang digantikan di Misa ini (1-Tap):
+                  </p>
+                  {unscannedMembers.length === 0 ? (
+                    <p className="text-[11px] text-gray-400 italic py-1">Tidak ada anggota penugasan yang tercatat belum scan untuk acara ini.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-36 overflow-y-auto">
+                      {unscannedMembers.map((m: any) => (
+                        <button
+                          key={m.id}
+                          type="button"
+                          onClick={() => {
+                            setOvReplacedUserId(m.id);
+                            const reasonStr = `Substitusi Mendadak: Menggantikan ${m.nama_panggilan}`;
+                            setOvReason(reasonStr);
+                            doOverride(reasonStr, m.id);
+                          }}
+                          className={`text-left p-2 rounded-lg border text-xs transition-all flex items-center justify-between ${
+                            ovReplacedUserId === m.id
+                              ? 'bg-purple-700 border-purple-400 text-white font-bold'
+                              : 'bg-gray-800/80 border-gray-700 text-gray-200 hover:bg-purple-900/50'
+                          }`}
+                        >
+                          <div>
+                            <div className="font-semibold">{m.nama_panggilan}</div>
+                            <div className="text-[10px] text-gray-400">{m.lingkungan || 'Misdinar'}</div>
+                          </div>
+                          <span className="text-[10px] bg-purple-900 text-purple-200 px-1.5 py-0.5 rounded font-mono">
+                            Slot {m.slot || 1}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* MODE B: Tugas Tambahan Sukarela (Walk-In) */}
+              {overrideTab === 'walkin' && (
+                <div className="bg-blue-950/40 border border-blue-800/50 rounded-xl p-3 space-y-3 text-center">
+                  <p className="text-xs text-blue-200">
+                    Anggota hadir sukarela membantu tugas Misa tanpa menggantikan posisi siapa pun.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const reasonStr = 'Tugas Tambahan Sukarela (Walk-In)';
+                      setOvReason(reasonStr);
+                      setOvReplacedUserId(null);
+                      doOverride(reasonStr, undefined);
+                    }}
+                    className="w-full py-2.5 bg-blue-700 hover:bg-blue-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-md transition-all"
+                  >
+                    <span>➕ Simpan Presensi Walk-In Sukarela</span>
+                  </button>
+                </div>
+              )}
+
+              {/* MODE C: Preset Manual */}
+              {overrideTab === 'manual' && (
+                <div>
+                  <label className="text-gray-400 text-xs mb-1 block">
+                    Alasan Override Manual <span className="text-red-400">*</span>
+                  </label>
+                  <div className="grid grid-cols-2 gap-1.5 mb-2">
+                    {OVERRIDE_PRESETS.map(p => (
+                      <button
+                        key={p}
+                        type="button"
+                        onClick={() => setOvReason(p)}
+                        className={[
+                          'text-left px-3 py-2 rounded-lg text-xs border transition-colors leading-tight',
+                          ovReason === p
+                            ? 'bg-brand-900 border-brand-600 text-white'
+                            : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-gray-600',
+                          p === 'Lainnya...' ? 'col-span-2' : '',
+                        ].join(' ')}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                  {ovReason === 'Lainnya...' && (
+                    <input
+                      className="w-full bg-gray-800 text-white rounded-xl px-3 py-2.5 text-sm border border-gray-700 focus:border-brand-500 focus:outline-none placeholder-gray-500"
+                      placeholder="Tulis alasan..."
+                      value={ovCustom}
+                      onChange={e => setOvCustom(e.target.value)}
+                      autoFocus
+                    />
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Actions */}
             <div className="mt-4 space-y-2">
               <button
-                onClick={doOverride}
+                onClick={() => doOverride()}
                 disabled={ovSubmitting || !ovEventId || !ovReason || (ovReason === 'Lainnya...' && !ovCustom.trim())}
                 className="w-full py-3 bg-brand-800 hover:bg-brand-700 disabled:opacity-40 text-white rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2"
               >
