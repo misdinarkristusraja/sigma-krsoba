@@ -4,31 +4,30 @@ const supabase = supabaseTyped as any;
 import { generateICS, downloadICS } from '../lib/calendarExport';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate, downloadCSV, hitungPoin, getWeekStartFromDate, getWeekEndFromStart, toLocalISO, getWeekPeriod } from '../lib/utils';
-import { BarChart2, Download, TrendingUp, Calendar, RefreshCw, Info, Search } from 'lucide-react';
+import { BarChart2, Download, TrendingUp, Calendar, RefreshCw, Info, Search, CheckCircle2 } from 'lucide-react';
 import { usePagination } from '../hooks/usePagination';
 import { Pagination } from '../components/ui/Pagination';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
 
-// ─── Label ramah pengguna ─────────────────────────────────
-const KONDISI_INFO: Record<string, { label: string; short: string; poin: string; color: string; bar: string }> = {
-  K1:  { label: 'Mengganti mendadak + hadir Latihan', short: 'Mengganti + Latihan', poin: '+5', color: 'bg-purple-100 text-purple-800',  bar: '#9333ea' },
-  K2a: { label: 'Hadir Lengkap (terjadwal normal)',   short: 'Hadir Lengkap',       poin: '+4', color: 'bg-green-100 text-green-800',    bar: '#16a34a' },
-  K2b: { label: 'Hadir Lengkap (pengganti resmi)',    short: 'Hadir Lengkap (Swap)',poin: '+3', color: 'bg-emerald-100 text-emerald-800', bar: '#10b981' },
-  K3a: { label: 'Hadir Tugas saja (terjadwal)',       short: 'Hadir Tugas',         poin: '+3', color: 'bg-blue-100 text-blue-800',      bar: '#3b82f6' },
-  K3b: { label: 'Mengganti mendadak saja',            short: 'Mengganti Mendadak',  poin: '+3', color: 'bg-sky-100 text-sky-800',        bar: '#0ea5e9' },
-  K3c: { label: 'Hadir Tugas saja (pengganti resmi)', short: 'Hadir Tugas (Swap)',  poin: '+2', color: 'bg-cyan-100 text-cyan-800',      bar: '#06b6d4' },
-  K4a: { label: 'Hadir Latihan saja (tidak terjadwal)',short: 'Hadir Latihan',      poin: '+2', color: 'bg-teal-100 text-teal-800',      bar: '#14b8a6' },
-  K4c: { label: 'Hadir Latihan saja (terjadwal, tidak hadir tugas)', short: 'Latihan (no Tugas)', poin: '0', color: 'bg-yellow-100 text-yellow-800', bar: '#eab308' },
-  K6:  { label: 'Absen (terjadwal, tidak hadir)',     short: 'Absen',               poin: '-1', color: 'bg-red-100 text-red-800',        bar: '#ef4444' },
-  // Legacy codes from old 6-kondisi system — shown for historical rows until cron re-calculates
-  K2:  { label: 'Hadir Lengkap (lama)',               short: 'Hadir Lengkap',       poin: '+2', color: 'bg-green-100 text-green-800',    bar: '#16a34a' },
-  K3:  { label: 'Hadir Tugas saja (lama)',            short: 'Hadir Tugas',         poin: '+1', color: 'bg-blue-100 text-blue-800',      bar: '#3b82f6' },
-  K4:  { label: 'Mengganti saja (lama)',              short: 'Mengganti',           poin: '+2', color: 'bg-sky-100 text-sky-800',        bar: '#0ea5e9' },
-  K5:  { label: 'Hadir Latihan saja (lama)',          short: 'Hadir Latihan',       poin: '+1', color: 'bg-teal-100 text-teal-800',      bar: '#14b8a6' },
+// ─── Label ramah pengguna (Status K-K tanpa Poin angka) ─────────────────
+const KONDISI_INFO: Record<string, { label: string; short: string; color: string; bar: string }> = {
+  K1:  { label: 'Substitusi Ideal (Mengganti + Hadir Latihan)', short: 'Substitusi + Latihan', color: 'bg-purple-100 text-purple-900 border border-purple-200', bar: '#9333ea' },
+  K2a: { label: 'Tugas Utama Ideal (Terjadwal Normal + Latihan)', short: 'Tugas Utama + Latihan', color: 'bg-emerald-100 text-emerald-900 border border-emerald-200', bar: '#16a34a' },
+  K2b: { label: 'Tugas Swap Ideal (Pengganti Resmi + Latihan)', short: 'Tugas Swap + Latihan', color: 'bg-green-100 text-green-900 border border-green-200', bar: '#10b981' },
+  K3a: { label: 'Tugas Utama Standar (Hadir Tugas saja)', short: 'Tugas Utama Only', color: 'bg-blue-100 text-blue-900 border border-blue-200', bar: '#3b82f6' },
+  K3b: { label: 'Substitusi Mendadak (Hadir Mengganti saja)', short: 'Substitusi Mendadak', color: 'bg-sky-100 text-sky-900 border border-sky-200', bar: '#0ea5e9' },
+  K3c: { label: 'Tugas Swap Standar (Hadir Tugas Swap saja)', short: 'Tugas Swap Only', color: 'bg-cyan-100 text-cyan-900 border border-cyan-200', bar: '#06b6d4' },
+  K4a: { label: 'Partisipasi Latihan (Hadir Latihan saja)', short: 'Partisipasi Latihan', color: 'bg-teal-100 text-teal-900 border border-teal-200', bar: '#14b8a6' },
+  K4c: { label: 'Latihan Mandiri (Hadir Latihan tanpa Jadwal)', short: 'Latihan (Tanpa Tugas)', color: 'bg-yellow-100 text-yellow-900 border border-yellow-200', bar: '#eab308' },
+  K6:  { label: 'Absen Tanpa Keterangan (Terjadwal tidak hadir)', short: 'Absen (K6)', color: 'bg-red-100 text-red-900 border border-red-200 font-bold', bar: '#ef4444' },
+  // Legacy codes fallback
+  K2:  { label: 'Hadir Lengkap', short: 'Hadir Lengkap', color: 'bg-emerald-100 text-emerald-900', bar: '#16a34a' },
+  K3:  { label: 'Hadir Tugas', short: 'Hadir Tugas', color: 'bg-blue-100 text-blue-900', bar: '#3b82f6' },
+  K4:  { label: 'Mengganti', short: 'Mengganti', color: 'bg-sky-100 text-sky-900', bar: '#0ea5e9' },
+  K5:  { label: 'Hadir Latihan', short: 'Hadir Latihan', color: 'bg-teal-100 text-teal-900', bar: '#14b8a6' },
 };
 const MONTH_NAMES = ['','Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
 
-// ─── Helpers tanggal ──────────────────────────────────────
 function dateCutoff(months: any) {
   if (!months) return null;
   const d = new Date();
@@ -36,13 +35,7 @@ function dateCutoff(months: any) {
   return toLocalISO(d);
 }
 
-// ─── Raw count rekap (sesuai format Excel) ────────────────
-// Jadwal = berapa kali dijadwalkan
-// Latihan = berapa kali scan latihan valid
-// Tugas = berapa kali scan tugas valid  
-// Tukar = berapa kali mengajukan swap
 function buildRawRekap({ assignments, scans, swaps, dateFrom, dateTo }: any) {
-  // Jadwal = assignments yang BELUM di-replace
   const replacedIds = new Set(
     (swaps||[]).filter((sw: any)=>sw.status==='Replaced'&&sw.assignment_id).map((sw: any)=>sw.assignment_id)
   );
@@ -78,16 +71,13 @@ function buildRawRekap({ assignments, scans, swaps, dateFrom, dateTo }: any) {
   return { jadwal, latihan, tugas, tukar, total: jadwal + latihan + tugas };
 }
 
-// ─── Kalkulasi rekap real-time (K1-K6 poin) ──────────────
 function buildRekap({ assignments, scans, swaps, penggantiSwaps, dateFrom, dateTo }: any) {
-  // Assignments replaced (user ditukar keluar dari jadwal)
   const replacedAssignmentIds = new Set(
     (swaps || [])
       .filter((sw: any) => sw.status === 'Replaced' && sw.assignment_id)
       .map((sw: any) => sw.assignment_id)
   );
 
-  // Active assignments (not replaced)
   const activeAssignmentEventIds = new Set();
   const assignmentByEventId: Record<string,any> = {};
 
@@ -98,7 +88,6 @@ function buildRekap({ assignments, scans, swaps, penggantiSwaps, dateFrom, dateT
     assignmentByEventId[a.event_id] = a;
   });
 
-  // Weeks where user is pengganti (pengganti_id = uid, status Replaced)
   const penggantiWeeks = new Set<string>();
   (penggantiSwaps || []).forEach((sw: any) => {
     const tgl = sw.assignments?.events?.tanggal_tugas;
@@ -120,8 +109,6 @@ function buildRekap({ assignments, scans, swaps, penggantiSwaps, dateFrom, dateT
     is_swap_pengganti:   false,
   });
 
-  // event_id → week_start map: built from assignments AND from scan.events join.
-  // Needed so walkin scans (no assignment row) still resolve to the event's week.
   const eventIdToWeekStart: Record<string, string> = {};
   (assignments || []).forEach((a: any) => {
     if (a?.event_id && a?.tanggal_tugas) {
@@ -136,7 +123,6 @@ function buildRekap({ assignments, scans, swaps, penggantiSwaps, dateFrom, dateT
     }
   });
 
-  // Pass 1 — weeks from active assignments
   Object.values(assignmentByEventId).forEach((a: any) => {
     const tgl = a.tanggal_tugas || a.tanggal_latihan;
     if (!tgl || typeof tgl !== 'string') return;
@@ -148,24 +134,18 @@ function buildRekap({ assignments, scans, swaps, penggantiSwaps, dateFrom, dateT
     weeks[ws].is_dijadwalkan = true;
   });
 
-  // Pass 2 — scan records
   (scans || []).forEach((s: any) => {
     if (!s || !s.timestamp) return;
 
     const t = s.scan_type;
     const isLatihan = t === 'latihan' || t === 'walkin_latihan';
 
-    // Use full UTC timestamp → WIB-aware week boundary (Sabtu 07:00 WIB).
-    // getWeekPeriod handles the Saturday-before-07:00-WIB → previous week case.
     const weekPeriod = getWeekPeriod(s.timestamp);
     const wsFromTimestamp = weekPeriod.start;
 
-    // Date-range filter: compare scan's week_start against filter range
     if (dateFrom && wsFromTimestamp < dateFrom) return;
     if (dateTo   && wsFromTimestamp > dateTo)   return;
 
-    // If event_id known: use event's tanggal_tugas week — canonical and independent
-    // of scan timestamp timezone issues or pre-07:00 Saturday edge cases.
     const wsFromEvent = s.event_id ? eventIdToWeekStart[s.event_id] : null;
     const ws = wsFromEvent || wsFromTimestamp;
 
@@ -174,7 +154,6 @@ function buildRekap({ assignments, scans, swaps, penggantiSwaps, dateFrom, dateT
     if (isLatihan) weeks[ws].is_hadir_latihan = true;
     if (t === 'tugas'   || t === 'walkin_tugas')   weeks[ws].is_hadir_tugas   = true;
 
-    // Walk-in (mengganti mendadak): scan tugas at event not in active assignments
     if (t === 'walkin_tugas' || t === 'walkin_latihan') {
       weeks[ws].is_walk_in = true;
     } else if (s.event_id && !activeAssignmentEventIds.has(s.event_id)) {
@@ -184,51 +163,45 @@ function buildRekap({ assignments, scans, swaps, penggantiSwaps, dateFrom, dateT
     }
   });
 
-  // Pass 3 — mark pengganti weeks
   penggantiWeeks.forEach(ws => {
     if (!weeks[ws]) weeks[ws] = mkWeek(ws);
     weeks[ws].is_swap_pengganti = true;
   });
 
-  // Pass 4 — compute kondisi (take highest poin per week)
   return Object.values(weeks)
     .map((w: any) => {
-      const { poin, kondisi } = hitungPoin({
+      const { kondisi } = hitungPoin({
         isDijadwalkan:   w.is_dijadwalkan,
         isHadirTugas:    w.is_hadir_tugas,
         isHadirLatihan:  w.is_hadir_latihan,
         isWalkIn:        w.is_walk_in,
         isSwapPengganti: w.is_swap_pengganti,
       });
-      return { ...w, poin, kondisi };
+      return { ...w, kondisi };
     })
     .filter((w: any) => w.kondisi !== null)
     .sort((a: any, b: any) => b.week_start.localeCompare(a.week_start));
 }
 
-// ═════════════════════════════════════════════════════════
 export default function RecapPage() {
   const { profile, isPengurus } = useAuth();
 
   const [tab,      setTab]    = useState('personal');
   const [loading,  setLoading]= useState(true);
 
-  // Filter personal
   const [selUser,   setSelUser]  = useState<any>(null);
-  const [dateFrom,  setDateFrom] = useState(dateCutoff(3)); // default 3 bulan
+  const [dateFrom,  setDateFrom] = useState(dateCutoff(3));
   const [dateTo,    setDateTo]   = useState(toLocalISO(new Date()));
   const [searchName,setSearch]   = useState('');
 
-  // Data
   const [rekapMinggu, setRekap]   = useState<any[]>([]);
   const [rekapHarian, setHarian]  = useState<any[]>([]);
   const [memberList,  setMembers] = useState<any[]>([]);
   const [allRekap,    setAllRekap]= useState<any[]>([]);
   const [allLoading,  setAllLoad] = useState(false);
   const [lastUpdate,  setLastUpd] = useState<any>(null);
-  const [rawRekap,    setRawRekap] = useState<any>(null);  // { jadwal, latihan, tugas, tukar }
+  const [rawRekap,    setRawRekap] = useState<any>(null);
 
-  // Load member list
   useEffect(() => {
     if (!isPengurus) return;
     supabase.from('users').select('id, nama_panggilan, lingkungan')
@@ -238,12 +211,10 @@ export default function RecapPage() {
       .then(({ data }: any) => setMembers(data || []));
   }, [isPengurus]);
 
-  // ── Export ke Google Calendar ─────────────────────────
   async function exportToCalendar() {
     const uid = selUser || profile?.id;
     if (!uid) return;
     const today = new Date().toISOString().split('T')[0];
-    // Two-step query: PostgREST embedded filter (.gte on joined table) is unreliable
     const { data: evData } = await supabase.from('events')
       .select('id, perayaan, nama_event, tanggal_tugas, tanggal_latihan')
       .gte('tanggal_tugas', today)
@@ -265,11 +236,10 @@ export default function RecapPage() {
     const ics = generateICS(assigns, profile?.nama_panggilan);
     downloadICS(ics, `jadwal-${profile?.nickname || 'misdinar'}.ics`);
     import('react-hot-toast').then(({default:t}) =>
-      t.success('File .ics diunduh! Buka dengan Google Calendar / iCal')
+      t.success('File .ics diunduh!')
     );
   }
 
-  // ── Load personal rekap (real-time) ──────────────────
   const loadPersonal = useCallback(async () => {
     const uid = selUser || profile?.id;
     if (!uid) return;
@@ -287,23 +257,20 @@ export default function RecapPage() {
         .select('assignment_id, status, created_at')
         .eq('requester_id', uid),
       supabase.from('users').select('role').eq('id', uid).single(),
-      // swaps where this user is pengganti (pengganti_id = uid, status Replaced)
       supabase.from('swap_requests')
         .select('id, status, assignments(events(tanggal_tugas))')
         .eq('pengganti_id', uid)
         .eq('status', 'Replaced'),
     ]);
 
-    // Skip rekap untuk staff (admin/pengurus/pelatih tidak punya rekap kehadiran)
     const userRole = userProfile?.role || '';
     const isStaff  = ['Administrator','Pengurus','Pelatih'].includes(userRole);
 
-    // Filter: hanya event mingguan yang bukan draft
     const filteredAssigns = (assigns || [])
       .filter((a: any) => a.events && a.events.tipe_event !== 'Misa_Harian' && !a.events.is_draft)
       .map((a: any) => ({
         event_id:       a.event_id,
-        assignment_id:  a.id,         // ← penting untuk deteksi swap
+        assignment_id:  a.id,
         tanggal_tugas:  a.events.tanggal_tugas,
         tanggal_latihan:a.events.tanggal_latihan,
       }));
@@ -318,7 +285,6 @@ export default function RecapPage() {
     });
     const harian = buildRekapHarian(scans || [], dateFrom, dateTo);
 
-    // Raw rekap counts (sesuai format Excel)
     const raw = buildRawRekap({
       assignments: filteredAssigns,
       scans:       scans || [],
@@ -326,7 +292,7 @@ export default function RecapPage() {
       dateFrom,
       dateTo,
     });
-    if (isStaff) { setLoading(false); return; } // Staff tidak punya rekap
+    if (isStaff) { setLoading(false); return; }
 
     setRekap(rekap);
     setHarian(harian);
@@ -337,7 +303,6 @@ export default function RecapPage() {
 
   useEffect(() => { if (tab === 'personal') loadPersonal(); }, [tab, loadPersonal]);
 
-  // ── Load semua anggota ────────────────────────────────
   async function loadAll() {
     setAllLoad(true);
     const { data: members } = await supabase.from('users')
@@ -347,7 +312,6 @@ export default function RecapPage() {
       .order('nama_panggilan');
     if (!members?.length) { setAllLoad(false); return; }
 
-    // Supabase row limit = 1000. With many users, use range() to paginate.
     const LIMIT = 1000;
     
     async function fetchAll(table: any, query: any) {
@@ -380,14 +344,12 @@ export default function RecapPage() {
         .order('id')),
     ]);
 
-    // Group
     const aMap: Record<string,any[]> = {}, sMap: Record<string,any[]> = {};
     const swapMap: Record<string,any[]> = {};
     const penggantiMap: Record<string,any[]> = {};
     members.forEach((m: any) => { aMap[m.id] = []; sMap[m.id] = []; swapMap[m.id] = []; penggantiMap[m.id] = []; });
     (allSwaps||[]).forEach((sw: any) => { if (swapMap[sw.requester_id]) swapMap[sw.requester_id].push(sw); });
     (allPenggantiSwaps||[]).forEach((sw: any) => { if (penggantiMap[sw.pengganti_id]) penggantiMap[sw.pengganti_id].push(sw); });
-    // Must match loadPersonal: filter out Misa_Harian AND drafts
     (allAssigns||[]).filter((a: any)=>a.events && !a.events.is_draft && a.events.tipe_event !== 'Misa_Harian').forEach((a: any) => {
       if (aMap[a.user_id]) aMap[a.user_id].push({
         event_id:        a.event_id,
@@ -400,20 +362,17 @@ export default function RecapPage() {
 
     const result = members.map((m: any) => {
       const rows  = buildRekap({ assignments: aMap[m.id], scans: sMap[m.id], swaps: swapMap[m.id] || [], penggantiSwaps: penggantiMap[m.id] || [], dateFrom, dateTo });
-      const total = rows.reduce((s: any,r: any) => s+(r.poin||0), 0);
       const k6    = rows.filter((r: any) => r.kondisi === 'K6').length;
       const hadir = rows.filter((r: any) => r.is_hadir_tugas || r.is_hadir_latihan).length;
-      // Compute K counts for enhanced table
       const kCounts: Record<string,any> = {};
       ['K1','K2a','K2b','K3a','K3b','K3c','K4a','K4c','K6'].forEach((k: any) => { kCounts[k] = rows.filter((r: any)=>r.kondisi===k).length; });
-      return { ...m, rows, totalPoin: total, k6, hadir, minggu: rows.length, kCounts };
+      return { ...m, rows, k6, hadir, minggu: rows.length, kCounts };
     });
     setAllRekap(result);
     setAllLoad(false);
   }
   useEffect(() => { if (tab === 'all') loadAll(); }, [tab, dateFrom, dateTo]);
 
-  // ── Rekap harian helper ────────────────────────────────
   function buildRekapHarian(scans: any[], from: any, to: any) {
     const months: Record<string, { tahun: number; bulan: number; count: number }> = {};
     scans.filter((s: any) => (s.scan_type === 'tugas' || s.scan_type === 'walkin_tugas') && s.event_id)
@@ -428,25 +387,22 @@ export default function RecapPage() {
     return Object.values(months).sort((a: any,b: any) => b.tahun-a.tahun || b.bulan-a.bulan);
   }
 
-  // ── Derived ───────────────────────────────────────────
-  const totalPoin  = rekapMinggu.reduce((s: any,r: any) => s+(r.poin||0), 0);
   const hadirCount = rekapMinggu.filter((r: any) => r.is_hadir_tugas || r.is_hadir_latihan).length;
   const k6Count    = rekapMinggu.filter((r: any) => r.kondisi === 'K6').length;
   const kondisiCnt = Object.fromEntries(
     ['K1','K2a','K2b','K3a','K3b','K3c','K4a','K4c','K6'].map(k => [k, rekapMinggu.filter((r: any)=>r.kondisi===k).length])
   );
 
-  const chartData = [...rekapMinggu].reverse().slice(-16).map(r => ({
-    week: formatDate(r.week_start, 'dd/MM'), poin: r.poin||0, kondisi: r.kondisi,
-  }));
+  const attendanceRate = rawRekap && rawRekap.jadwal > 0
+    ? Math.round((rawRekap.tugas / rawRekap.jadwal) * 100)
+    : 100;
 
-  // Filter all by search
   const filteredAll = allRekap
     .filter((m: any) => !searchName ||
       m.nama_panggilan?.toLowerCase().includes(searchName.toLowerCase()) ||
       m.lingkungan?.toLowerCase().includes(searchName.toLowerCase())
     )
-    .sort((a: any, b: any) => b.totalPoin - a.totalPoin);
+    .sort((a: any, b: any) => b.hadir - a.hadir);
 
   const pgRekap      = usePagination(rekapMinggu, 10);
   const pgAllRekap   = usePagination(filteredAll, 10);
@@ -456,18 +412,17 @@ export default function RecapPage() {
       rekapMinggu.map(r => ({
         minggu_mulai: r.week_start, minggu_selesai: r.week_end,
         kondisi: r.kondisi, kondisi_label: KONDISI_INFO[r.kondisi]?.label,
-        poin: r.poin, dijadwalkan: r.is_dijadwalkan?'Ya':'Tidak',
+        dijadwalkan: r.is_dijadwalkan?'Ya':'Tidak',
         hadir_tugas: r.is_hadir_tugas?'Ya':'Tidak',
         hadir_latihan: r.is_hadir_latihan?'Ya':'Tidak',
         walk_in: r.is_walk_in?'Ya':'Tidak',
       })),
-      ['minggu_mulai','minggu_selesai','kondisi','kondisi_label','poin','dijadwalkan','hadir_tugas','hadir_latihan','walk_in']
+      ['minggu_mulai','minggu_selesai','kondisi','kondisi_label','dijadwalkan','hadir_tugas','hadir_latihan','walk_in']
         .map(k => ({ key:k, label:k })),
-      `rekap-${profile?.nickname}-${Date.now()}.csv`
+      `rekap-kehadiran-${profile?.nickname}-${Date.now()}.csv`
     );
   }
 
-  // ── Preset filter period ──────────────────────────────
   function setPeriod(months: any) {
     setDateFrom(months ? dateCutoff(months) : '2020-01-01');
     setDateTo(toLocalISO(new Date()));
@@ -478,9 +433,9 @@ export default function RecapPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="page-title">Rekap & Poin</h1>
+          <h1 className="page-title">Rekap Kehadiran &amp; Status K</h1>
           <p className="page-subtitle">
-            Real-time dari scan & jadwal
+            Real-time rekapitulasi kehadiran dan klasifikasi Status Penugasan (K1-K6)
             {lastUpdate && <span className="ml-2 text-gray-400 text-xs">· {lastUpdate.toLocaleTimeString('id')}</span>}
           </p>
         </div>
@@ -506,9 +461,8 @@ export default function RecapPage() {
         ))}
       </div>
 
-      {/* ─── Filter bar (shared) ─── */}
+      {/* Filter bar */}
       <div className="flex gap-3 flex-wrap items-center">
-        {/* Preset period */}
         <div className="flex gap-1 flex-wrap">
           {[
             {label:'1 Bln',  months:1},
@@ -528,21 +482,18 @@ export default function RecapPage() {
             </button>
           ))}
         </div>
-        {/* Rentang tanggal custom */}
         <div className="flex items-center gap-1.5 text-xs text-gray-500">
           <span>Dari</span>
           <input type="date" className="input input-sm text-xs w-32" value={dateFrom || ''} onChange={e=>setDateFrom(e.target.value)}/>
           <span>–</span>
           <input type="date" className="input input-sm text-xs w-32" value={dateTo || ''} onChange={e=>setDateTo(e.target.value)}/>
         </div>
-        {/* Pilih user (personal tab + pengurus) */}
         {tab === 'personal' && isPengurus && (
           <select className="input w-auto text-sm" value={selUser || ''} onChange={e=>setSelUser(e.target.value||null)}>
             <option value="">Data Saya</option>
             {memberList.map(m=><option key={m.id} value={m.id}>{m.nama_panggilan}</option>)}
           </select>
         )}
-        {/* Search (all tab) */}
         {tab === 'all' && (
           <div className="relative">
             <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"/>
@@ -552,20 +503,20 @@ export default function RecapPage() {
         )}
       </div>
 
-      {/* ─── TAB PERSONAL ─── */}
+      {/* TAB PERSONAL */}
       {tab === 'personal' && (
         <>
           {loading ? (
             <div className="space-y-3">{[1,2,3].map(i=><div key={i} className="skeleton h-16 rounded-xl"/>)}</div>
           ) : (
             <>
-              {/* Summary cards */}
+              {/* Summary cards without points */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {[
-                  { label:'Total Poin',     val: totalPoin > 0 ? '+'+totalPoin : totalPoin, color: totalPoin>0?'text-green-700':totalPoin<0?'text-red-700':'text-gray-400', bg:'bg-green-50' },
-                  { label:'Hadir',          val: hadirCount,  color:'text-blue-700',  bg:'bg-blue-50' },
-                  { label:'Absen (K6)',     val: k6Count,     color:'text-red-700',   bg:'bg-red-50' },
-                  { label:'Total Minggu',   val: rekapMinggu.length, color:'text-gray-700', bg:'bg-gray-50' },
+                  { label:'Tingkat Kehadiran', val: `${attendanceRate}%`, color:'text-emerald-700', bg:'bg-emerald-50' },
+                  { label:'Total Hadir',        val: hadirCount,            color:'text-blue-700',    bg:'bg-blue-50' },
+                  { label:'Absen (K6)',        val: k6Count,               color:'text-red-700',     bg:'bg-red-50' },
+                  { label:'Total Pekan',       val: rekapMinggu.length,    color:'text-gray-700',    bg:'bg-gray-50' },
                 ].map(c=>(
                   <div key={c.label} className={`card ${c.bg} border-0 text-center`}>
                     <div className={`text-3xl font-black ${c.color}`}>{c.val}</div>
@@ -574,10 +525,10 @@ export default function RecapPage() {
                 ))}
               </div>
 
-              {/* Raw rekap counts — sesuai format Excel */}
+              {/* Raw rekap counts */}
               {rawRekap && (
                 <div className="card">
-                  <h3 className="font-semibold text-gray-700 mb-3 text-sm">📋 Rekap Kehadiran</h3>
+                  <h3 className="font-semibold text-gray-700 mb-3 text-sm">📋 Ringkasan partisipasi</h3>
                   <div className="grid grid-cols-4 gap-3">
                     {[
                       { label: 'Dijadwalkan', val: rawRekap.jadwal,  color: 'bg-brand-50 text-brand-800',   icon: '📅' },
@@ -592,18 +543,12 @@ export default function RecapPage() {
                       </div>
                     ))}
                   </div>
-                  <p className="text-xs text-gray-400 mt-2">
-                    Total partisipasi: <strong>{rawRekap.jadwal + rawRekap.latihan + rawRekap.tugas}</strong> kali
-                    {rawRekap.jadwal > 0 && rawRekap.tugas > 0 && (
-                      <span className="ml-2">· Tingkat kehadiran tugas: <strong>{Math.round(rawRekap.tugas/rawRekap.jadwal*100)}%</strong></span>
-                    )}
-                  </p>
                 </div>
               )}
 
-              {/* Breakdown kondisi — label ramah */}
+              {/* Breakdown Status K-K (Clean without points) */}
               <div className="card">
-                <h3 className="font-semibold text-gray-700 mb-3 text-sm">Rincian Kehadiran</h3>
+                <h3 className="font-semibold text-gray-700 mb-3 text-sm">Rincian Frekuensi Kategori Kehadiran (Status K)</h3>
                 <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                   {['K1','K2a','K2b','K3a','K3b','K3c','K4a','K4c','K6'].map(k=>{
                     const info = KONDISI_INFO[k];
@@ -612,35 +557,13 @@ export default function RecapPage() {
                     return (
                       <div key={k} className={`p-3 rounded-xl text-center ${info.color} ${cnt===0?'opacity-40':''}`}>
                         <div className="text-2xl font-black">{cnt}</div>
-                        <div className="text-[10px] font-bold mt-0.5">{k}</div>
-                        <div className="text-[10px] opacity-70 leading-tight">{info.short}</div>
-                        <div className="text-[10px] opacity-60">{info.poin}</div>
+                        <div className="text-xs font-bold mt-0.5">{k}</div>
+                        <div className="text-[10px] opacity-80 leading-tight mt-0.5">{info.short}</div>
                       </div>
                     );
                   })}
                 </div>
               </div>
-
-              {/* Chart */}
-              {chartData.length > 0 && (
-                <div className="card">
-                  <h3 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
-                    <TrendingUp size={15} className="text-brand-800"/> Grafik Poin
-                  </h3>
-                  <ResponsiveContainer width="100%" height={160}>
-                    <BarChart data={chartData} barSize={18}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0"/>
-                      <XAxis dataKey="week" tick={{fontSize:10,fill:'#9ca3af'}}/>
-                      <YAxis tick={{fontSize:10,fill:'#9ca3af'}} domain={[-2,6]}/>
-                      <Tooltip formatter={(v: any,_: any,{payload}: any)=>[`${v>0?'+':''}${v} (${KONDISI_INFO[payload.kondisi]?.short||'—'})`,'Poin']}
-                        contentStyle={{borderRadius:8,fontSize:12}}/>
-                      <Bar dataKey="poin" radius={[4,4,0,0]}>
-                        {chartData.map((d,i)=><Cell key={i} fill={KONDISI_INFO[d.kondisi]?.bar||'#e5e7eb'}/>)}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
 
               {/* Rekap harian */}
               {rekapHarian.length > 0 && (
@@ -662,15 +585,19 @@ export default function RecapPage() {
               {/* Tabel detail */}
               <div className="card overflow-hidden p-0">
                 <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-                  <h3 className="font-semibold text-gray-700">Riwayat Mingguan</h3>
+                  <h3 className="font-semibold text-gray-700">Riwayat Kehadiran Pekanan</h3>
                   <span className="text-xs text-gray-400">{rekapMinggu.length} minggu</span>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="tbl">
                     <thead>
                       <tr>
-                        <th>Periode</th><th>Status</th><th>Dijadwalkan</th>
-                        <th>Hadir Tugas</th><th>Hadir Latihan</th><th>Poin</th>
+                        <th>Periode Pekan</th>
+                        <th>Kategori K</th>
+                        <th>Keterangan Status</th>
+                        <th>Dijadwalkan</th>
+                        <th>Hadir Tugas</th>
+                        <th>Hadir Latihan</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -684,18 +611,18 @@ export default function RecapPage() {
                               {formatDate(r.week_start,'dd MMM')} – {formatDate(r.week_end,'dd MMM')}
                             </td>
                             <td>
+                              <span className="font-mono text-xs font-bold bg-gray-100 text-gray-800 px-2 py-0.5 rounded border">
+                                {r.kondisi}
+                              </span>
+                            </td>
+                            <td>
                               {ki ? (
-                                <span className={`badge text-xs ${ki.color}`}>{ki.short}</span>
+                                <span className={`badge text-xs ${ki.color}`}>{ki.label}</span>
                               ) : <span className="text-gray-300">—</span>}
                             </td>
                             <td className="text-center">{r.is_dijadwalkan?'✓':'—'}</td>
                             <td className="text-center">{r.is_hadir_tugas?'✓':r.is_walk_in?'↑':'—'}</td>
                             <td className="text-center">{r.is_hadir_latihan?'✓':'—'}</td>
-                            <td>
-                              <span className={`font-bold ${r.poin>0?'text-green-600':r.poin<0?'text-red-600':'text-gray-400'}`}>
-                                {r.poin>0?'+':''}{r.poin??0}
-                              </span>
-                            </td>
                           </tr>
                         );
                       })}
@@ -713,11 +640,11 @@ export default function RecapPage() {
         </>
       )}
 
-      {/* ─── TAB ALL ─── */}
+      {/* TAB ALL */}
       {tab === 'all' && isPengurus && (
         <div className="card overflow-hidden p-0">
           <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between flex-wrap gap-2">
-            <h3 className="font-semibold text-gray-700">Rekap Semua Anggota</h3>
+            <h3 className="font-semibold text-gray-700">Rekap Status Kehadiran Semua Anggota</h3>
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-400">{filteredAll.length} anggota</span>
               <button onClick={loadAll} className="btn-ghost p-1.5" title="Refresh"><RefreshCw size={14}/></button>
@@ -730,88 +657,53 @@ export default function RecapPage() {
                   <th className="w-8">#</th>
                   <th>Nama</th>
                   <th>Lingkungan</th>
-                  <th>Poin</th>
-                  <th title="Mengganti mendadak + Latihan (+5)">K1</th>
-                  <th title="Hadir Lengkap terjadwal (+4)">K2a</th>
-                  <th title="Hadir Lengkap pengganti swap (+3)">K2b</th>
-                  <th title="Hadir Tugas saja terjadwal (+3)">K3a</th>
-                  <th title="Mengganti mendadak saja (+3)">K3b</th>
-                  <th title="Hadir Tugas saja pengganti swap (+2)">K3c</th>
-                  <th title="Hadir Latihan saja tidak terjadwal (+2)">K4a</th>
-                  <th title="Hadir Latihan saja terjadwal (0)">K4c</th>
-                  <th title="Absen (-1)" className="text-red-600">K6</th>
                   <th>Hadir</th>
+                  <th title="Substitusi Ideal (Mengganti + Latihan)">K1</th>
+                  <th title="Tugas Utama Ideal">K2a</th>
+                  <th title="Tugas Swap Ideal">K2b</th>
+                  <th title="Tugas Utama Standar">K3a</th>
+                  <th title="Substitusi Mendadak">K3b</th>
+                  <th title="Tugas Swap Standar">K3c</th>
+                  <th title="Partisipasi Latihan">K4a</th>
+                  <th title="Latihan Mandiri">K4c</th>
+                  <th title="Absen Tanpa Keterangan" className="text-red-600 font-bold">K6 (Absen)</th>
                   <th>Minggu</th>
                 </tr>
               </thead>
               <tbody>
                 {allLoading ? (
-                  <tr><td colSpan={15} className="text-center py-8 text-gray-400">Menghitung rekap semua anggota...</td></tr>
+                  <tr><td colSpan={14} className="text-center py-8 text-gray-400">Menghitung rekap semua anggota...</td></tr>
                 ) : pgAllRekap.paged.map((m: any,i: number)=>{
-                  const globalRank = (pgAllRekap.page - 1) * pgAllRekap.pageSize + i + 1;
-                  const kCounts: Record<string,any> = {};
-                  ['K1','K2a','K2b','K3a','K3b','K3c','K4a','K4c','K6'].forEach((k: any) => {
-                    kCounts[k] = (m.rows||[]).filter((r: any)=>r.kondisi===k).length;
-                  });
-                  const kColor: Record<string,string> = {
-                    K1:'text-purple-700', K2a:'text-green-700', K2b:'text-emerald-600',
-                    K3a:'text-blue-600', K3b:'text-sky-600', K3c:'text-cyan-600',
-                    K4a:'text-teal-600', K4c:'text-yellow-600', K6:'text-red-600',
-                  };
+                  const globalIdx = (pgAllRekap.page - 1) * pgAllRekap.pageSize + i + 1;
                   return (
                     <tr key={m.id}>
-                      <td className="text-gray-400 font-mono">{globalRank}</td>
+                      <td className="text-gray-400 font-mono text-[10px]">{globalIdx}</td>
                       <td className="font-semibold text-gray-900">{m.nama_panggilan}</td>
-                      <td className="text-gray-500">{m.lingkungan}</td>
-                      <td>
-                        <span className={`font-black text-sm ${m.totalPoin>0?'text-green-600':m.totalPoin<0?'text-red-600':'text-gray-400'}`}>
-                          {m.totalPoin>0?'+':''}{m.totalPoin}
-                        </span>
-                      </td>
-                      {['K1','K2a','K2b','K3a','K3b','K3c','K4a','K4c','K6'].map((k: string)=>(
-                        <td key={k} className="text-center">
-                          {kCounts[k]>0?<span className={`font-bold ${kColor[k]}`}>{kCounts[k]}</span>:'—'}
-                        </td>
-                      ))}
-                      <td className="text-center text-gray-600">{m.hadir}</td>
-                      <td className="text-center text-gray-400">{m.minggu}</td>
+                      <td className="text-gray-500 text-[11px]">{m.lingkungan}</td>
+                      <td className="font-bold text-blue-700">{m.hadir}</td>
+                      <td className={`text-center ${m.kCounts?.K1 > 0 ? 'font-bold text-purple-700' : 'text-gray-300'}`}>{m.kCounts?.K1 || 0}</td>
+                      <td className={`text-center ${m.kCounts?.K2a > 0 ? 'font-bold text-emerald-700' : 'text-gray-300'}`}>{m.kCounts?.K2a || 0}</td>
+                      <td className={`text-center ${m.kCounts?.K2b > 0 ? 'font-bold text-green-700' : 'text-gray-300'}`}>{m.kCounts?.K2b || 0}</td>
+                      <td className={`text-center ${m.kCounts?.K3a > 0 ? 'font-bold text-blue-700' : 'text-gray-300'}`}>{m.kCounts?.K3a || 0}</td>
+                      <td className={`text-center ${m.kCounts?.K3b > 0 ? 'font-bold text-sky-700' : 'text-gray-300'}`}>{m.kCounts?.K3b || 0}</td>
+                      <td className={`text-center ${m.kCounts?.K3c > 0 ? 'font-bold text-cyan-700' : 'text-gray-300'}`}>{m.kCounts?.K3c || 0}</td>
+                      <td className={`text-center ${m.kCounts?.K4a > 0 ? 'font-bold text-teal-700' : 'text-gray-300'}`}>{m.kCounts?.K4a || 0}</td>
+                      <td className={`text-center ${m.kCounts?.K4c > 0 ? 'font-bold text-yellow-700' : 'text-gray-300'}`}>{m.kCounts?.K4c || 0}</td>
+                      <td className={`text-center font-bold ${m.k6 > 0 ? 'text-red-600 bg-red-50' : 'text-gray-300'}`}>{m.k6}</td>
+                      <td className="text-gray-500">{m.minggu}</td>
                     </tr>
                   );
                 })}
               </tbody>
             </table>
           </div>
-          {!allLoading && filteredAll.length > 0 && (
+          {filteredAll.length > 0 && (
             <div className="px-4">
               <Pagination {...pgAllRekap} onPage={pgAllRekap.goTo} label="anggota" />
             </div>
           )}
         </div>
       )}
-
-      {/* Kondisi Reference table */}
-      <div className="card bg-gray-50">
-        <h3 className="font-semibold text-gray-700 mb-3 text-sm">📊 Keterangan Lengkap Kondisi Poin</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {Object.entries(KONDISI_INFO).filter(([k]) => !['K2','K3','K4','K5'].includes(k)).map(([k,v])=>(
-            <div key={k} className={`p-3 rounded-xl ${v.color} flex items-start gap-3`}>
-              <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-white/60 flex items-center justify-center">
-                <span className="font-black text-sm">{k}</span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-sm">{v.short}</span>
-                  <span className="font-black text-base ml-2">{v.poin}</span>
-                </div>
-                <p className="text-[11px] opacity-80 mt-0.5 leading-snug">{v.label}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-gray-400 mt-3 border-t border-gray-200 pt-3">
-          💡 Poin dihitung real-time dari data scan &amp; jadwal. K1 (Mengganti mendadak + Latihan) mendapat bonus tertinggi karena kontribusi ekstra tanpa kewajiban. K6 (Absen) mendapat penalti. "Mengganti" = hadir di event tanpa terjadwal sebelumnya.
-        </p>
-      </div>
     </div>
   );
 }
