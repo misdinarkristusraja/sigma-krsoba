@@ -32,6 +32,7 @@ const StreakPage         = lazy(() => import('./pages/StreakPage'));
 const JadwalSayaPage     = lazy(() => import('./pages/JadwalSayaPage'));
 const DirectoryPage      = lazy(() => import('./pages/DirectoryPage'));
 const AnalisisPage       = lazy(() => import('./pages/AnalisisPage'));
+
 const PublicSchedule     = lazy(() => import('./pages/ScheduleDailyPage').then(m => ({ default: m.PublicSchedulePage })));
 const JadwalMisa         = lazy(() => import('./pages/ScheduleDailyPage').then(m => ({ default: m.InternalSchedulePage })));
 const NotFound           = lazy(() => import('./pages/ScheduleDailyPage').then(m => ({ default: m.NotFoundPage })));
@@ -95,12 +96,16 @@ export default function App() {
               {/* Schedule */}
               <Route path="/jadwal-mingguan" element={<ErrorBoundary><ScheduleWeekly /></ErrorBoundary>} />
               <Route path="/jadwal-harian"   element={<ErrorBoundary><ScheduleDaily /></ErrorBoundary>} />
+              <Route path="/jadwal-misa"     element={<ErrorBoundary><JadwalMisa /></ErrorBoundary>} />
 
               {/* Attendance & Scan */}
               <Route path="/absensi"         element={<ProtectedRoute roles={STAFF}><ErrorBoundary><AttendancePage /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/presensi"        element={<ProtectedRoute roles={STAFF}><ErrorBoundary><AttendancePage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/scan"            element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanPage /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/scan-qr"         element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/scan-latihan"    element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanLatihanPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/scan-records"    element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanRecordsPage /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/riwayat-scan"    element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanRecordsPage /></ErrorBoundary></ProtectedRoute>} />
 
               {/* Event & Points */}
               <Route path="/acara"           element={<ProtectedRoute roles={PENG}><ErrorBoundary><AcaraPage /></ErrorBoundary></ProtectedRoute>} />
