@@ -59,7 +59,7 @@ export default function MembersPage() {
       } else {
         let q = supabase
           .from('users')
-          .select('id, nickname, myid, nama_lengkap, nama_panggilan, pendidikan, sekolah, lingkungan, wilayah, role, status, is_tarakanita, is_suspended, created_at, hp_ortu, hp_anak', { count: 'exact' })
+          .select('id, nickname, myid, nama_lengkap, nama_panggilan, pendidikan, sekolah, lingkungan, wilayah, role, status, status_jadwal, divisi, is_tarakanita, is_suspended, created_at, hp_ortu, hp_anak', { count: 'exact' })
           .order('nama_panggilan', { nullsFirst: false })
           .order('nickname');
 
@@ -110,7 +110,82 @@ export default function MembersPage() {
 
   const pg = usePagination(filtered, 10);
 
-  // ── Quick inline change status/role ───────────────────────
+  // ── Unified Single Status & Role Selector ────────────────────
+  function getUnifiedPresetKey(m: any): string {
+    if (m.status === 'Disabled') return 'disabled';
+    if (m.status === 'Pending') return 'pending';
+    if (m.status_jadwal === 'Suspended' || m.is_suspended) return 'suspended';
+    if (m.status_jadwal === 'Cuti') return 'cuti';
+    if (m.status_jadwal === 'Pensiun' || m.role === 'Misdinar_Retired') return 'pensiun';
+    if (m.role === 'Pengurus') return 'pengurus';
+    if (m.role === 'Pendamping' || m.role === 'Pelatih') return 'pendamping';
+    if (m.role === 'Administrator') return 'admin';
+    return 'misdinar_aktif';
+  }
+
+  function getUnifiedStatusBadge(m: any) {
+    const key = getUnifiedPresetKey(m);
+    switch (key) {
+      case 'misdinar_aktif':
+        return { label: '🟢 Misdinar Aktif', color: 'badge-green' };
+      case 'pengurus':
+        return { label: `⭐ Pengurus${m.divisi ? ` (${m.divisi})` : ''}`, color: 'bg-purple-100 text-purple-900 border border-purple-300 font-bold' };
+      case 'pendamping':
+        return { label: '👔 Pendamping / Pelatih', color: 'bg-blue-100 text-blue-900 border border-blue-300 font-semibold' };
+      case 'admin':
+        return { label: '⚡ Administrator', color: 'bg-amber-100 text-amber-900 border border-amber-300 font-bold' };
+      case 'cuti':
+        return { label: '🟡 Cuti / Libur', color: 'bg-yellow-100 text-yellow-800 border border-yellow-300 font-semibold' };
+      case 'pensiun':
+        return { label: '🎓 Alumni / Pensiun', color: 'bg-gray-100 text-gray-700 border border-gray-300' };
+      case 'suspended':
+        return { label: '⛔ Suspended', color: 'badge-red' };
+      case 'disabled':
+        return { label: '🔴 Nonaktif (Disabled)', color: 'bg-red-200 text-red-900 font-bold' };
+      case 'pending':
+        return { label: '⏳ Pending', color: 'badge-yellow' };
+      default:
+        return { label: '🟢 Misdinar Aktif', color: 'badge-green' };
+    }
+  }
+
+  async function updateUnifiedPreset(memberId: string, preset: string) {
+    let updateData: any = { updated_at: new Date().toISOString() };
+    switch (preset) {
+      case 'misdinar_aktif':
+        updateData = { ...updateData, status: 'Active', status_jadwal: 'Siap_Bertugas', role: 'Misdinar_Aktif', is_suspended: false };
+        break;
+      case 'pengurus':
+        updateData = { ...updateData, status: 'Active', status_jadwal: 'Siap_Bertugas', role: 'Pengurus', is_suspended: false };
+        break;
+      case 'pendamping':
+        updateData = { ...updateData, status: 'Active', status_jadwal: 'Cuti', role: 'Pendamping', is_suspended: false };
+        break;
+      case 'cuti':
+        updateData = { ...updateData, status: 'Active', status_jadwal: 'Cuti', is_suspended: false };
+        break;
+      case 'pensiun':
+        updateData = { ...updateData, status: 'Active', status_jadwal: 'Pensiun', role: 'Misdinar_Retired', is_suspended: false };
+        break;
+      case 'suspended':
+        updateData = { ...updateData, status: 'Active', status_jadwal: 'Suspended', is_suspended: true };
+        break;
+      case 'disabled':
+        updateData = { ...updateData, status: 'Disabled', is_suspended: false };
+        break;
+      case 'pending':
+        updateData = { ...updateData, status: 'Pending', is_suspended: false };
+        break;
+    }
+
+    const { error } = await supabase.from('users').update(updateData).eq('id', memberId);
+    if (error) { toast.error('Gagal update status: ' + error.message); return; }
+    toast.success('Status & Role anggota berhasil diperbarui!');
+    setQuickEdit(null);
+    loadData();
+  }
+
+  // ── Quick inline change single field ───────────────────────
   const ALLOWED_QUICK_FIELDS = ['status', 'role', 'status_jadwal', 'divisi'] as const;
   async function quickChange(memberId: string, field: typeof ALLOWED_QUICK_FIELDS[number], value: string) {
     if (!(ALLOWED_QUICK_FIELDS as readonly string[]).includes(field)) { toast.error('Field tidak valid'); return; }
@@ -475,86 +550,49 @@ export default function MembersPage() {
                           : <span className="badge-red text-xs">❌ Belum</span>
                         }
                       </td>
-                      {/* Status, Role, Status Jadwal, & Divisi */}
+                      {/* Unified Single Status & Role Dropdown */}
                       <td>
                         <div className="flex flex-col gap-1">
-                          {/* Akses System */}
-                          {isPengurus && quickEdit?.id === m.id && quickEdit?.field === 'status' ? (
-                            <select className="input text-xs py-0.5 w-28" autoFocus
-                              defaultValue={m.status}
-                              onChange={e => quickChange(m.id, 'status', e.target.value)}
-                              onBlur={() => setQuickEdit(null)}>
-                              <option value="Active">Active (Dapat Login)</option>
-                              <option value="Pending">Pending</option>
-                              <option value="Disabled">Disabled</option>
+                          {isPengurus && quickEdit?.id === m.id && quickEdit?.field === 'unified_status' ? (
+                            <select
+                              className="input text-xs py-1 w-44 font-semibold shadow-sm"
+                              autoFocus
+                              defaultValue={getUnifiedPresetKey(m)}
+                              onChange={e => updateUnifiedPreset(m.id, e.target.value)}
+                              onBlur={() => setQuickEdit(null)}
+                            >
+                              <option value="misdinar_aktif">🟢 Misdinar Aktif</option>
+                              <option value="pengurus">⭐ Pengurus</option>
+                              <option value="pendamping">👔 Pendamping / Pelatih</option>
+                              <option value="cuti">🟡 Cuti / Libur</option>
+                              <option value="pensiun">🎓 Alumni / Pensiun</option>
+                              <option value="suspended">⛔ Suspended</option>
+                              <option value="disabled">🔴 Nonaktif (Disabled)</option>
+                              <option value="pending">⏳ Pending</option>
                             </select>
                           ) : (
                             <button
-                              onClick={() => isPengurus && setQuickEdit({ id: m.id, field: 'status' })}
-                              className={`badge flex items-center gap-1 w-fit ${
-                                m.status === 'Active'  ? 'badge-green' :
-                                m.status === 'Pending' ? 'badge-yellow' :
-                                'badge-gray'
-                              } ${isPengurus ? 'cursor-pointer hover:opacity-80' : ''}`}
-                              title={isPengurus ? 'Akses System Login: Klik untuk ubah' : ''}>
-                              {m.status === 'Active' ? '🟢 Active' : m.status === 'Pending' ? '⏳ Pending' : '🔴 Disabled'}
-                              {isPengurus && <ChevronDown size={10}/>}
+                              onClick={() => isPengurus && setQuickEdit({ id: m.id, field: 'unified_status' })}
+                              className={`text-xs px-2 py-1 rounded-lg flex items-center gap-1.5 w-fit transition-all ${getUnifiedStatusBadge(m).color} ${
+                                isPengurus ? 'cursor-pointer hover:opacity-80' : ''
+                              }`}
+                              title={isPengurus ? 'Klik untuk ubah status & role' : ''}
+                            >
+                              <span>{getUnifiedStatusBadge(m).label}</span>
+                              {isPengurus && <ChevronDown size={11} className="opacity-60" />}
                             </button>
                           )}
 
-                          {/* Status Jadwal */}
-                          {isPengurus && quickEdit?.id === m.id && quickEdit?.field === 'status_jadwal' ? (
-                            <select className="input text-xs py-0.5 w-32" autoFocus
-                              defaultValue={m.status_jadwal || 'Siap_Bertugas'}
-                              onChange={e => quickChange(m.id, 'status_jadwal', e.target.value)}
-                              onBlur={() => setQuickEdit(null)}>
-                              <option value="Siap_Bertugas">Siap Bertugas</option>
-                              <option value="Cuti">Cuti / Libur</option>
-                              <option value="Suspended">Suspended</option>
-                              <option value="Pensiun">Pensiun</option>
-                            </select>
-                          ) : (
-                            <button
-                              onClick={() => isPengurus && setQuickEdit({ id: m.id, field: 'status_jadwal' })}
-                              className={`text-[11px] font-medium flex items-center gap-1 w-fit px-1.5 py-0.5 rounded ${
-                                m.status_jadwal === 'Cuti' ? 'bg-amber-100 text-amber-800' :
-                                m.status_jadwal === 'Suspended' ? 'bg-red-100 text-red-800' :
-                                m.status_jadwal === 'Pensiun' ? 'bg-gray-100 text-gray-700' :
-                                'bg-emerald-50 text-emerald-800 border border-emerald-200'
-                              } ${isPengurus ? 'cursor-pointer hover:opacity-80' : ''}`}
-                              title={isPengurus ? 'Status Kelayakan Penjadwalan: Klik untuk ubah' : ''}>
-                              📅 {m.status_jadwal ? m.status_jadwal.replace('_',' ') : 'Siap Bertugas'}
-                              {isPengurus && <ChevronDown size={9}/>}
-                            </button>
-                          )}
-
-                          {/* Role */}
-                          {isAdmin && quickEdit?.id === m.id && quickEdit?.field === 'role' ? (
-                            <select className="input text-xs py-0.5 w-36" autoFocus
-                              defaultValue={m.role}
-                              onChange={e => quickChange(m.id, 'role', e.target.value)}
-                              onBlur={() => setQuickEdit(null)}>
-                              {['Administrator','Pengurus','Pendamping','Pelatih','Misdinar'].map(r => (
-                                <option key={r} value={r}>{ROLE_LABELS[r]||r}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <button
-                              onClick={() => isAdmin && setQuickEdit({ id: m.id, field: 'role' })}
-                              className={`text-xs text-gray-600 font-semibold flex items-center gap-1 w-fit ${isAdmin ? 'cursor-pointer hover:text-brand-800' : ''}`}
-                              title={isAdmin ? 'Role System: Klik untuk ubah' : ''}>
-                              👤 {ROLE_LABELS[m.role] || m.role}
-                              {isAdmin && <ChevronDown size={10} className="opacity-50"/>}
-                            </button>
-                          )}
-
-                          {/* Divisi Pengurus */}
+                          {/* Quick Divisi selector if Pengurus */}
                           {(m.role === 'Pengurus' || m.role === 'Administrator') && (
                             isAdmin && quickEdit?.id === m.id && quickEdit?.field === 'divisi' ? (
-                              <select className="input text-xs py-0.5 w-32" autoFocus
+                              <select
+                                className="input text-xs py-0.5 w-32"
+                                autoFocus
                                 defaultValue={m.divisi || ''}
                                 onChange={e => quickChange(m.id, 'divisi', e.target.value)}
-                                onBlur={() => setQuickEdit(null)}>
+                                onBlur={() => setQuickEdit(null)}
+                              >
                                 <option value="">Tanpa Divisi</option>
                                 {['Ketua','Sekretaris','Bendahara','Penjadwalan','Jasroh','Multimedia','Sakristan','Putsankris'].map(d => (
                                   <option key={d} value={d}>{d}</option>
@@ -563,10 +601,13 @@ export default function MembersPage() {
                             ) : (
                               <button
                                 onClick={() => isAdmin && setQuickEdit({ id: m.id, field: 'divisi' })}
-                                className={`text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded flex items-center gap-1 w-fit ${isAdmin ? 'cursor-pointer hover:bg-purple-100' : ''}`}
-                                title={isAdmin ? 'Divisi Pengurus: Klik untuk ubah' : ''}>
+                                className={`text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded flex items-center gap-1 w-fit ${
+                                  isAdmin ? 'cursor-pointer hover:bg-purple-100' : ''
+                                }`}
+                                title={isAdmin ? 'Klik untuk ubah divisi pengurus' : ''}
+                              >
                                 🏷️ Divisi: {m.divisi || 'Belum di-set'}
-                                {isAdmin && <ChevronDown size={9}/>}
+                                {isAdmin && <ChevronDown size={9} />}
                               </button>
                             )
                           )}
