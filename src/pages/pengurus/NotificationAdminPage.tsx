@@ -29,6 +29,27 @@ export default function NotificationAdminPage() {
 
   useEffect(() => { loadHistory(); }, [loadHistory]);
 
+  // Robust multi-schema insert helper
+  const insertNotifications = async (rows: any[]) => {
+    // Attempt 1: Standard schema (judul, pesan)
+    let { error } = await supabase.from('notifications').insert(rows);
+    if (error && (error.message?.includes('judul') || error.message?.includes('schema cache') || error.code === 'PGRST204')) {
+      // Attempt 2: Alternative schema (title, body)
+      const fallbackRows = rows.map((r: any) => ({
+        user_id: r.user_id,
+        tipe: r.tipe || r.type,
+        type: r.tipe || r.type,
+        title: r.judul || r.title,
+        body: r.pesan || r.body,
+        link_url: r.link_url,
+        is_read: r.is_read ?? false,
+      }));
+      const { error: fbErr } = await supabase.from('notifications').insert(fallbackRows);
+      error = fbErr;
+    }
+    if (error) throw error;
+  };
+
   // 1. Send Manual Broadcast
   const handleSendBroadcast = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,8 +82,7 @@ export default function NotificationAdminPage() {
         is_read: false,
       }));
 
-      const { error: insertErr } = await supabase.from('notifications').insert(rows);
-      if (insertErr) throw insertErr;
+      await insertNotifications(rows);
 
       toast.success(`✅ Pengumuman berhasil terkirim ke ${users.length} anggota!`);
       setJudul('');
@@ -82,10 +102,10 @@ export default function NotificationAdminPage() {
     try {
       const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
-      // Fetch tomorrow's active events
+      // Fetch tomorrow's active events (valid columns: id, nama_event, perayaan, tanggal_tugas, tanggal_latihan, lokasi)
       const { data: events, error: evErr } = await supabase
         .from('events')
-        .select('id, nama_event, tanggal_tugas, tanggal_latihan, waktu_tugas, lokasi')
+        .select('id, nama_event, perayaan, tanggal_tugas, tanggal_latihan, lokasi')
         .or(`tanggal_tugas.eq.${tomorrow},tanggal_latihan.eq.${tomorrow}`);
 
       if (evErr) throw evErr;
@@ -108,13 +128,13 @@ export default function NotificationAdminPage() {
         if (!assigns || assigns.length === 0) continue;
 
         const isTugas   = ev.tanggal_tugas === tomorrow;
-        const isLatihan = ev.tanggal_latihan === tomorrow;
+        const eventName = ev.perayaan || ev.nama_event;
 
         const notifType = isTugas ? 'REMINDER_TUGAS' : 'REMINDER_LATIHAN';
-        const notifTitle = isTugas ? `⏰ Pengingat H-1 Tugas Misa (${ev.nama_event})` : `🏋️ Pengingat H-1 Latihan (${ev.nama_event})`;
+        const notifTitle = isTugas ? `⏰ Pengingat H-1 Tugas Misa (${eventName})` : `🏋️ Pengingat H-1 Latihan (${eventName})`;
         const notifBody = isTugas
-          ? `Besok (${tomorrow}) Anda bertugas di ${ev.nama_event} pukul ${ev.waktu_tugas || 'sesuai jadwal'}. Mohon persiapkan diri!`
-          : `Besok (${tomorrow}) ada Latihan untuk ${ev.nama_event}. Harap hadir tepat waktu!`;
+          ? `Besok (${tomorrow}) Anda bertugas di ${eventName}. Mohon persiapkan diri!`
+          : `Besok (${tomorrow}) ada Latihan untuk ${eventName}. Harap hadir tepat waktu!`;
 
         const rows = assigns.map((a: any) => ({
           user_id: a.user_id,
@@ -125,7 +145,7 @@ export default function NotificationAdminPage() {
           is_read: false,
         }));
 
-        await supabase.from('notifications').insert(rows);
+        await insertNotifications(rows);
         totalSent += rows.length;
       }
 

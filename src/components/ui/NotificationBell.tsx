@@ -139,8 +139,8 @@ export default function NotificationBell() {
                       {new Date(n.created_at).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' })}
                     </span>
                   </div>
-                  <p className="text-xs font-bold text-gray-900 leading-tight">{n.judul}</p>
-                  <p className="text-[11px] text-gray-600 mt-0.5 leading-snug">{n.pesan}</p>
+                  <p className="text-xs font-bold text-gray-900 leading-tight">{n.judul || n.title || 'Pengumuman'}</p>
+                  <p className="text-[11px] text-gray-600 mt-0.5 leading-snug">{n.pesan || n.body || n.message}</p>
                 </div>
               ))
             )}
