@@ -76,66 +76,68 @@ function PublicRoute({ children }: { children: React.ReactNode }) {
 export default function App() {
   return (
     <ErrorBoundary>
-      <Suspense fallback={<LoadingScreen />}>
-        <Routes>
-          {/* Public routes */}
-          <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-          <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
-          <Route path="/jadwal-publik" element={<PublicSchedule />} />
+      <AuthProvider>
+        <Suspense fallback={<LoadingScreen />}>
+          <Routes>
+            {/* Public routes */}
+            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+            <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+            <Route path="/jadwal-publik" element={<PublicSchedule />} />
 
-          {/* Protected routes wrapped in Layout */}
-          <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
-            <Route path="/"                element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard"       element={<ErrorBoundary><DashboardPage /></ErrorBoundary>} />
-            <Route path="/change-password" element={<ErrorBoundary><ChangePasswordPage /></ErrorBoundary>} />
-            <Route path="/anggota"         element={<ProtectedRoute roles={PENG}><ErrorBoundary><MembersPage /></ErrorBoundary></ProtectedRoute>} />
-            <Route path="/anggota/:id"     element={<ProtectedRoute roles={PENG}><ErrorBoundary><MemberDetailPage /></ErrorBoundary></ProtectedRoute>} />
+            {/* Protected routes wrapped in Layout */}
+            <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+              <Route path="/"                element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard"       element={<ErrorBoundary><DashboardPage /></ErrorBoundary>} />
+              <Route path="/change-password" element={<ErrorBoundary><ChangePasswordPage /></ErrorBoundary>} />
+              <Route path="/anggota"         element={<ProtectedRoute roles={PENG}><ErrorBoundary><MembersPage /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/anggota/:id"     element={<ProtectedRoute roles={PENG}><ErrorBoundary><MemberDetailPage /></ErrorBoundary></ProtectedRoute>} />
 
-            {/* Schedule */}
-            <Route path="/jadwal-mingguan" element={<ErrorBoundary><ScheduleWeekly /></ErrorBoundary>} />
-            <Route path="/jadwal-harian"   element={<ErrorBoundary><ScheduleDaily /></ErrorBoundary>} />
+              {/* Schedule */}
+              <Route path="/jadwal-mingguan" element={<ErrorBoundary><ScheduleWeekly /></ErrorBoundary>} />
+              <Route path="/jadwal-harian"   element={<ErrorBoundary><ScheduleDaily /></ErrorBoundary>} />
 
-            {/* Attendance & Scan */}
-            <Route path="/absensi"         element={<ProtectedRoute roles={STAFF}><ErrorBoundary><AttendancePage /></ErrorBoundary></ProtectedRoute>} />
-            <Route path="/scan"            element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanPage /></ErrorBoundary></ProtectedRoute>} />
-            <Route path="/scan-latihan"    element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanLatihanPage /></ErrorBoundary></ProtectedRoute>} />
-            <Route path="/scan-records"    element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanRecordsPage /></ErrorBoundary></ProtectedRoute>} />
+              {/* Attendance & Scan */}
+              <Route path="/absensi"         element={<ProtectedRoute roles={STAFF}><ErrorBoundary><AttendancePage /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/scan"            element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanPage /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/scan-latihan"    element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanLatihanPage /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/scan-records"    element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanRecordsPage /></ErrorBoundary></ProtectedRoute>} />
 
-            {/* Event & Points */}
-            <Route path="/acara"           element={<ProtectedRoute roles={PENG}><ErrorBoundary><AcaraPage /></ErrorBoundary></ProtectedRoute>} />
-            <Route path="/poin-kegiatan"   element={<ProtectedRoute roles={PENG}><ErrorBoundary><PoinKegiatanPage /></ErrorBoundary></ProtectedRoute>} />
+              {/* Event & Points */}
+              <Route path="/acara"           element={<ProtectedRoute roles={PENG}><ErrorBoundary><AcaraPage /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/poin-kegiatan"   element={<ProtectedRoute roles={PENG}><ErrorBoundary><PoinKegiatanPage /></ErrorBoundary></ProtectedRoute>} />
 
-            {/* Swap, Recap, Cards */}
-            <Route path="/tukar-jadwal"    element={<ErrorBoundary><SwapPage /></ErrorBoundary>} />
-            <Route path="/rekap"           element={<ErrorBoundary><RecapPage /></ErrorBoundary>} />
-            <Route path="/perkembangan"    element={<ErrorBoundary><MyGrowthPage /></ErrorBoundary>} />
-            <Route path="/kartu"           element={<ErrorBoundary><CardsPage /></ErrorBoundary>} />
-            <Route path="/daftar-ulang"    element={<ErrorBoundary><ReregistrationPage /></ErrorBoundary>} />
-            <Route path="/statistik"       element={<ProtectedRoute roles={PENG}><ErrorBoundary><StatistikPage /></ErrorBoundary></ProtectedRoute>} />
-            <Route path="/laporan"         element={<ProtectedRoute roles={PENG}><ErrorBoundary><LaporanPage /></ErrorBoundary></ProtectedRoute>} />
-            <Route path="/streak"          element={<ErrorBoundary><StreakPage /></ErrorBoundary>} />
-            <Route path="/jadwal-saya"     element={<ErrorBoundary><JadwalSayaPage /></ErrorBoundary>} />
-            <Route path="/direktori"       element={<ProtectedRoute roles={PENG}><ErrorBoundary><DirectoryPage /></ErrorBoundary></ProtectedRoute>} />
-            <Route path="/analisis"        element={<ProtectedRoute roles={PENG}><ErrorBoundary><AnalisisPage /></ErrorBoundary></ProtectedRoute>} />
-            <Route path="/admin"           element={<ProtectedRoute roles={ADMIN}><ErrorBoundary><AdminPage /></ErrorBoundary></ProtectedRoute>} />
+              {/* Swap, Recap, Cards */}
+              <Route path="/tukar-jadwal"    element={<ErrorBoundary><SwapPage /></ErrorBoundary>} />
+              <Route path="/rekap"           element={<ErrorBoundary><RecapPage /></ErrorBoundary>} />
+              <Route path="/perkembangan"    element={<ErrorBoundary><MyGrowthPage /></ErrorBoundary>} />
+              <Route path="/kartu"           element={<ErrorBoundary><CardsPage /></ErrorBoundary>} />
+              <Route path="/daftar-ulang"    element={<ErrorBoundary><ReregistrationPage /></ErrorBoundary>} />
+              <Route path="/statistik"       element={<ProtectedRoute roles={PENG}><ErrorBoundary><StatistikPage /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/laporan"         element={<ProtectedRoute roles={PENG}><ErrorBoundary><LaporanPage /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/streak"          element={<ErrorBoundary><StreakPage /></ErrorBoundary>} />
+              <Route path="/jadwal-saya"     element={<ErrorBoundary><JadwalSayaPage /></ErrorBoundary>} />
+              <Route path="/direktori"       element={<ProtectedRoute roles={PENG}><ErrorBoundary><DirectoryPage /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/analisis"        element={<ProtectedRoute roles={PENG}><ErrorBoundary><AnalisisPage /></ErrorBoundary></ProtectedRoute>} />
+              <Route path="/admin"           element={<ProtectedRoute roles={ADMIN}><ErrorBoundary><AdminPage /></ErrorBoundary></ProtectedRoute>} />
 
-            {/* Pengurus Suite — PENG / STAFF roles only */}
-            <Route path="/pengurus" element={<ProtectedRoute roles={PENG}><ErrorBoundary><PengurusLayout /></ErrorBoundary></ProtectedRoute>}>
-              <Route index element={<Navigate to="/pengurus/ketua" replace />} />
-              <Route path="ketua" element={<KetuaPage />} />
-              <Route path="sekretaris" element={<SekretarisPage />} />
-              <Route path="bendahara" element={<BendaharaPage />} />
-              <Route path="penjadwalan" element={<Navigate to="/jadwal-mingguan" replace />} />
-              <Route path="jasroh" element={<JasrohPage />} />
-              <Route path="multimedia" element={<MultimediaPage />} />
-              <Route path="sakristan" element={<SakristanPage />} />
-              <Route path="putsankris" element={<PutsankrisPage />} />
+              {/* Pengurus Suite — PENG / STAFF roles only */}
+              <Route path="/pengurus" element={<ProtectedRoute roles={PENG}><ErrorBoundary><PengurusLayout /></ErrorBoundary></ProtectedRoute>}>
+                <Route index element={<Navigate to="/pengurus/ketua" replace />} />
+                <Route path="ketua" element={<KetuaPage />} />
+                <Route path="sekretaris" element={<SekretarisPage />} />
+                <Route path="bendahara" element={<BendaharaPage />} />
+                <Route path="penjadwalan" element={<Navigate to="/jadwal-mingguan" replace />} />
+                <Route path="jasroh" element={<JasrohPage />} />
+                <Route path="multimedia" element={<MultimediaPage />} />
+                <Route path="sakristan" element={<SakristanPage />} />
+                <Route path="putsankris" element={<PutsankrisPage />} />
+              </Route>
             </Route>
-          </Route>
 
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </Suspense>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </Suspense>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }
