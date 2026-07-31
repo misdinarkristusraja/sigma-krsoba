@@ -371,7 +371,16 @@ export default function RecapPage() {
     setAllRekap(result);
     setAllLoad(false);
   }
-  useEffect(() => { if (tab === 'all') loadAll(); }, [tab, dateFrom, dateTo]);
+
+  useEffect(() => {
+    if (tab === 'all') {
+      if (!isPengurus) {
+        setTab('personal');
+        return;
+      }
+      loadAll();
+    }
+  }, [tab, dateFrom, dateTo, isPengurus]);
 
   function buildRekapHarian(scans: any[], from: any, to: any) {
     const months: Record<string, { tahun: number; bulan: number; count: number }> = {};
