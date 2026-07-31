@@ -22,6 +22,7 @@ const AdminPage          = lazy(() => import('./pages/AdminPage'));
 const AttendancePage     = lazy(() => import('./pages/AttendancePage'));
 const AcaraPage          = lazy(() => import('./pages/AcaraPage'));
 const PoinKegiatanPage   = lazy(() => import('./pages/PoinKegiatanPage'));
+const MyGrowthPage       = lazy(() => import('./pages/MyGrowthPage'));
 const ReregistrationPage = lazy(() => import('./pages/ReregistrationPage'));
 const StatistikPage      = lazy(() => import('./pages/StatistikPage'));
 const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage'));
@@ -134,6 +135,7 @@ function AppRoutes() {
             <Route path="/riwayat-scan"    element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanRecordsPage/></ErrorBoundary></ProtectedRoute>}/>
             <Route path="/tukar-jadwal"    element={<ErrorBoundary><SwapPage/></ErrorBoundary>}/>
             <Route path="/rekap"           element={<ErrorBoundary><RecapPage/></ErrorBoundary>}/>
+            <Route path="/perkembangan"    element={<ErrorBoundary><MyGrowthPage/></ErrorBoundary>}/>
             <Route path="/kartu"           element={<ErrorBoundary><CardsPage/></ErrorBoundary>}/>
             <Route path="/daftar-ulang"    element={<ErrorBoundary><ReregistrationPage/></ErrorBoundary>}/>
             <Route path="/statistik"       element={<ProtectedRoute roles={PENG}><ErrorBoundary><StatistikPage/></ErrorBoundary></ProtectedRoute>}/>

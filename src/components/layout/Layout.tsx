@@ -8,7 +8,7 @@ import {
   ArrowLeftRight, BarChart2, CreditCard,
   Settings, LogOut, Menu, X, Church, AlertTriangle,
   ClipboardList, RefreshCw, ClipboardCheck, PartyPopper, ListChecks,
-  BookUser, Star, Microscope, Globe, ChevronDown,
+  BookUser, Star, Microscope, Globe, ChevronDown, TrendingUp,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { cn, truncate } from '../../lib/utils';
@@ -72,9 +72,10 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Profil & Rekap',
     icon: BarChart2,
     items: [
-      { icon: BarChart2,  label: 'Rekap & Poin',  path: '/rekap',        roles: null },
-      { icon: CreditCard, label: 'Kartu Anggota', path: '/kartu',        roles: null },
-      { icon: RefreshCw,  label: 'Daftar Ulang',  path: '/daftar-ulang', roles: null },
+      { icon: TrendingUp,  label: 'Perkembangan Saya', path: '/perkembangan', roles: null },
+      { icon: BarChart2,   label: 'Rekap Presensi',    path: '/rekap',        roles: null },
+      { icon: CreditCard,  label: 'Kartu Anggota',     path: '/kartu',        roles: null },
+      { icon: RefreshCw,   label: 'Daftar Ulang',      path: '/daftar-ulang', roles: null },
     ],
   },
   {
