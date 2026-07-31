@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { supabase as supabaseTyped } from '../../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../../contexts/AuthContext';
-import { Camera, CheckCircle, Clock, RefreshCw, BarChart2, ShieldCheck, MapPin } from 'lucide-react';
+import { Camera, CheckCircle, Upload, AlertTriangle, RefreshCw, BarChart2, ShieldCheck, MapPin } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function SakristanPage() {
@@ -10,24 +10,37 @@ export default function SakristanPage() {
   const [tab, setTab] = useState<'camera' | 'analytics'>('camera');
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const startCamera = async () => {
+    setCameraError(null);
     try {
-      const mediaStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
-      });
+      let mediaStream: MediaStream;
+      try {
+        mediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }
+        });
+      } catch {
+        mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+      }
+
       setStream(mediaStream);
       if (videoRef.current) {
         videoRef.current.srcObject = mediaStream;
       }
     } catch (err: any) {
-      toast.error('Tidak dapat mengakses kamera: ' + err.message);
+      console.warn('Camera access error:', err);
+      const msg = err.name === 'NotAllowedError'
+        ? 'Izin kamera belum diberikan oleh browser. Silakan beri izin kamera atau gunakan tombol Upload Foto.'
+        : err.message || 'Gagal membuka kamera.';
+      setCameraError(msg);
     }
   };
 
@@ -39,7 +52,9 @@ export default function SakristanPage() {
   };
 
   useEffect(() => {
-    if (tab === 'camera') startCamera();
+    if (tab === 'camera') {
+      startCamera();
+    }
     return () => stopCamera();
   }, [tab]);
 
@@ -61,7 +76,26 @@ export default function SakristanPage() {
 
   useEffect(() => { loadLogs(); }, [loadLogs]);
 
-  // Capture frame from video and paint Auto-Watermark on HTML5 Canvas
+  // Stamp Auto-Watermark on canvas
+  const drawWatermark = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+    const nowStr = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'medium' });
+    const locationStr = '📍 Paroki Kristus Raja Solo Baru - Presensi PIC/Pengurus Sakristan';
+
+    // Dark semi-transparent banner
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, height - 70, width, 70);
+
+    // Watermark text
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 15px sans-serif';
+    ctx.fillText(`🕒 ${nowStr}`, 15, height - 42);
+
+    ctx.fillStyle = '#fde047'; // Amber yellow
+    ctx.font = '13px sans-serif';
+    ctx.fillText(locationStr, 15, height - 18);
+  };
+
+  // Capture frame from live video
   const captureFrame = () => {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -73,35 +107,44 @@ export default function SakristanPage() {
     canvas.width = video.videoWidth || 640;
     canvas.height = video.videoHeight || 480;
 
-    // Draw video frame
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-    // Auto Watermark Box
-    const nowStr = new Date().toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'medium' });
-    const locationStr = '📍 Paroki Kristus Raja Solo Baru - Presensi PIC/Pengurus Sakristan';
-
-    // Dark semi-transparent gradient bottom banner
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.65)';
-    ctx.fillRect(0, canvas.height - 70, canvas.width, 70);
-
-    // Draw Watermark text
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 14px sans-serif';
-    ctx.fillText(`🕒 ${nowStr}`, 15, canvas.height - 42);
-
-    ctx.fillStyle = '#fde047'; // Amber yellow text for location
-    ctx.font = '12px sans-serif';
-    ctx.fillText(locationStr, 15, canvas.height - 18);
+    drawWatermark(ctx, canvas.width, canvas.height);
 
     const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
     setCapturedPhoto(dataUrl);
+  };
+
+  // Fallback: Handle Image Upload from gallery/camera app
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = canvasRef.current || document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        canvas.width = img.width;
+        canvas.height = img.height;
+
+        ctx.drawImage(img, 0, 0);
+        drawWatermark(ctx, canvas.width, canvas.height);
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+        setCapturedPhoto(dataUrl);
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSavePresensi = async () => {
     if (!capturedPhoto) { toast.error('Ambil foto presensi terlebih dahulu'); return; }
     setSubmitting(true);
     try {
-      // Record scan record with photo proof & watermark audit
       const { error } = await supabase.from('scan_records').insert({
         user_id: profile?.id,
         scan_type: 'tugas',
@@ -133,7 +176,7 @@ export default function SakristanPage() {
 
         <div className="flex gap-2">
           <button onClick={() => setTab('camera')} className={`btn-sm gap-1 ${tab === 'camera' ? 'btn-primary' : 'btn-outline'}`}>
-            <Camera size={15} /> Presensi Web Cam
+            <Camera size={15} /> Presensi Kamera
           </button>
           <button onClick={() => setTab('analytics')} className={`btn-sm gap-1 ${tab === 'analytics' ? 'btn-primary' : 'btn-outline'}`}>
             <BarChart2 size={15} /> Analisis Kehadiran
@@ -143,20 +186,53 @@ export default function SakristanPage() {
 
       {tab === 'camera' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Web Cam Live Stream */}
+          {/* Camera Container */}
           <div className="card p-5 space-y-4">
             <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-              <Camera size={18} className="text-red-700" /> Web Camera Presensi Live
+              <Camera size={18} className="text-red-700" /> Presensi Web Camera Live
             </h3>
 
-            <div className="relative bg-black rounded-2xl overflow-hidden aspect-video flex items-center justify-center">
-              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+            <div className="relative bg-gray-900 rounded-2xl overflow-hidden aspect-video flex items-center justify-center border border-gray-800">
+              {stream ? (
+                <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
+              ) : (
+                <div className="p-6 text-center text-gray-400 space-y-3">
+                  <AlertTriangle size={36} className="mx-auto text-amber-400" />
+                  <p className="text-xs text-gray-300">
+                    {cameraError || 'Kamera belum aktif atau izin belum diberikan.'}
+                  </p>
+                  <div className="flex flex-col gap-2 pt-2">
+                    <button onClick={startCamera} className="btn-primary btn-sm mx-auto gap-1">
+                      <Camera size={14} /> Minta Izin &amp; Buka Kamera
+                    </button>
+                    <span className="text-[10px] text-gray-500">— ATAU —</span>
+                    <button onClick={() => fileInputRef.current?.click()} className="btn-outline btn-sm mx-auto gap-1">
+                      <Upload size={14} /> Upload Foto dari HP / Galeri
+                    </button>
+                  </div>
+                </div>
+              )}
               <canvas ref={canvasRef} className="hidden" />
             </div>
 
-            <button onClick={captureFrame} className="btn-primary w-full gap-2">
-              <Camera size={16} /> Ambil Foto &amp; Tempel Watermark
-            </button>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handleFileUpload}
+            />
+
+            {stream ? (
+              <button onClick={captureFrame} className="btn-primary w-full gap-2">
+                <Camera size={16} /> Ambil Foto &amp; Tempel Watermark
+              </button>
+            ) : (
+              <button onClick={() => fileInputRef.current?.click()} className="btn-outline w-full gap-2">
+                <Upload size={16} /> Upload File Foto &amp; Auto-Watermark
+              </button>
+            )}
           </div>
 
           {/* Captured Result Preview & Confirm */}
@@ -180,9 +256,9 @@ export default function SakristanPage() {
                 </div>
               </div>
             ) : (
-              <div className="border border-dashed border-gray-200 rounded-2xl p-10 text-center text-gray-400">
+              <div className="border border-dashed border-gray-200 rounded-2xl p-10 text-center text-gray-400 space-y-2">
                 <Camera size={40} className="mx-auto mb-2 opacity-30" />
-                <p className="text-sm">Klik tombol "Ambil Foto" untuk melihat pratinjau watermark waktu &amp; lokasi.</p>
+                <p className="text-sm">Klik "Ambil Foto" atau "Upload Foto" untuk pratinjau watermark waktu &amp; lokasi.</p>
               </div>
             )}
           </div>
