@@ -87,32 +87,32 @@
   .badge-cream  { @apply badge bg-amber-50 text-amber-800 border border-amber-200; }
 
   /* ── Page header ── */
-  .page-title    { @apply text-2xl font-bold text-gray-900; }
-  .page-subtitle { @apply text-sm text-gray-500 mt-0.5; }
+  .page-title    { @apply text-2xl font-bold text-gray-900 dark:text-white tracking-tight; }
+  .page-subtitle { @apply text-sm text-gray-500 dark:text-slate-400 mt-0.5; }
 
   /* ── Table ── */
   .tbl    { @apply w-full text-sm border-collapse; }
-  .tbl th { @apply bg-gray-50 text-gray-600 font-semibold text-left px-3 py-2.5 border-b border-gray-200 text-xs uppercase tracking-wider; }
-  .tbl td { @apply px-3 py-2.5 border-b border-gray-100 text-gray-800; }
+  .tbl th { @apply bg-gray-50 dark:bg-slate-800/90 text-gray-600 dark:text-slate-300 font-semibold text-left px-3.5 py-3 border-b border-gray-200 dark:border-slate-800 text-xs uppercase tracking-wider; }
+  .tbl td { @apply px-3.5 py-3 border-b border-gray-100 dark:border-slate-800 text-gray-800 dark:text-slate-200; }
   .tbl tbody tr { transition: background-color 0.1s ease; }
-  .tbl tr:hover td { @apply bg-gray-50; }
+  .tbl tr:hover td { @apply bg-gray-50/80 dark:bg-slate-800/50; }
 
   /* ── Liturgy rows ── */
-  .liturgy-green  { @apply bg-green-50; }
-  .liturgy-red    { @apply bg-red-50; }
-  .liturgy-purple { @apply bg-purple-50; }
-  .liturgy-pink   { @apply bg-pink-50; }
-  .liturgy-white  { @apply bg-amber-50; }
-  .liturgy-black  { @apply bg-gray-100; }
+  .liturgy-green  { @apply bg-green-50 dark:bg-green-950/40; }
+  .liturgy-red    { @apply bg-red-50 dark:bg-red-950/40; }
+  .liturgy-purple { @apply bg-purple-50 dark:bg-purple-950/40; }
+  .liturgy-pink   { @apply bg-pink-50 dark:bg-pink-950/40; }
+  .liturgy-white  { @apply bg-amber-50 dark:bg-amber-950/40; }
+  .liturgy-black  { @apply bg-gray-100 dark:bg-slate-800/60; }
 
   /* ── Sidebar nav ── */
   .nav-item {
-    @apply flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium cursor-pointer;
+    @apply flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium cursor-pointer;
     transition: background-color 0.18s ease, color 0.18s ease, transform 0.15s ease;
   }
   .nav-item:hover { transform: translateX(2px); }
-  .nav-item-active   { @apply bg-brand-800 text-white shadow-sm; }
-  .nav-item-inactive { @apply text-gray-600 hover:bg-gray-100 hover:text-gray-900; }
+  .nav-item-active   { @apply bg-gradient-to-r from-brand-800 to-amber-600 text-white font-bold shadow-md shadow-brand-900/30; }
+  .nav-item-inactive { @apply text-slate-300 hover:bg-white/10 hover:text-white; }
 
   /* ── Status helpers ── */
   .status-active    { @apply badge-green; }

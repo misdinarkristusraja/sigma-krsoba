@@ -5,8 +5,7 @@ export default function DarkModeToggle() {
   const [isDark, setIsDark] = useState(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('sigma_theme');
-      if (stored) return stored === 'dark';
-      return window.matchMedia('(prefers-color-scheme: dark)').matches;
+      return stored === 'dark';
     }
     return false;
   });

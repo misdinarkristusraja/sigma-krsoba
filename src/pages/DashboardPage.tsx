@@ -575,7 +575,7 @@ function StatCard({ icon, label, value, sub, color, index = 0 }: {
     <motion.div
       custom={index}
       variants={cardVariants}
-      className={`card ${color} border-0 card-hover`}
+      className={`card ${color} dark:bg-slate-900 dark:border-slate-800 card-hover`}
     >
       <motion.div
         animate={{ rotate: [0, -8, 8, 0] }}
@@ -584,13 +584,13 @@ function StatCard({ icon, label, value, sub, color, index = 0 }: {
         {icon}
       </motion.div>
       <div className="mt-3">
-        <div className="text-2xl font-bold text-gray-900">
+        <div className="text-2xl font-bold text-gray-900 dark:text-white">
           {value === null ? (
             <span className="skeleton inline-block w-10 h-6 rounded align-middle" />
           ) : counted}
         </div>
-        <div className="text-xs font-semibold text-gray-700 mt-0.5">{label}</div>
-        <div className="text-xs text-gray-400">{sub}</div>
+        <div className="text-xs font-semibold text-gray-700 dark:text-slate-300 mt-0.5">{label}</div>
+        <div className="text-xs text-gray-400 dark:text-slate-400">{sub}</div>
       </div>
     </motion.div>
   );
@@ -604,7 +604,7 @@ function AnimatedStatMini({ label, val, color, index }: {
     <motion.div
       custom={index}
       variants={cardVariants}
-      className={`${color} rounded-xl p-3 text-center`}
+      className={`${color} dark:bg-slate-800 dark:text-slate-100 rounded-xl p-3 text-center`}
     >
       <div className="text-2xl font-black">{counted}</div>
       <div className="text-[10px] font-medium mt-0.5 opacity-80 leading-tight">{label}</div>

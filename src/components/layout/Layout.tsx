@@ -281,18 +281,18 @@ export default function Layout() {
   );
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 transition-colors duration-200">
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-60 flex-shrink-0 bg-brand-800 flex-col">
+      <aside className="hidden lg:flex w-64 flex-shrink-0 bg-gradient-to-b from-brand-950 via-slate-900 to-slate-950 text-slate-100 flex-col border-r border-slate-800 shadow-2xl">
         <SidebarContent/>
       </aside>
 
       {/* Mobile slide-in drawer */}
       <div className={`lg:hidden fixed inset-0 z-50 flex transition-all duration-300 ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        <div className="fixed inset-0 bg-black/50" onClick={() => setOpen(false)}/>
-        <aside className={`relative w-64 bg-brand-800 flex flex-col z-10 shadow-2xl transition-transform duration-300 ease-out ${open ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setOpen(false)}/>
+        <aside className={`relative w-64 bg-gradient-to-b from-brand-950 via-slate-900 to-slate-950 text-slate-100 flex flex-col z-10 shadow-2xl border-r border-slate-800 transition-transform duration-300 ease-out ${open ? 'translate-x-0' : '-translate-x-full'}`}>
           <button onClick={() => setOpen(false)}
-            className="absolute top-3 right-3 p-1.5 text-brand-200 hover:text-white transition-colors">
+            className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-white transition-colors">
             <X size={20}/>
           </button>
           <SidebarContent/>
@@ -302,14 +302,14 @@ export default function Layout() {
       {/* Main */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile top header */}
-        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
+        <header className="lg:hidden flex items-center gap-3 px-4 py-3 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 shadow-sm flex-shrink-0">
           <button onClick={() => setOpen(true)}
-            className="p-2 rounded-lg hover:bg-gray-100 text-gray-600">
+            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-600 dark:text-slate-300">
             <Menu size={20}/>
           </button>
           <div className="flex items-center gap-2">
-            <Church size={18} className="text-brand-800"/>
-            <span className="font-bold text-brand-800">SIGMA</span>
+            <Church size={18} className="text-brand-800 dark:text-brand-400"/>
+            <span className="font-bold text-brand-800 dark:text-brand-400">SIGMA</span>
           </div>
           <div className="ml-auto">
             <NotificationBell/>
@@ -317,16 +317,16 @@ export default function Layout() {
         </header>
 
         {/* Desktop top header bar */}
-        <header className="hidden lg:flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
+        <header className="hidden lg:flex items-center justify-between px-6 py-3 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-800 shadow-sm flex-shrink-0">
           <div className="flex items-center gap-2">
-            <Church size={20} className="text-brand-800"/>
-            <span className="font-bold text-gray-900 text-sm">SIGMA System — Paroki Kristus Raja</span>
+            <Church size={20} className="text-brand-800 dark:text-brand-400"/>
+            <span className="font-bold text-gray-900 dark:text-white text-sm">SIGMA System — Paroki Kristus Raja</span>
           </div>
           <div className="flex items-center gap-3">
             <NotificationBell/>
-            <div className="h-4 w-px bg-gray-200" />
-            <div className="text-xs text-gray-600 font-medium">
-              {displayName} <span className="text-brand-800 font-semibold">({role?.replace('_', ' ') || 'Misdinar'})</span>
+            <div className="h-4 w-px bg-gray-200 dark:bg-slate-700" />
+            <div className="text-xs text-gray-600 dark:text-slate-300 font-medium">
+              {displayName} <span className="text-brand-800 dark:text-brand-400 font-semibold">({role?.replace('_', ' ') || 'Misdinar'})</span>
             </div>
           </div>
         </header>
