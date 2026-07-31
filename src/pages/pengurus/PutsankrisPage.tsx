@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { supabase as supabaseTyped } from '../../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../../contexts/AuthContext';
-import { Shirt, CheckSquare, Clock, Calendar, CheckCircle2, AlertCircle, Save } from 'lucide-react';
+import { Shirt, CheckSquare, Clock, Calendar, CheckCircle2, AlertCircle, Save, Copy, Share2, Sparkles, MessageCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const DEFAULT_ITEMS = [
@@ -14,6 +14,21 @@ const DEFAULT_ITEMS = [
   { key: 'jubah_samir', label: 'Jubah & Samir Misdinar', category: 'Busana' },
   { key: 'piala_sibori', label: 'Piala, Sibori & Ampul', category: 'Alat Misa' },
 ];
+
+function getWeeklyCycleDates() {
+  const d = new Date();
+  const day = d.getDay(); // 0 Sun, 6 Sat
+  const diffToSat = (day + 1) % 7;
+  const startSat = new Date(d);
+  startSat.setDate(d.getDate() - diffToSat);
+  startSat.setHours(0, 0, 0, 0);
+
+  const endSat = new Date(startSat);
+  endSat.setDate(startSat.getDate() + 7);
+  endSat.setHours(23, 59, 59, 999);
+
+  return { startSat, endSat };
+}
 
 export default function PutsankrisPage() {
   const { profile } = useAuth();
@@ -28,13 +43,18 @@ export default function PutsankrisPage() {
   const [submitting, setSubmitting] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
 
+  const { startSat, endSat } = getWeeklyCycleDates();
+  const cycleLabel = `${startSat.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })} - ${endSat.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const today = new Date().toISOString().split('T')[0];
+      // Filter for Misa Mingguan & Misa Hari Raya (Misa Khusus) only
       const { data: evData } = await supabase
         .from('events')
-        .select('id, nama_event, perayaan, tanggal_tugas')
+        .select('id, nama_event, perayaan, tanggal_tugas, tipe_event')
+        .in('tipe_event', ['Mingguan', 'Misa_Khusus'])
         .gte('tanggal_tugas', today)
         .order('tanggal_tugas')
         .limit(20);
@@ -64,7 +84,7 @@ export default function PutsankrisPage() {
   };
 
   const handleSaveChecklist = async () => {
-    if (!selectedEventId) { toast.error('Pilih misa/acara terlebih dahulu'); return; }
+    if (!selectedEventId) { toast.error('Pilih Misa Mingguan/Hari Raya target'); return; }
     setSubmitting(true);
     try {
       const { error } = await supabase.from('pengurus_putsankris_checklists').insert({
@@ -76,7 +96,7 @@ export default function PutsankrisPage() {
       });
 
       if (error) throw error;
-      toast.success('Checklist Alat & Busana Misa Berhasil Disimpan!');
+      toast.success('Checklist Alat Misa Pekanan Berhasil Disimpan!');
       setCatatan('');
       loadData();
     } catch (err: any) {
@@ -86,12 +106,52 @@ export default function PutsankrisPage() {
     }
   };
 
+  const selectedEventInfo = events.find(e => e.id === selectedEventId);
+
+  const generateReportText = () => {
+    const itemsText = DEFAULT_ITEMS.map(i => {
+      const isOk = checkedState[i.key] ?? false;
+      return `${isOk ? '✅' : '❌'} ${i.label}: ${isOk ? 'READY' : 'BELUM SIAP'}`;
+    }).join('\n');
+
+    return `📋 *LAPORAN KESIAPAN ALAT & BUSANA LITURGI PUTSANKRIS*
+📍 Paroki Kristus Raja Solo Baru
+📅 Periode Audit Pekanan (Sabtu - Sabtu): ${cycleLabel}
+⛪ Target: ${selectedEventInfo?.perayaan || selectedEventInfo?.nama_event || 'Misa Mingguan / Hari Raya'}
+👤 Diperiksa oleh: ${profile?.nama_panggilan || 'Putsankris'}
+
+*DAFTAR KELENGKAPAN ALAT & JUBAH:*
+${itemsText}
+
+💬 *Catatan Putsankris:*
+${catatan || 'Semua perlengkapan dalam kondisi lengkap dan siap pakai.'}
+
+Status Kesiapan: *READY UNTUK MISA MINGGUAN & HARI RAYA* 🌟`;
+  };
+
+  const copyReportToClipboard = () => {
+    const text = generateReportText();
+    navigator.clipboard.writeText(text);
+    toast.success('Laporan disalin ke clipboard!');
+  };
+
+  const openWhatsAppReport = () => {
+    const text = generateReportText();
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="font-bold text-gray-900 text-base">Divisi Putsankris (Putri Sakristan)</h2>
-          <p className="text-xs text-gray-500">Checklist Kesiapan Peralatan &amp; Busana Liturgi per Misa.</p>
+          <p className="text-xs text-gray-500">Pemeriksaan Alat &amp; Busana Liturgi Khusus Misa Mingguan &amp; Hari Raya (Periode Sabtu - Sabtu).</p>
+        </div>
+
+        <div className="flex items-center gap-2 bg-purple-50 text-purple-900 border border-purple-200 px-3 py-1.5 rounded-xl text-xs font-semibold">
+          <Sparkles size={14} className="text-purple-700" />
+          <span>Siklus Audit: <strong>{cycleLabel}</strong></span>
         </div>
       </div>
 
@@ -99,26 +159,30 @@ export default function PutsankrisPage() {
         {/* Form Checklist */}
         <div className="card p-5 space-y-4">
           <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-            <Shirt size={18} className="text-purple-700" /> Pemeriksaan Alat Liturgi Misa
+            <Shirt size={18} className="text-purple-700" /> Pemeriksaan Alat Liturgi (Mingguan &amp; Hari Raya)
           </h3>
 
           <div>
-            <label className="text-xs font-semibold text-gray-700 mb-1 block">Pilih Misa / Acara Target</label>
+            <label className="text-xs font-semibold text-gray-700 mb-1 block">Pilih Misa Target Audit</label>
             <select
               className="input text-sm"
               value={selectedEventId}
               onChange={e => setSelectedEventId(e.target.value)}
             >
-              {events.map(e => (
-                <option key={e.id} value={e.id}>
-                  {e.perayaan || e.nama_event} ({e.tanggal_tugas})
-                </option>
-              ))}
+              {events.length === 0 ? (
+                <option value="">Tidak ada Misa Mingguan / Hari Raya mendatang</option>
+              ) : (
+                events.map(e => (
+                  <option key={e.id} value={e.id}>
+                    [{e.tipe_event === 'Misa_Khusus' ? 'HARI RAYA' : 'MINGGUAN'}] {e.perayaan || e.nama_event} ({e.tanggal_tugas})
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-gray-700 block">Daftar Kelengkapan Alat &amp; Jubah</label>
+            <label className="text-xs font-semibold text-gray-700 block">Daftar Kelengkapan Alat &amp; Jubah Pekan Ini</label>
             <div className="space-y-1.5 bg-gray-50 p-3 rounded-xl border border-gray-100">
               {DEFAULT_ITEMS.map(item => {
                 const isChecked = checkedState[item.key] ?? false;
@@ -156,15 +220,27 @@ export default function PutsankrisPage() {
             />
           </div>
 
-          <button onClick={handleSaveChecklist} disabled={submitting} className="btn-primary w-full gap-2">
-            <Save size={16} /> Simpan Audit Checklist
-          </button>
+          <div className="space-y-2 pt-1">
+            <button onClick={handleSaveChecklist} disabled={submitting} className="btn-primary w-full gap-2">
+              <Save size={16} /> Simpan Audit Kesiapan Pekan Ini
+            </button>
+
+            {/* Direct Report Export / WhatsApp Share */}
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <button onClick={copyReportToClipboard} type="button" className="btn-outline text-xs gap-1.5">
+                <Copy size={14} /> Salin Laporan WA
+              </button>
+              <button onClick={openWhatsAppReport} type="button" className="btn-secondary text-xs gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white border-none">
+                <MessageCircle size={14} /> Kirim ke WhatsApp
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* History Audit Log */}
         <div className="card p-5 space-y-4">
           <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-            <Clock size={18} className="text-brand-800" /> Histori Audit Kesiapan Misa
+            <Clock size={18} className="text-brand-800" /> Histori Audit Kesiapan Misa (Sabtu - Sabtu)
           </h3>
 
           {history.length === 0 ? (
@@ -173,16 +249,16 @@ export default function PutsankrisPage() {
               <p className="text-sm">Belum ada histori audit checklist.</p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
               {history.map(h => (
-                <div key={h.id} className="p-3 bg-gray-50 rounded-xl border border-gray-100 space-y-2 text-xs">
+                <div key={h.id} className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 space-y-2 text-xs">
                   <div className="flex items-start justify-between">
                     <div>
                       <p className="font-bold text-gray-900">{h.event?.perayaan || h.event?.nama_event}</p>
-                      <p className="text-[11px] text-gray-500">{h.event?.tanggal_tugas}</p>
+                      <p className="text-[11px] text-purple-700 font-semibold">{h.event?.tanggal_tugas}</p>
                     </div>
-                    <span className="text-[10px] text-gray-400">
-                      {new Date(h.checked_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                    <span className="text-[10px] text-gray-500 bg-white px-2 py-0.5 rounded border">
+                      {new Date(h.checked_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                     </span>
                   </div>
 
@@ -192,9 +268,10 @@ export default function PutsankrisPage() {
                     </p>
                   )}
 
-                  <p className="text-[10px] text-gray-400 text-right">
-                    Diperiksa oleh: <strong>{h.checked_user?.nama_panggilan || 'Putsankris'}</strong>
-                  </p>
+                  <div className="flex justify-between items-center pt-1 border-t border-gray-200/50 text-[10px] text-gray-500">
+                    <span>Diperiksa oleh: <strong>{h.checked_user?.nama_panggilan || 'Putsankris'}</strong></span>
+                    <span className="text-emerald-700 font-bold">✓ Audit Valid</span>
+                  </div>
                 </div>
               ))}
             </div>
