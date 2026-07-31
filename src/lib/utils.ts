@@ -333,3 +333,16 @@ export function getPicHp(event_pics: EventPic[] | null | undefined, slot: number
   const pics = getPicsForSlot(event_pics, slot);
   return pics[0]?.hp || null;
 }
+
+export function formatNotificationLabel(type: string): string {
+  switch (type) {
+    case 'REMINDER_TUGAS':   return '⏰ Pengingat Tugas Misa';
+    case 'REMINDER_LATIHAN': return '🏋️ Pengingat Latihan';
+    case 'MISSED_DUTY':      return '⚠️ Tugas Terlewat';
+    case 'ANNOUNCEMENT':     return '📢 Informasi Pengumuman';
+    case 'NEW_SCHEDULE':     return '📅 Jadwal Baru Dipublikasikan';
+    case 'NEW_EVENT':        return '🎉 Event Baru Diumumkan';
+    default:                 return '🔔 Notifikasi';
+  }
+}
+

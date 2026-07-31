@@ -1,168 +1,150 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Bell, X, Calendar, ArrowLeftRight, Flame, FileText, Info, CheckCheck } from 'lucide-react';
-import { supabase } from '../../lib/supabase';
+import React, { useState, useEffect, useCallback } from 'react';
+import { supabase as supabaseTyped } from '../../lib/supabase';
+const supabase = supabaseTyped as any;
 import { useAuth } from '../../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-
-interface Notification {
-  id:         string;
-  user_id:    string;
-  type:       string;
-  title:      string;
-  body:       string | null;
-  is_read:    boolean;
-  link:       string | null;
-  created_at: string;
-}
-
-const TYPE_ICON: Record<string, { icon: React.ElementType; color: string }> = {
-  jadwal_reminder: { icon: Calendar,       color: 'text-brand-800 bg-brand-50'   },
-  swap_request:    { icon: ArrowLeftRight,  color: 'text-purple-600 bg-purple-50' },
-  streak:          { icon: Flame,           color: 'text-orange-500 bg-orange-50' },
-  laporan:         { icon: FileText,        color: 'text-blue-600 bg-blue-50'     },
-  info:            { icon: Info,            color: 'text-gray-600 bg-gray-100'    },
-};
-
-function timeAgo(ts: string): string {
-  const diff = (Date.now() - new Date(ts).getTime()) / 1000;
-  if (diff < 60)    return 'baru saja';
-  if (diff < 3600)  return `${Math.floor(diff / 60)} mnt`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} jam`;
-  return `${Math.floor(diff / 86400)} hr`;
-}
+import { Bell, CheckCheck, ExternalLink, ShieldAlert, Sparkles, Volume2 } from 'lucide-react';
+import { formatNotificationLabel } from '../../lib/utils';
+import toast from 'react-hot-toast';
 
 export default function NotificationBell() {
-  const { profile } = useAuth();
-  const [open,    setOpen]    = useState(false);
-  const [notifs,  setNotifs]  = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
-
-  const unread = notifs.filter(n => !n.is_read).length;
+  const { user, profile } = useAuth();
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount]     = useState(0);
+  const [open, setOpen]                   = useState(false);
+  const [pushGranted, setPushGranted]     = useState(false);
 
   useEffect(() => {
-    if (profile?.id) loadNotifs();
-  }, [profile?.id]);
-
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (panelRef.current && !panelRef.current.contains(e.target as Node)) setOpen(false);
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setPushGranted(Notification.permission === 'granted');
     }
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const loadNotifications = useCallback(async () => {
+    if (!user?.id) return;
+    try {
+      const { data } = await supabase
+        .from('notifications')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+      const items = data || [];
+      setNotifications(items);
+      setUnreadCount(items.filter((n: any) => !n.is_read).length);
+    } catch (err) {
+      console.warn('Load notifications error:', err);
+    }
+  }, [user?.id]);
+
   useEffect(() => {
-    if (!profile?.id) return;
-    const ch = (supabase as any).channel('notifs-' + profile.id)
-      .on('postgres_changes', {
-        event: 'INSERT', schema: 'public', table: 'notifications',
-        filter: `user_id=eq.${profile.id}`,
-      }, (payload: any) => {
-        setNotifs(n => [payload.new as Notification, ...n]);
-      })
-      .subscribe();
-    return () => { (supabase as any).removeChannel(ch); };
-  }, [profile?.id]);
+    loadNotifications();
+  }, [loadNotifications]);
 
-  async function loadNotifs() {
-    if (!profile?.id) return;
-    setLoading(true);
-    const { data } = await (supabase as any)
-      .from('notifications')
-      .select('*')
-      .eq('user_id', profile.id)
-      .order('created_at', { ascending: false })
-      .limit(30);
-    setNotifs((data as Notification[]) || []);
-    setLoading(false);
-  }
+  const requestWebPushPermission = async () => {
+    if (!('Notification' in window)) {
+      toast.error('Browser ini tidak mendukung Web Push Notification.');
+      return;
+    }
+    const result = await Notification.requestPermission();
+    if (result === 'granted') {
+      setPushGranted(true);
+      toast.success('🔔 Notifikasi Browser berhasil diaktifkan!');
+      new Notification('SIGMA Notifikasi Aktif', {
+        body: 'Terima kasih! Anda akan menerima pengingat tugas H-1 & info terbaru.',
+        icon: '/favicon.ico'
+      });
+    } else {
+      toast.error('Izin notifikasi ditolak oleh browser.');
+    }
+  };
 
-  async function markRead(id: string) {
-    await (supabase as any).from('notifications').update({ is_read: true }).eq('id', id);
-    setNotifs(n => n.map(x => x.id === id ? { ...x, is_read: true } : x));
-  }
+  const markAllAsRead = async () => {
+    if (!user?.id || unreadCount === 0) return;
+    await supabase.from('notifications').update({ is_read: true }).eq('user_id', user.id);
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+    toast.success('Semua notifikasi ditandai dibaca');
+  };
 
-  async function markAllRead() {
-    const ids = notifs.filter(n => !n.is_read).map(n => n.id);
-    if (!ids.length) return;
-    await (supabase as any).from('notifications').update({ is_read: true }).in('id', ids);
-    setNotifs(n => n.map(x => ({ ...x, is_read: true })));
-  }
+  const markAsRead = async (id: string, linkUrl?: string) => {
+    await supabase.from('notifications').update({ is_read: true }).eq('id', id);
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
+    setUnreadCount(prev => Math.max(0, prev - 1));
+    if (linkUrl) {
+      setOpen(false);
+      window.location.href = linkUrl;
+    }
+  };
 
   return (
-    <div className="relative" ref={panelRef}>
+    <div className="relative">
       <button
-        onClick={() => setOpen(v => !v)}
-        className="relative p-2 rounded-xl hover:bg-gray-100 transition-all hover:scale-110 active:scale-95"
+        onClick={() => setOpen(!open)}
+        className="relative p-2 rounded-xl text-gray-600 hover:text-brand-800 hover:bg-gray-100 transition-colors"
+        title="Notifikasi"
       >
-        <Bell size={20} className="text-gray-600"/>
-        {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
-            {unread > 9 ? '9+' : unread}
+        <Bell size={20} />
+        {unreadCount > 0 && (
+          <span className="absolute top-1 right-1 w-4 h-4 bg-red-600 text-white text-[10px] font-bold rounded-full flex items-center justify-center animate-pulse">
+            {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
       </button>
 
       {open && (
-        <div className="absolute right-0 top-12 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden animate-[fadeIn_0.15s_ease-out]">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <h3 className="font-bold text-gray-900 text-sm">🔔 Notifikasi</h3>
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden space-y-0">
+          {/* Header */}
+          <div className="px-4 py-3 bg-gray-900 text-white flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {unread > 0 && (
-                <button onClick={markAllRead}
-                  className="text-xs text-brand-800 hover:underline flex items-center gap-1">
-                  <CheckCheck size={12}/> Tandai semua dibaca
-                </button>
-              )}
-              <button onClick={() => setOpen(false)} className="p-1 hover:bg-gray-100 rounded-lg">
-                <X size={14}/>
+              <Sparkles size={16} className="text-amber-400" />
+              <span className="font-bold text-sm">Notifikasi Saya</span>
+            </div>
+            {unreadCount > 0 && (
+              <button onClick={markAllAsRead} className="text-[11px] text-amber-300 hover:underline flex items-center gap-1 font-medium">
+                <CheckCheck size={13} /> Tandai Dibaca
+              </button>
+            )}
+          </div>
+
+          {/* Web Push Prompt */}
+          {!pushGranted && (
+            <div className="p-3 bg-amber-50 border-b border-amber-100 flex items-center justify-between text-xs text-amber-900">
+              <span>Aktifkan pengingat H-1 di browser:</span>
+              <button onClick={requestWebPushPermission} className="btn-xs bg-amber-600 text-white hover:bg-amber-700 rounded-lg">
+                Aktifkan
               </button>
             </div>
-          </div>
+          )}
 
-          <div className="max-h-96 overflow-y-auto divide-y divide-gray-50">
-            {loading ? (
-              <div className="p-6 text-center text-gray-400 text-sm">Memuat...</div>
-            ) : notifs.length === 0 ? (
-              <div className="p-8 text-center">
-                <Bell size={32} className="mx-auto text-gray-200 mb-2"/>
-                <p className="text-sm text-gray-400">Belum ada notifikasi</p>
+          {/* List */}
+          <div className="max-h-80 overflow-y-auto divide-y divide-gray-100">
+            {notifications.length === 0 ? (
+              <div className="p-8 text-center text-gray-400 space-y-1">
+                <Bell size={32} className="mx-auto text-gray-300" />
+                <p className="text-xs font-medium">Belum ada notifikasi baru</p>
               </div>
-            ) : notifs.map(n => {
-              const meta  = TYPE_ICON[n.type] || TYPE_ICON.info;
-              const Icon  = meta.icon;
-              return (
+            ) : (
+              notifications.map(n => (
                 <div
                   key={n.id}
-                  onClick={() => {
-                    markRead(n.id);
-                    if (n.link) { navigate(n.link); setOpen(false); }
-                  }}
-                  className={`flex gap-3 px-4 py-3 cursor-pointer transition-colors hover:bg-gray-50 ${!n.is_read ? 'bg-blue-50/40' : ''}`}
+                  onClick={() => markAsRead(n.id, n.link_url)}
+                  className={`p-3 text-left transition-colors cursor-pointer hover:bg-gray-50 ${!n.is_read ? 'bg-brand-50/50 font-semibold' : ''}`}
                 >
-                  <div className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center ${meta.color}`}>
-                    <Icon size={16}/>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-[11px] font-bold text-brand-800">
+                      {formatNotificationLabel(n.tipe)}
+                    </span>
+                    <span className="text-[10px] text-gray-400">
+                      {new Date(n.created_at).toLocaleDateString('id-ID', { month: 'short', day: 'numeric' })}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm leading-snug ${!n.is_read ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>
-                      {n.title}
-                    </p>
-                    {n.body && <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{n.body}</p>}
-                    <p className="text-[10px] text-gray-300 mt-1">{timeAgo(n.created_at)}</p>
-                  </div>
-                  {!n.is_read && <div className="flex-shrink-0 w-2 h-2 rounded-full bg-blue-500 mt-2"/>}
+                  <p className="text-xs font-bold text-gray-900 leading-tight">{n.judul}</p>
+                  <p className="text-[11px] text-gray-600 mt-0.5 leading-snug">{n.pesan}</p>
                 </div>
-              );
-            })}
+              ))
+            )}
           </div>
-
-          {notifs.length > 0 && (
-            <div className="px-4 py-2 border-t border-gray-100 text-center">
-              <p className="text-xs text-gray-400">{notifs.length} notifikasi tersimpan</p>
-            </div>
-          )}
         </div>
       )}
     </div>

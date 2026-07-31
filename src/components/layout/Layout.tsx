@@ -313,6 +313,21 @@ export default function Layout() {
           </div>
         </header>
 
+        {/* Desktop top header bar */}
+        <header className="hidden lg:flex items-center justify-between px-6 py-3 bg-white border-b border-gray-200 shadow-sm flex-shrink-0">
+          <div className="flex items-center gap-2">
+            <Church size={20} className="text-brand-800"/>
+            <span className="font-bold text-gray-900 text-sm">SIGMA System — Paroki Kristus Raja</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <NotificationBell/>
+            <div className="h-4 w-px bg-gray-200" />
+            <div className="text-xs text-gray-600 font-medium">
+              {displayName} <span className="text-brand-800 font-semibold">({role?.replace('_', ' ') || 'Misdinar'})</span>
+            </div>
+          </div>
+        </header>
+
         {/* Scrollable content */}
         <main className="flex-1 overflow-y-auto pb-20 lg:pb-0">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
