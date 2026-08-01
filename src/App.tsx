@@ -84,6 +84,7 @@ export default function App() {
             {/* Public routes */}
             <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
             <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+            <Route path="/daftar" element={<PublicRoute><RegisterPage /></PublicRoute>} />
             <Route path="/jadwal-publik" element={<PublicSchedule />} />
 
             {/* Protected routes wrapped in Layout */}

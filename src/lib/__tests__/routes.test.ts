@@ -5,6 +5,7 @@ const REGISTERED_APP_ROUTES = [
   '/',
   '/login',
   '/register',
+  '/daftar',
   '/jadwal-publik',
   '/dashboard',
   '/change-password',
@@ -79,5 +80,10 @@ describe('App & Layout Route Alignment Audit', () => {
   it('ensures every sidebar navigation path is registered in App.tsx routes', () => {
     const unhandledPaths = SIDEBAR_NAV_PATHS.filter(path => !REGISTERED_APP_ROUTES.includes(path));
     expect(unhandledPaths).toEqual([]);
+  });
+
+  it('ensures public registration routes /register and /daftar are registered', () => {
+    expect(REGISTERED_APP_ROUTES).toContain('/register');
+    expect(REGISTERED_APP_ROUTES).toContain('/daftar');
   });
 });
