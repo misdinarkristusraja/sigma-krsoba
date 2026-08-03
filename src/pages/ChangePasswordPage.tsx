@@ -55,13 +55,13 @@ export default function ChangePasswordPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-brand-800 to-brand-950 flex items-center justify-center p-4">
       <div className="w-full max-w-sm">
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 text-gray-900 dark:text-slate-100 rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-6">
-            <div className="w-16 h-16 bg-yellow-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <KeyRound size={28} className="text-yellow-600"/>
+            <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-950/60 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-yellow-200 dark:border-yellow-800/50">
+              <KeyRound size={28} className="text-yellow-600 dark:text-yellow-400"/>
             </div>
-            <h1 className="text-xl font-bold text-gray-900">Buat Password Baru</h1>
-            <p className="text-sm text-gray-500 mt-1">
+            <h1 className="text-xl font-bold text-gray-900 dark:text-white">Buat Password Baru</h1>
+            <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
               Halo <strong>{profile?.nama_panggilan}</strong>!
               Admin sudah mereset password kamu. Buat password baru sekarang.
             </p>
@@ -84,7 +84,7 @@ export default function ChangePasswordPage() {
                 />
                 <button type="button" tabIndex={-1}
                   onClick={() => setShowPw(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200">
                   {showPw ? <EyeOff size={16}/> : <Eye size={16}/>}
                 </button>
               </div>
@@ -94,7 +94,7 @@ export default function ChangePasswordPage() {
                   <div className="flex gap-1">
                     {strength.map((ok, i) => (
                       <div key={i}
-                        className={`h-1.5 flex-1 rounded-full transition-all ${ok ? 'bg-brand-800' : 'bg-gray-200'}`}/>
+                        className={`h-1.5 flex-1 rounded-full transition-all ${ok ? 'bg-brand-800 dark:bg-amber-400' : 'bg-gray-200 dark:bg-slate-700'}`}/>
                     ))}
                   </div>
                   <p className={`text-xs font-medium ${strengthColor}`}>{strengthLabel}</p>
@@ -118,12 +118,12 @@ export default function ChangePasswordPage() {
                 required
               />
               {confirm && confirm === newPw && (
-                <p className="text-xs text-green-600 mt-1 flex items-center gap-1">
+                <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
                   <CheckCircle size={12}/> Password cocok
                 </p>
               )}
               {confirm && confirm !== newPw && (
-                <p className="text-xs text-red-500 mt-1">Password tidak cocok</p>
+                <p className="text-xs text-red-500 dark:text-red-400 mt-1">Password tidak cocok</p>
               )}
             </div>
 
@@ -141,7 +141,7 @@ export default function ChangePasswordPage() {
             </button>
           </form>
 
-          <p className="text-center text-xs text-gray-400 mt-4">
+          <p className="text-center text-xs text-gray-400 dark:text-slate-400 mt-4">
             Setelah disimpan kamu akan diminta login ulang dengan password baru.
           </p>
         </div>

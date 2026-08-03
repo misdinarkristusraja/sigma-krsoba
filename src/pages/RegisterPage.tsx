@@ -329,19 +329,19 @@ export default function RegisterPage() {
     const isPast = regCloseDate && new Date() > regCloseDate;
     return (
       <div className="min-h-screen bg-gradient-to-br from-brand-800 to-brand-950 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center">
-          <div className="w-16 h-16 bg-gray-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 text-gray-900 dark:text-slate-100 rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center">
+          <div className="w-16 h-16 bg-gray-100 dark:bg-slate-800 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <span className="text-3xl">{isPast ? '🔒' : '⏳'}</span>
           </div>
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">
             {isPast ? 'Pendaftaran Sudah Ditutup' : 'Pendaftaran Belum Dibuka'}
           </h2>
-          <p className="text-gray-500 text-sm mb-2">
+          <p className="text-gray-500 dark:text-slate-400 text-sm mb-2">
             {isPast
               ? `Pendaftaran baru telah ditutup pada ${closeLabel}.`
               : `Pendaftaran baru dibuka ${openLabel} – ${closeLabel}.`}
           </p>
-          <p className="text-gray-400 text-xs mb-6">Hubungi Pengurus jika perlu informasi lebih lanjut.</p>
+          <p className="text-gray-400 dark:text-slate-400 text-xs mb-6">Hubungi Pengurus jika perlu informasi lebih lanjut.</p>
           <Link to="/login" className="btn-primary w-full">Kembali ke Login</Link>
         </div>
       </div>
@@ -352,14 +352,14 @@ export default function RegisterPage() {
   if (step === 3) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-brand-800 to-brand-950 flex items-center justify-center p-4">
-        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center">
+        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 text-gray-900 dark:text-slate-100 rounded-2xl shadow-2xl p-8 max-w-sm w-full text-center">
           <CheckCircle size={56} className="text-green-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Pendaftaran Berhasil!</h2>
-          <p className="text-gray-600 text-sm mb-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Pendaftaran Berhasil!</h2>
+          <p className="text-gray-600 dark:text-slate-300 text-sm mb-6">
             Pendaftaran kamu sudah diterima dan sedang menunggu persetujuan Pengurus.
             Pengurus akan menghubungi melalui nomor HP yang kamu daftarkan.
           </p>
-          <p className="text-xs text-gray-400 mb-6 italic">"Serve the Lord with Gladness"</p>
+          <p className="text-xs text-gray-400 dark:text-slate-400 mb-6 italic">"Serve the Lord with Gladness"</p>
           <Link to="/jadwal" className="btn-primary w-full">Lihat Jadwal Publik</Link>
         </div>
       </div>
@@ -378,12 +378,12 @@ export default function RegisterPage() {
           <p className="text-brand-200 text-sm">Paroki Kristus Raja Solo Baru</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-2xl shadow-2xl p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 text-gray-900 dark:text-slate-100 rounded-2xl shadow-2xl p-6 space-y-4">
           <div className="flex items-center gap-2 mb-2">
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-brand-800 text-white' : 'bg-gray-200 text-gray-500'}`}>1</div>
-            <div className="flex-1 h-px bg-gray-200" />
-            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-brand-800 text-white' : 'bg-gray-200 text-gray-500'}`}>2</div>
-            <p className="text-xs text-gray-400 ml-2">Data Diri & Orang Tua</p>
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 1 ? 'bg-brand-800 text-white' : 'bg-gray-200 dark:bg-slate-800 text-gray-500 dark:text-slate-400'}`}>1</div>
+            <div className="flex-1 h-px bg-gray-200 dark:bg-slate-800" />
+            <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${step >= 2 ? 'bg-brand-800 text-white' : 'bg-gray-200 dark:bg-slate-800 text-gray-500 dark:text-slate-400'}`}>2</div>
+            <p className="text-xs text-gray-400 dark:text-slate-400 ml-2">Data Diri & Orang Tua</p>
           </div>
 
           {/* ── Data Diri ── */}
@@ -568,7 +568,7 @@ export default function RegisterPage() {
                 </div>
                 {/* Scrollable document body */}
                 <div
-                  className="bg-white px-6 py-5 text-[11px] leading-relaxed text-gray-800 max-h-96 overflow-y-auto"
+                  className="bg-white dark:bg-slate-900 px-6 py-5 text-[11px] leading-relaxed text-gray-800 dark:text-slate-200 max-h-96 overflow-y-auto"
                   style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}
                 >
                   {/* Kop */}

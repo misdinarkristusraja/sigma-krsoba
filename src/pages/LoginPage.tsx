@@ -64,8 +64,8 @@ export default function LoginPage() {
           <p className="text-brand-300 text-xs mt-0.5">Paroki Kristus Raja Solo Baru</p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-2xl p-6">
-          <h2 className="font-bold text-gray-900 text-lg mb-5">Masuk ke SIGMA</h2>
+        <div className="bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 text-gray-900 dark:text-slate-100 rounded-2xl shadow-2xl p-6">
+          <h2 className="font-bold text-gray-900 dark:text-white text-lg mb-5">Masuk ke SIGMA</h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -80,7 +80,7 @@ export default function LoginPage() {
                 autoFocus
                 disabled={loading}
               />
-              <p className="text-xs text-gray-400 mt-1">Gunakan nama panggilan / username kamu</p>
+              <p className="text-xs text-gray-400 dark:text-slate-400 mt-1">Gunakan nama panggilan / username kamu</p>
             </div>
 
             <div>
@@ -96,7 +96,7 @@ export default function LoginPage() {
                   disabled={loading}
                 />
                 <button type="button" onClick={() => setShowPw(v => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600" tabIndex={-1}>
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200" tabIndex={-1}>
                   {showPw ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
@@ -111,13 +111,13 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-4 text-center">
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
               Belum terdaftar?{' '}
-              <Link to="/daftar" className="text-brand-800 font-semibold hover:underline">Daftar di sini</Link>
+              <Link to="/daftar" className="text-brand-800 dark:text-amber-400 font-semibold hover:underline">Daftar di sini</Link>
             </p>
           </div>
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <Link to="/jadwal" className="text-xs text-gray-400 hover:text-gray-600 flex items-center justify-center gap-1">
+          <div className="mt-3 pt-3 border-t border-gray-100 dark:border-slate-800">
+            <Link to="/jadwal" className="text-xs text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200 flex items-center justify-center gap-1">
               Lihat Jadwal Publik →
             </Link>
           </div>
