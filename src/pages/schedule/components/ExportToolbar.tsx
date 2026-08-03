@@ -585,14 +585,14 @@ export function ExportToolbar({ ev, picOptions, size = 'sm' }: ExportToolbarProp
 
       {/* WA Modal */}
       {showWA && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">Template WA</h3>
-              <button onClick={() => setShowWA(false)}><X size={20}/></button>
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white">Template WA</h3>
+              <button onClick={() => setShowWA(false)} className="text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200"><X size={20}/></button>
             </div>
             <textarea
-              className="w-full h-80 font-mono text-xs p-3 border border-gray-200 rounded-xl bg-gray-50 resize-none"
+              className="w-full h-80 font-mono text-xs p-3 border border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 resize-none"
               value={waText} readOnly
             />
             <div className="flex gap-2 mt-4">
@@ -608,15 +608,15 @@ export function ExportToolbar({ ev, picOptions, size = 'sm' }: ExportToolbarProp
 
       {/* Monthly PDF Modal */}
       {showMonthPDF && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+        <div className="modal-overlay">
+          <div className="modal-card max-w-sm w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <FileText size={18} className="text-indigo-600"/> Export PDF Bulanan
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
+                <FileText size={18} className="text-indigo-600 dark:text-indigo-400"/> Export PDF Bulanan
               </h3>
-              <button onClick={() => setShowMonthPDF(false)}><X size={20}/></button>
+              <button onClick={() => setShowMonthPDF(false)} className="text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200"><X size={20}/></button>
             </div>
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
               Semua jadwal dalam satu bulan akan dibuka di tab baru sebagai halaman print.
             </p>
             <div className="grid grid-cols-2 gap-3 mb-4">

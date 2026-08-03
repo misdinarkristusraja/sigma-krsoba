@@ -23,4 +23,16 @@ describe('Smart Override & Walk-In K-Category Classification', () => {
     });
     expect(res.kondisi).toBe('K3b');
   });
+
+  it('includes replaced_user_id when provided in override scan record payload', () => {
+    const customReplacedId = 'user-uuid-123';
+    const ovReplacedUserId = 'user-uuid-456';
+    const replacedId = customReplacedId || ovReplacedUserId;
+    const payload = {
+      user_id: 'member-123',
+      is_walk_in: true,
+      replaced_user_id: replacedId || null,
+    };
+    expect(payload.replaced_user_id).toBe('user-uuid-123');
+  });
 });

@@ -17,11 +17,11 @@ export function AddMisaModal({ showAddMisa, setShowAddMisa, addMisaForm, setAddM
   const showLatihan = isMR || (isBiasa && !addMisaForm.tanpa_latihan);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-3 sm:p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[92vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-gray-100 flex-shrink-0">
-          <h3 className="font-bold text-lg">Tambah Misa Khusus / Hari Raya</h3>
-          <button onClick={() => setShowAddMisa(false)}><X size={20}/></button>
+    <div className="modal-overlay">
+      <div className="modal-card max-w-md w-full max-h-[92vh] flex flex-col">
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 border-b border-gray-100 dark:border-slate-800 flex-shrink-0">
+          <h3 className="font-bold text-lg text-gray-900 dark:text-white">Tambah Misa Khusus / Hari Raya</h3>
+          <button onClick={() => setShowAddMisa(false)} className="text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200"><X size={20}/></button>
         </div>
 
         <div className="overflow-y-auto flex-1 px-6 py-4">
@@ -46,7 +46,7 @@ export function AddMisaModal({ showAddMisa, setShowAddMisa, addMisaForm, setAddM
                   desc: 'Weekend ada misa biasa DAN Hari Raya. Latihan Sabtu, 4 slot.',
                 },
               ].map(opt => (
-                <label key={opt.value} className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${addMisaForm.tipe === opt.value ? 'border-brand-800 bg-brand-50' : 'border-gray-200'}`}>
+                <label key={opt.value} className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${addMisaForm.tipe === opt.value ? 'border-brand-800 dark:border-amber-500 bg-brand-50 dark:bg-slate-800/80 text-gray-900 dark:text-slate-100' : 'border-gray-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-gray-700 dark:text-slate-300'}`}>
                   <input type="radio" name="tipe" value={opt.value} className="sr-only"
                     checked={addMisaForm.tipe === opt.value}
                     onChange={() => setAddMisaForm((f: any) => ({
@@ -60,8 +60,8 @@ export function AddMisaModal({ showAddMisa, setShowAddMisa, addMisaForm, setAddM
                         : f.slot_schedule,
                     }))} />
                   <div>
-                    <span className="font-semibold text-sm">{opt.title}</span>
-                    <p className="text-xs text-gray-400 mt-0.5">{opt.desc}</p>
+                    <span className="font-semibold text-sm text-gray-900 dark:text-white">{opt.title}</span>
+                    <p className="text-xs text-gray-400 dark:text-slate-400 mt-0.5">{opt.desc}</p>
                   </div>
                 </label>
               ))}
@@ -97,13 +97,13 @@ export function AddMisaModal({ showAddMisa, setShowAddMisa, addMisaForm, setAddM
             {/* Tanpa latihan toggle — hanya untuk Misa Khusus Biasa */}
             {isBiasa && (
               <div
-                className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${addMisaForm.tanpa_latihan ? 'border-gray-400 bg-gray-50' : 'border-brand-800 bg-brand-50'}`}
+                className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${addMisaForm.tanpa_latihan ? 'border-gray-400 dark:border-slate-700 bg-gray-50 dark:bg-slate-800/50' : 'border-brand-800 dark:border-amber-500 bg-brand-50 dark:bg-slate-800/80'}`}
                 onClick={() => setAddMisaForm((f: any) => ({ ...f, tanpa_latihan: !f.tanpa_latihan, tanggal_latihan: !f.tanpa_latihan ? '' : f.tanggal_latihan }))}>
                 <div className="flex items-center gap-3">
                   <input type="checkbox" checked={!addMisaForm.tanpa_latihan} readOnly className="w-4 h-4 accent-brand-800"/>
                   <div>
-                    <p className="text-sm font-semibold text-gray-800">Ada Latihan Sebelum Misa</p>
-                    <p className="text-xs text-gray-500">Centang jika ada sesi latihan. Nonaktifkan untuk Sabtu Imam / misa tanpa latihan.</p>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">Ada Latihan Sebelum Misa</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">Centang jika ada sesi latihan. Nonaktifkan untuk Sabtu Imam / misa tanpa latihan.</p>
                   </div>
                 </div>
               </div>
@@ -129,8 +129,8 @@ export function AddMisaModal({ showAddMisa, setShowAddMisa, addMisaForm, setAddM
                   <label className="label">Jadwal per Misa</label>
                   <div className="space-y-2">
                     {(addMisaForm.slot_schedule || []).map((sc: any, idx: number) => (
-                      <div key={idx} className="flex items-center gap-2 bg-gray-50 rounded-xl p-2">
-                        <span className="text-xs font-medium text-gray-600 w-14 shrink-0">Misa {idx + 1}</span>
+                      <div key={idx} className="flex items-center gap-2 bg-gray-50 dark:bg-slate-800/60 rounded-xl p-2">
+                        <span className="text-xs font-medium text-gray-600 dark:text-slate-300 w-14 shrink-0">Misa {idx + 1}</span>
                         <input type="date" className="input text-sm flex-1" value={sc.tanggal}
                           onChange={e => {
                             const next = [...addMisaForm.slot_schedule];
@@ -164,26 +164,26 @@ export function AddMisaModal({ showAddMisa, setShowAddMisa, addMisaForm, setAddM
 
             {/* Generate otomatis */}
             <div
-              className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${addMisaForm.auto_generate ? 'border-brand-800 bg-brand-50' : 'border-gray-200 bg-gray-50'}`}
+              className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${addMisaForm.auto_generate ? 'border-brand-800 dark:border-amber-500 bg-brand-50 dark:bg-slate-800/80' : 'border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50'}`}
               onClick={() => setAddMisaForm((f: any) => ({ ...f, auto_generate: !f.auto_generate }))}>
               <div className="flex items-center gap-3">
                 <input type="checkbox" checked={!!addMisaForm.auto_generate} readOnly className="w-4 h-4 accent-brand-800"/>
                 <div>
-                  <p className="text-sm font-semibold text-gray-800">Generate Petugas Otomatis</p>
-                  <p className="text-xs text-gray-500">Sistem pilih petugas berdasarkan prioritas. Jika tidak dicentang, isi manual setelah dibuat.</p>
+                  <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">Generate Petugas Otomatis</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">Sistem pilih petugas berdasarkan prioritas. Jika tidak dicentang, isi manual setelah dibuat.</p>
                 </div>
               </div>
             </div>
 
             {/* Misa Besar */}
             <div
-              className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${addMisaForm.is_misa_besar ? 'border-brand-800 bg-brand-50' : 'border-gray-200 bg-gray-50'}`}
+              className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${addMisaForm.is_misa_besar ? 'border-brand-800 dark:border-amber-500 bg-brand-50 dark:bg-slate-800/80' : 'border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50'}`}
               onClick={() => setAddMisaForm((f: any) => ({ ...f, is_misa_besar: !f.is_misa_besar }))}>
               <div className="flex items-center gap-3">
                 <input type="checkbox" checked={addMisaForm.is_misa_besar} readOnly className="w-4 h-4 accent-brand-800"/>
                 <div>
-                  <p className="text-sm font-semibold text-gray-800">🎓 Misa Besar</p>
-                  <p className="text-xs text-gray-500">Aktifkan untuk misa yang wajib ada latihan khusus (Natal, Paskah, dll).</p>
+                  <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">🎓 Misa Besar</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">Aktifkan untuk misa yang wajib ada latihan khusus (Natal, Paskah, dll).</p>
                 </div>
               </div>
             </div>
@@ -199,7 +199,7 @@ export function AddMisaModal({ showAddMisa, setShowAddMisa, addMisaForm, setAddM
           </div>
         </div>
 
-        <div className="flex gap-2 px-6 py-4 border-t border-gray-100 flex-shrink-0">
+        <div className="flex gap-2 px-6 py-4 border-t border-gray-100 dark:border-slate-800 flex-shrink-0">
           <button onClick={addMisaKhusus} className="btn-primary flex-1 gap-2">
             <Check size={16}/> Tambahkan sebagai Draft
           </button>

@@ -109,6 +109,7 @@ export interface ScanRecord {
   is_anomaly: boolean;
   anomaly_reason?: string;
   latihan_id?: string;
+  replaced_user_id?: string;
   user?: Profile; // Joined data
   scanner?: Profile; // Joined data
   event?: Event; // Joined data

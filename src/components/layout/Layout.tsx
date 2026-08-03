@@ -87,7 +87,6 @@ const NAV_GROUPS: NavGroup[] = [
     icon: PartyPopper,
     items: [
       { icon: PartyPopper, label: 'Acara',          path: '/acara',          roles: PENG },
-      { icon: Star,        label: 'Poin Kegiatan',  path: '/poin-kegiatan', roles: PENG },
     ],
   },
   {

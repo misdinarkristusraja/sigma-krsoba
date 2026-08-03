@@ -8,7 +8,7 @@ RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fun
 DECLARE
   v_req     swap_requests%ROWTYPE;
   v_uid     UUID := auth.uid();
-  v_claimer RECORD;
+  v_claimer RECORD;T
 BEGIN
   IF v_uid IS NULL THEN
     RETURN jsonb_build_object('ok', false, 'error', 'NOT_AUTHENTICATED');

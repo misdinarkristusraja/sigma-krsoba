@@ -373,11 +373,11 @@ export function EditEventModal({ editEvent, setEditEvent, picOptions, loadEvents
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+    <div className="modal-overlay">
+      <div className="modal-card max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-5">
-          <h3 className="font-bold text-lg">Edit Jadwal Draft</h3>
-          <button onClick={() => setEditEvent(null)}><X size={20}/></button>
+          <h3 className="font-bold text-lg text-gray-900 dark:text-white">Edit Jadwal Draft</h3>
+          <button onClick={() => setEditEvent(null)} className="text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200"><X size={20}/></button>
         </div>
         <div className="space-y-4 mb-5">
           <div>
@@ -399,13 +399,13 @@ export function EditEventModal({ editEvent, setEditEvent, picOptions, loadEvents
               </select>
             </div>
           </div>
-          <div className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${editEvent.is_misa_besar ? 'border-brand-800 bg-brand-50' : 'border-gray-200 bg-gray-50'}`}
+          <div className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${editEvent.is_misa_besar ? 'border-brand-800 dark:border-amber-500 bg-brand-50 dark:bg-slate-800/80' : 'border-gray-200 dark:border-slate-800 bg-gray-50 dark:bg-slate-800/50'}`}
             onClick={()=>setEditEvent((v:any)=>({...v, is_misa_besar: !v.is_misa_besar}))}>
             <div className="flex items-center gap-3">
               <input type="checkbox" checked={!!editEvent.is_misa_besar} readOnly className="w-4 h-4 accent-brand-800"/>
               <div>
-                <p className="text-sm font-semibold text-gray-800">🎓 Misa Besar</p>
-                <p className="text-xs text-gray-500">Aktifkan kehadiran latihan wajib + scan latihan</p>
+                <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">🎓 Misa Besar</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">Aktifkan kehadiran latihan wajib + scan latihan</p>
               </div>
             </div>
           </div>
@@ -416,8 +416,8 @@ export function EditEventModal({ editEvent, setEditEvent, picOptions, loadEvents
           )}
         </div>
         <div className="mb-5">
-          <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2 text-sm">
-            <UserCheck size={15} className="text-brand-800"/> PIC per Slot
+          <h4 className="font-semibold text-gray-700 dark:text-slate-300 mb-3 flex items-center gap-2 text-sm">
+            <UserCheck size={15} className="text-brand-800 dark:text-amber-400"/> PIC per Slot
           </h4>
           <div className="space-y-3">
             {Array.from({ length: nSlots }, (_, i) => i + 1).map(slot => (
@@ -452,11 +452,11 @@ export function EditEventModal({ editEvent, setEditEvent, picOptions, loadEvents
 export function DeleteEventModal({ deleteConf, setDeleteConf, deleteEvent }: any) {
   if (!deleteConf) return null;
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
-        <div className="flex items-center gap-3 mb-3"><AlertTriangle size={24} className="text-red-500"/><h3 className="font-bold text-lg">Hapus Jadwal?</h3></div>
-        <p className="text-sm text-gray-600 mb-1"><strong>"{deleteConf.perayaan||deleteConf.nama_event}"</strong><br/>{formatDate(deleteConf.tanggal_tugas,'dd MMM yyyy')}</p>
-        <p className="text-xs text-red-500 mb-4">⚠️ {deleteConf.assignments?.length||0} petugas ikut terhapus. Tidak bisa dibatalkan.</p>
+    <div className="modal-overlay">
+      <div className="modal-card max-w-sm w-full p-6">
+        <div className="flex items-center gap-3 mb-3"><AlertTriangle size={24} className="text-red-500"/><h3 className="font-bold text-lg text-gray-900 dark:text-white">Hapus Jadwal?</h3></div>
+        <p className="text-sm text-gray-600 dark:text-slate-300 mb-1"><strong>"{deleteConf.perayaan||deleteConf.nama_event}"</strong><br/>{formatDate(deleteConf.tanggal_tugas,'dd MMM yyyy')}</p>
+        <p className="text-xs text-red-500 dark:text-red-400 mb-4">⚠️ {deleteConf.assignments?.length||0} petugas ikut terhapus. Tidak bisa dibatalkan.</p>
         <div className="flex gap-2">
           <button onClick={()=>deleteEvent(deleteConf)} className="btn-danger flex-1">Hapus</button>
           <button onClick={()=>setDeleteConf(null)} className="btn-secondary">Batal</button>

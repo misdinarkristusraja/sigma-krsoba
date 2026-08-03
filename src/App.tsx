@@ -22,7 +22,6 @@ const CardsPage          = lazy(() => import('./pages/CardsPage'));
 const AdminPage          = lazy(() => import('./pages/AdminPage'));
 const AttendancePage     = lazy(() => import('./pages/AttendancePage'));
 const AcaraPage          = lazy(() => import('./pages/AcaraPage'));
-const PoinKegiatanPage   = lazy(() => import('./pages/PoinKegiatanPage'));
 const MyGrowthPage       = lazy(() => import('./pages/MyGrowthPage'));
 const ReregistrationPage = lazy(() => import('./pages/ReregistrationPage'));
 const StatistikPage      = lazy(() => import('./pages/StatistikPage'));
@@ -109,9 +108,8 @@ export default function App() {
               <Route path="/scan-records"    element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanRecordsPage /></ErrorBoundary></ProtectedRoute>} />
               <Route path="/riwayat-scan"    element={<ProtectedRoute roles={STAFF}><ErrorBoundary><ScanRecordsPage /></ErrorBoundary></ProtectedRoute>} />
 
-              {/* Event & Points */}
+              {/* Event */}
               <Route path="/acara"           element={<ProtectedRoute roles={PENG}><ErrorBoundary><AcaraPage /></ErrorBoundary></ProtectedRoute>} />
-              <Route path="/poin-kegiatan"   element={<ProtectedRoute roles={PENG}><ErrorBoundary><PoinKegiatanPage /></ErrorBoundary></ProtectedRoute>} />
 
               {/* Swap, Recap, Cards */}
               <Route path="/tukar-jadwal"    element={<ErrorBoundary><SwapPage /></ErrorBoundary>} />
