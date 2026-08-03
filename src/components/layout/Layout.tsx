@@ -289,7 +289,7 @@ export default function Layout() {
 
       {/* Mobile slide-in drawer */}
       <div className={`lg:hidden fixed inset-0 z-50 flex transition-all duration-300 ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}>
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setOpen(false)}/>
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setOpen(false)}/>
         <aside className={`relative w-64 bg-gradient-to-b from-brand-950 via-slate-900 to-slate-950 text-slate-100 flex flex-col z-10 shadow-2xl border-r border-slate-800 transition-transform duration-300 ease-out ${open ? 'translate-x-0' : '-translate-x-full'}`}>
           <button onClick={() => setOpen(false)}
             className="absolute top-3 right-3 p-1.5 text-slate-400 hover:text-white transition-colors">
