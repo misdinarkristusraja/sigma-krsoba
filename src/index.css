@@ -28,6 +28,25 @@
 }
 
 @layer components {
+  /* ── Modals & Drawers ── */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-xs flex items-center justify-center z-50 p-4;
+  }
+  .modal-card {
+    @apply bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 text-gray-900 dark:text-slate-100 rounded-2xl shadow-2xl overflow-hidden;
+  }
+
+  /* ── Tab Controls ── */
+  .nav-tab-wrapper {
+    @apply flex gap-1 bg-gray-100 dark:bg-slate-800/90 rounded-xl p-1 w-fit flex-wrap;
+  }
+  .nav-tab-active {
+    @apply bg-white dark:bg-slate-900 text-brand-800 dark:text-amber-400 shadow-sm font-semibold;
+  }
+  .nav-tab-inactive {
+    @apply text-gray-500 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200 font-medium;
+  }
+
   /* ── Cards ── */
   .card {
     @apply bg-white dark:bg-slate-900/90 rounded-xl shadow-sm border border-gray-100 dark:border-slate-800 p-4 dark:text-slate-100;
