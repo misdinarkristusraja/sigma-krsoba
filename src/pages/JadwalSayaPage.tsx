@@ -501,19 +501,19 @@ export default function JadwalSayaPage() {
 
       {/* Availability modal */}
       {availModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg flex items-center gap-2">
+              <h3 className="font-bold text-lg flex items-center gap-2 text-gray-900 dark:text-white">
                 <AlertCircle size={18} className="text-amber-500" /> Tidak Bisa Hadir
               </h3>
-              <button onClick={() => setAvailModal(null)} className="p-1 text-gray-400 hover:text-gray-700">
+              <button onClick={() => setAvailModal(null)} className="p-1 text-gray-400 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200">
                 <X size={18} />
               </button>
             </div>
-            <div className="bg-amber-50 rounded-xl p-3 mb-4 text-sm">
-              <p className="font-semibold text-gray-800">{availModal.eventLabel}</p>
-              <p className="text-xs text-amber-600 mt-0.5">Keterangan ini akan terlihat oleh pengurus saat menyusun jadwal.</p>
+            <div className="bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/50 rounded-xl p-3 mb-4 text-sm">
+              <p className="font-semibold text-gray-800 dark:text-amber-200">{availModal.eventLabel}</p>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">Keterangan ini akan terlihat oleh pengurus saat menyusun jadwal.</p>
             </div>
             <div>
               <label className="label">Alasan / Keterangan</label>
@@ -525,7 +525,7 @@ export default function JadwalSayaPage() {
                 autoFocus
               />
             </div>
-            <div className="bg-blue-50 rounded-xl p-3 mt-3 text-xs text-blue-700">
+            <div className="bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/50 rounded-xl p-3 mt-3 text-xs text-blue-700 dark:text-blue-300">
               Menandai "tidak bisa hadir" <strong>bukan</strong> berarti absen otomatis dimaafkan.
               Tetap buat request tukar jadwal dan kabari PIC ya 🙏
             </div>
@@ -549,13 +549,13 @@ export default function JadwalSayaPage() {
 
       {/* Swap request modal */}
       {swapRow && swapRow.event && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg flex items-center gap-2">
-                <ArrowLeftRight size={18} className="text-brand-800" /> Request Tukar Jadwal
+              <h3 className="font-bold text-lg flex items-center gap-2 text-gray-900 dark:text-white">
+                <ArrowLeftRight size={18} className="text-brand-800 dark:text-amber-400" /> Request Tukar Jadwal
               </h3>
-              <button onClick={() => setSwapRow(null)} className="p-1 text-gray-400 hover:text-gray-700">
+              <button onClick={() => setSwapRow(null)} className="p-1 text-gray-400 dark:text-slate-400 hover:text-gray-700 dark:hover:text-slate-200">
                 <X size={18} />
               </button>
             </div>

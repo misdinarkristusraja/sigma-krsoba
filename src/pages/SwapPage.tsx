@@ -771,9 +771,9 @@ export default function SwapPage() {
 
       {/* ── FORM: Request sendiri ── */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-            <h3 className="font-bold text-lg mb-4">Request Tukar Jadwal</h3>
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md w-full p-6">
+            <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-4">Request Tukar Jadwal</h3>
             <div className="space-y-4">
               <div>
                 <label className="label">Pilih Jadwal yang Ingin Ditukar *</label>
@@ -794,7 +794,7 @@ export default function SwapPage() {
                   placeholder="Contoh: ada acara keluarga, sakit, dll."/>
               </div>
             </div>
-            <div className="bg-blue-50 rounded-xl p-3 mt-4 text-xs text-blue-700">
+            <div className="bg-blue-50 dark:bg-blue-950/60 border border-blue-200 dark:border-blue-800/50 rounded-xl p-3 mt-4 text-xs text-blue-700 dark:text-blue-300">
               Setelah submit → tombol WA PIC muncul → hubungi PIC → setelah deal, tawarkan ke papan jika belum ada pengganti.
             </div>
             <div className="flex gap-2 mt-4">
@@ -807,10 +807,10 @@ export default function SwapPage() {
 
       {/* ── FORM: Admin catat manual ── */}
       {showAdminForm && isPengurus && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
-              <Shield size={18} className="text-brand-800"/> {editingId ? 'Edit Catatan Tukar Jadwal' : 'Catat Tukar Jadwal Manual'}
+        <div className="modal-overlay">
+          <div className="modal-card max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+            <h3 className="font-bold text-lg text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+              <Shield size={18} className="text-brand-800 dark:text-amber-400"/> {editingId ? 'Edit Catatan Tukar Jadwal' : 'Catat Tukar Jadwal Manual'}
             </h3>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
@@ -901,18 +901,18 @@ export default function SwapPage() {
 
       {/* ── WA Template Grup ── */}
       {showWA && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md w-full p-6">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-bold text-lg">Template WA Rekap Tukar Jadwal</h3>
-              <button onClick={() => setShowWA(false)}><XCircle size={20}/></button>
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white">Template WA Rekap Tukar Jadwal</h3>
+              <button onClick={() => setShowWA(false)} className="text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200"><XCircle size={20}/></button>
             </div>
             <textarea
-              className="w-full h-80 font-mono text-xs p-3 border border-gray-200 rounded-xl bg-gray-50 resize-none"
+              className="w-full h-80 font-mono text-xs p-3 border border-gray-200 dark:border-slate-700 rounded-xl bg-gray-50 dark:bg-slate-950 text-gray-900 dark:text-slate-100 resize-none"
               value={waText}
               onChange={e => setWaText(e.target.value)}
             />
-            <p className="text-xs text-gray-400 mt-1">Teks bisa diedit sebelum dikirim</p>
+            <p className="text-xs text-gray-400 dark:text-slate-400 mt-1">Teks bisa diedit sebelum dikirim</p>
             {/* Grup WA link */}
             <div className="mt-3 space-y-2">
               <label className="text-xs font-semibold text-gray-600">
