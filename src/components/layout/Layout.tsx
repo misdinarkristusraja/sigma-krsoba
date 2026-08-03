@@ -349,7 +349,7 @@ export default function Layout() {
         </main>
 
         {/* Mobile bottom tab bar */}
-        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200 safe-area-inset-bottom">
+        <nav className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white dark:bg-slate-900 border-t border-gray-200 dark:border-slate-800 safe-area-inset-bottom">
           <div className="flex items-stretch h-14">
             {BOTTOM_TAB_ITEMS.map(item => (
               <NavLink
@@ -357,7 +357,7 @@ export default function Layout() {
                 to={item.path}
                 className={({ isActive }) => cn(
                   'flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium transition-colors',
-                  isActive ? 'text-brand-800' : 'text-gray-400 hover:text-gray-600',
+                  isActive ? 'text-brand-800 dark:text-amber-400 font-bold' : 'text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200',
                 )}
               >
                 {({ isActive }) => (
@@ -370,7 +370,7 @@ export default function Layout() {
             ))}
             <button
               onClick={() => setOpen(true)}
-              className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-gray-400 hover:text-gray-600 transition-colors"
+              className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-gray-400 dark:text-slate-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors"
             >
               <Menu size={20} strokeWidth={1.8} />
               <span>Lainnya</span>
