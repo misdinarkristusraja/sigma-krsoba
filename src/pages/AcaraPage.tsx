@@ -440,14 +440,14 @@ export default function AcaraPage() {
 
       {/* Modal Form */}
       {showForm && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center p-4 bg-black/50 overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md my-4">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h2 className="font-semibold text-gray-800 flex items-center gap-2">
+        <div className="modal-overlay overflow-y-auto">
+          <div className="modal-card w-full max-w-md my-4">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-slate-800">
+              <h2 className="font-semibold text-gray-800 dark:text-slate-100 flex items-center gap-2">
                 {editId ? <Pencil size={17} /> : <Plus size={17} />}
                 {editId ? 'Edit Acara' : 'Tambah Acara Baru'}
               </h2>
-              <button onClick={closeForm} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400">
+              <button onClick={closeForm} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 dark:text-slate-400">
                 <X size={18} />
               </button>
             </div>

@@ -540,12 +540,12 @@ export default function AnalisisPage() {
 
       {/* ── Detail panel (modal) ── */}
       {selected && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+        <div className="modal-overlay">
+          <div className="modal-card w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-slate-800 sticky top-0 bg-white dark:bg-slate-900 z-10">
               <div>
-                <h2 className="font-bold text-lg text-gray-900">{selected.nama_panggilan}</h2>
-                <p className="text-xs text-gray-400">@{selected.nickname} · {selected.lingkungan} · {selected.pendidikan}</p>
+                <h2 className="font-bold text-lg text-gray-900 dark:text-white">{selected.nama_panggilan}</h2>
+                <p className="text-xs text-gray-400 dark:text-slate-400">@{selected.nickname} · {selected.lingkungan} · {selected.pendidikan}</p>
               </div>
               <button onClick={() => setSelected(null)} className="btn-ghost p-2"><X size={18}/></button>
             </div>

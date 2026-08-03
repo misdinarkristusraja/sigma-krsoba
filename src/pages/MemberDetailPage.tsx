@@ -342,14 +342,14 @@ export default function MemberDetailPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
+      <div className="nav-tab-wrapper">
         {[
           { key: 'data',    label: '👤 Data Diri' },
           { key: 'akun',    label: '🔑 Akun & WA' },
           { key: 'dokumen', label: '📄 Dokumen' },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab===t.key?'bg-white text-brand-800 shadow-sm':'text-gray-500'}`}>
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab===t.key?'nav-tab-active':'nav-tab-inactive'}`}>
             {t.label}
           </button>
         ))}

@@ -440,24 +440,24 @@ export default function MembersPage() {
       {/* Members list */}
       {/* Reset password result modal */}
       {resetResult && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm space-y-4">
+        <div className="modal-overlay">
+          <div className="modal-card p-6 w-full max-w-sm space-y-4">
             <div className="text-center">
-              <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center mx-auto mb-3">
-                <KeyRound size={22} className="text-green-600"/>
+              <div className="w-12 h-12 bg-green-100 dark:bg-green-950/60 border border-green-200 dark:border-green-800/50 rounded-xl flex items-center justify-center mx-auto mb-3">
+                <KeyRound size={22} className="text-green-600 dark:text-green-400"/>
               </div>
-              <h3 className="font-bold text-gray-900">Password Berhasil Direset</h3>
-              <p className="text-sm text-gray-500 mt-1">
+              <h3 className="font-bold text-gray-900 dark:text-white">Password Berhasil Direset</h3>
+              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
                 Password baru untuk <strong>{resetResult.nickname}</strong>:
               </p>
             </div>
-            <div className="bg-gray-100 rounded-xl p-3 flex items-center justify-between gap-2">
-              <code className="font-mono text-lg font-bold text-gray-800 tracking-wider">
+            <div className="bg-gray-100 dark:bg-slate-800 rounded-xl p-3 flex items-center justify-between gap-2">
+              <code className="font-mono text-lg font-bold text-gray-800 dark:text-slate-100 tracking-wider">
                 {resetResult.password}
               </code>
               <button
                 onClick={() => { navigator.clipboard.writeText(resetResult!.password); toast.success('Disalin!'); }}
-                className="p-1.5 hover:bg-gray-200 rounded-lg transition-colors" title="Salin">
+                className="p-1.5 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-600 dark:text-slate-300 rounded-lg transition-colors" title="Salin">
                 <Copy size={15} className="text-gray-500"/>
               </button>
             </div>

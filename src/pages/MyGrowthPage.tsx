@@ -185,13 +185,13 @@ export default function MyGrowthPage() {
       {/* Grid Content: Radar Chart & Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Radar Chart Card */}
-        <div className="card bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+        <div className="card p-5">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <TrendingUp size={20} className="text-red-700" />
-              <h2 className="font-bold text-gray-900 text-base">Radar Kualitas Personal</h2>
+              <TrendingUp size={20} className="text-red-700 dark:text-red-400" />
+              <h2 className="font-bold text-gray-900 dark:text-white text-base">Radar Kualitas Personal</h2>
             </div>
-            <span className="text-xs text-gray-400">5 Dimensi Performance</span>
+            <span className="text-xs text-gray-400 dark:text-slate-400">5 Dimensi Performance</span>
           </div>
 
           <div className="h-64 w-full flex items-center justify-center">
@@ -213,11 +213,11 @@ export default function MyGrowthPage() {
         </div>
 
         {/* Badges Collection Card */}
-        <div className="card bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col justify-between">
+        <div className="card p-5 flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-2 mb-4">
-              <BadgeIcon size={20} className="text-amber-500" />
-              <h2 className="font-bold text-gray-900 text-base">Lencana Achievement</h2>
+              <BadgeIcon size={20} className="text-amber-500 dark:text-amber-400" />
+              <h2 className="font-bold text-gray-900 dark:text-white text-base">Lencana Achievement</h2>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -228,21 +228,21 @@ export default function MyGrowthPage() {
                     key={b.key}
                     className={`p-3 rounded-xl border flex flex-col gap-1.5 transition-all ${
                       isEarned
-                        ? 'bg-amber-50/60 border-amber-200 text-amber-900'
-                        : 'bg-gray-50 border-gray-100 text-gray-400 opacity-60'
+                        ? 'bg-amber-50/60 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/50 text-amber-900 dark:text-amber-200'
+                        : 'bg-gray-50 dark:bg-slate-800/50 border-gray-100 dark:border-slate-800 text-gray-400 dark:text-slate-500 opacity-60'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className={`p-1.5 rounded-lg ${isEarned ? 'bg-amber-100 text-amber-700' : 'bg-gray-200 text-gray-500'}`}>
+                      <div className={`p-1.5 rounded-lg ${isEarned ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300' : 'bg-gray-200 dark:bg-slate-700 text-gray-500 dark:text-slate-400'}`}>
                         {b.key === 'penjaga_fajar' ? <Clock size={16} /> :
                          b.key === 'sahabat_latihan' ? <CheckCircle size={16} /> :
                          b.key === 'spesialis_pekan_suci' ? <Crown size={16} /> : <Award size={16} />}
                       </div>
-                      {isEarned && <span className="text-[10px] font-semibold bg-amber-200 text-amber-800 px-1.5 py-0.5 rounded">Raih</span>}
+                      {isEarned && <span className="text-[10px] font-semibold bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-100 px-1.5 py-0.5 rounded">Raih</span>}
                     </div>
                     <div>
-                      <p className="font-semibold text-xs text-gray-900">{b.title}</p>
-                      <p className="text-[11px] text-gray-500 leading-tight mt-0.5">{b.description}</p>
+                      <p className="font-semibold text-xs text-gray-900 dark:text-slate-100">{b.title}</p>
+                      <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-tight mt-0.5">{b.description}</p>
                     </div>
                   </div>
                 );
@@ -253,39 +253,39 @@ export default function MyGrowthPage() {
       </div>
 
       {/* Catatan Pembinaan Privat dari Pendamping */}
-      <div className="card bg-white p-5 rounded-2xl shadow-sm border border-gray-100">
+      <div className="card p-5">
         <div className="flex items-center gap-2 mb-4">
-          <MessageSquare size={20} className="text-red-700" />
-          <h2 className="font-bold text-gray-900 text-base">Catatan Evaluasi & Pembinaan</h2>
+          <MessageSquare size={20} className="text-red-700 dark:text-red-400" />
+          <h2 className="font-bold text-gray-900 dark:text-white text-base">Catatan Evaluasi & Pembinaan</h2>
         </div>
 
         {evaluations.length === 0 ? (
-          <div className="text-center py-8 text-gray-400 bg-gray-50 rounded-xl border border-dashed border-gray-200">
+          <div className="text-center py-8 text-gray-400 dark:text-slate-400 bg-gray-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-gray-200 dark:border-slate-700">
             <MessageSquare size={32} className="mx-auto mb-2 opacity-30" />
             <p className="text-sm">Belum ada catatan evaluasi dari Pendamping/Pengurus.</p>
           </div>
         ) : (
           <div className="space-y-3">
             {evaluations.map(e => (
-              <div key={e.id} className="p-4 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span className="font-semibold text-gray-900">Periode: {e.periode}</span>
+              <div key={e.id} className="p-4 bg-gray-50 dark:bg-slate-800/50 rounded-xl border border-gray-100 dark:border-slate-700 space-y-2">
+                <div className="flex items-center justify-between text-xs text-gray-500 dark:text-slate-400">
+                  <span className="font-semibold text-gray-900 dark:text-slate-100">Periode: {e.periode}</span>
                   <span className="flex items-center gap-1">
                     <Calendar size={12} /> {new Date(e.created_at).toLocaleDateString('id-ID')}
                   </span>
                 </div>
                 <div className="flex gap-4 text-xs">
-                  <span className="bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded font-medium">
+                  <span className="bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50 px-2 py-0.5 rounded font-medium">
                     Sikap: {e.skor_sikap}/5 ⭐
                   </span>
-                  <span className="bg-blue-50 text-blue-700 px-2 py-0.5 rounded font-medium">
+                  <span className="bg-blue-50 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 px-2 py-0.5 rounded font-medium">
                     Kerapian: {e.skor_kerapian}/5 ⭐
                   </span>
                 </div>
-                <p className="text-sm text-gray-700 italic bg-white p-3 rounded-lg border border-gray-100">
+                <p className="text-sm text-gray-700 dark:text-slate-200 italic bg-white dark:bg-slate-900 p-3 rounded-lg border border-gray-100 dark:border-slate-800">
                   "{e.catatan_pribadi}"
                 </p>
-                <p className="text-[11px] text-gray-400 text-right">
+                <p className="text-[11px] text-gray-400 dark:text-slate-400 text-right">
                   Oleh: {e.evaluator?.nama_panggilan || 'Pendamping'} ({e.evaluator?.role || 'Pengurus'})
                 </p>
               </div>
