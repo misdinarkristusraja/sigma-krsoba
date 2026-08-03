@@ -336,7 +336,7 @@ export default function AttendancePage() {
                 <canvas ref={canvasRef} className="hidden" />
                 {!scanning && !camError && (
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <button onClick={startCamera} className="flex items-center gap-2 px-5 py-3 bg-white rounded-xl font-medium text-gray-800 shadow-lg hover:bg-gray-50">
+                    <button onClick={startCamera} className="flex items-center gap-2 px-5 py-3 bg-white dark:bg-slate-800 rounded-xl font-medium text-gray-800 dark:text-slate-100 shadow-lg hover:bg-gray-50 dark:hover:bg-slate-700">
                       <Camera size={20} /> Mulai Kamera
                     </button>
                   </div>
