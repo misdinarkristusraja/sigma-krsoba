@@ -82,32 +82,32 @@ export default function BendaharaPage() {
     <div className="space-y-6">
       {/* Financial Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="card bg-white p-5 border border-gray-100 shadow-sm rounded-2xl">
-          <div className="flex items-center justify-between text-gray-500 text-xs font-semibold">
+        <div className="card p-5">
+          <div className="flex items-center justify-between text-gray-500 dark:text-slate-400 text-xs font-semibold">
             <span>Saldo Kas Saat Ini</span>
-            <Wallet size={18} className="text-brand-800" />
+            <Wallet size={18} className="text-brand-800 dark:text-amber-400" />
           </div>
-          <p className="text-2xl font-bold text-gray-900 mt-2">
+          <p className="text-2xl font-bold text-gray-900 dark:text-white mt-2">
             Rp {saldoAkhir.toLocaleString('id-ID')}
           </p>
         </div>
 
-        <div className="card bg-emerald-50/50 p-5 border border-emerald-100 rounded-2xl">
-          <div className="flex items-center justify-between text-emerald-700 text-xs font-semibold">
+        <div className="card bg-emerald-50/50 dark:bg-emerald-950/40 p-5 border border-emerald-100 dark:border-emerald-800/50 rounded-2xl">
+          <div className="flex items-center justify-between text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
             <span>Total Pemasukan</span>
-            <ArrowDownRight size={18} className="text-emerald-600" />
+            <ArrowDownRight size={18} className="text-emerald-600 dark:text-emerald-400" />
           </div>
-          <p className="text-2xl font-bold text-emerald-800 mt-2">
+          <p className="text-2xl font-bold text-emerald-800 dark:text-emerald-300 mt-2">
             Rp {totalMasuk.toLocaleString('id-ID')}
           </p>
         </div>
 
-        <div className="card bg-red-50/50 p-5 border border-red-100 rounded-2xl">
-          <div className="flex items-center justify-between text-red-700 text-xs font-semibold">
+        <div className="card bg-red-50/50 dark:bg-red-950/40 p-5 border border-red-100 dark:border-red-800/50 rounded-2xl">
+          <div className="flex items-center justify-between text-red-700 dark:text-red-300 text-xs font-semibold">
             <span>Total Pengeluaran</span>
-            <ArrowUpRight size={18} className="text-red-600" />
+            <ArrowUpRight size={18} className="text-red-600 dark:text-red-400" />
           </div>
-          <p className="text-2xl font-bold text-red-800 mt-2">
+          <p className="text-2xl font-bold text-red-800 dark:text-red-300 mt-2">
             Rp {totalKeluar.toLocaleString('id-ID')}
           </p>
         </div>
@@ -115,7 +115,7 @@ export default function BendaharaPage() {
 
       {/* Header Actions */}
       <div className="flex justify-between items-center flex-wrap gap-3">
-        <h2 className="font-bold text-gray-900 text-base">Arus Kas &amp; Pembukuan</h2>
+        <h2 className="font-bold text-gray-900 dark:text-white text-base">Arus Kas &amp; Pembukuan</h2>
         <button onClick={() => setShowModal(true)} className="btn-primary btn-sm gap-1">
           <Plus size={14} /> Catat Transaksi Kas
         </button>
@@ -137,29 +137,29 @@ export default function BendaharaPage() {
           </thead>
           <tbody>
             {kasList.length === 0 ? (
-              <tr><td colSpan={7} className="text-center py-8 text-gray-400">Belum ada transaksi kas</td></tr>
+              <tr><td colSpan={7} className="text-center py-8 text-gray-400 dark:text-slate-400">Belum ada transaksi kas</td></tr>
             ) : (
               kasList.map((k) => (
                 <tr key={k.id}>
-                  <td className="text-xs text-gray-500">{k.tanggal}</td>
+                  <td className="text-xs text-gray-500 dark:text-slate-400">{k.tanggal}</td>
                   <td>
                     <span className={`badge ${k.tipe === 'Pemasukan' ? 'badge-green' : 'badge-red'}`}>
                       {k.tipe}
                     </span>
                   </td>
-                  <td className="text-xs font-semibold text-gray-700">{k.kategori}</td>
-                  <td className="text-sm text-gray-900">{k.keterangan}</td>
-                  <td className={`font-mono text-sm font-bold ${k.tipe === 'Pemasukan' ? 'text-emerald-700' : 'text-red-700'}`}>
+                  <td className="text-xs font-semibold text-gray-700 dark:text-slate-300">{k.kategori}</td>
+                  <td className="text-sm text-gray-900 dark:text-slate-100">{k.keterangan}</td>
+                  <td className={`font-mono text-sm font-bold ${k.tipe === 'Pemasukan' ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}`}>
                     {k.tipe === 'Pemasukan' ? '+' : '-'} Rp {Number(k.jumlah).toLocaleString('id-ID')}
                   </td>
-                  <td className="text-xs text-gray-500">{k.created_user?.nama_panggilan || '—'}</td>
+                  <td className="text-xs text-gray-500 dark:text-slate-400">{k.created_user?.nama_panggilan || '—'}</td>
                   <td>
                     {k.bukti_url ? (
-                      <a href={k.bukti_url} target="_blank" rel="noreferrer" className="btn-ghost btn-xs text-brand-800 gap-1">
+                      <a href={k.bukti_url} target="_blank" rel="noreferrer" className="btn-ghost btn-xs text-brand-800 dark:text-amber-400 gap-1">
                         <Download size={12} /> Nota
                       </a>
                     ) : (
-                      <span className="text-xs text-gray-400">—</span>
+                      <span className="text-xs text-gray-400 dark:text-slate-500">—</span>
                     )}
                   </td>
                 </tr>
@@ -171,9 +171,9 @@ export default function BendaharaPage() {
 
       {/* Modal Add Transaksi */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <form onSubmit={handleAddTransaction} className="bg-white rounded-2xl p-6 w-full max-w-md space-y-4 shadow-2xl">
-            <h3 className="font-bold text-lg text-gray-900">Catat Transaksi Kas</h3>
+        <div className="modal-overlay">
+          <form onSubmit={handleAddTransaction} className="modal-card p-6 w-full max-w-md space-y-4">
+            <h3 className="font-bold text-lg text-gray-900 dark:text-white">Catat Transaksi Kas</h3>
 
             <div className="grid grid-cols-2 gap-3">
               <div>

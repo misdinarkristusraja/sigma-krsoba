@@ -48,19 +48,19 @@ export default function JasrohPage() {
         <div className="flex gap-1.5 bg-gray-100 p-1.5 rounded-xl flex-wrap">
           <button
             onClick={() => setTab('proker')}
-            className={`btn-sm gap-1.5 ${tab === 'proker' ? 'bg-white text-purple-900 shadow-sm font-bold' : 'text-gray-600'}`}
+            className={`btn-sm gap-1.5 ${tab === 'proker' ? 'bg-white dark:bg-slate-900 text-purple-900 dark:text-purple-300 shadow-sm font-bold' : 'text-gray-600 dark:text-slate-400'}`}
           >
             <HeartHandshake size={15} /> Program Kerja &amp; Retret
           </button>
           <button
             onClick={() => setTab('acara')}
-            className={`btn-sm gap-1.5 ${tab === 'acara' ? 'bg-white text-purple-900 shadow-sm font-bold' : 'text-gray-600'}`}
+            className={`btn-sm gap-1.5 ${tab === 'acara' ? 'bg-white dark:bg-slate-900 text-purple-900 dark:text-purple-300 shadow-sm font-bold' : 'text-gray-600 dark:text-slate-400'}`}
           >
             <PartyPopper size={15} /> Manajemen Acara
           </button>
           <button
             onClick={() => setTab('presensi')}
-            className={`btn-sm gap-1.5 ${tab === 'presensi' ? 'bg-white text-purple-900 shadow-sm font-bold' : 'text-gray-600'}`}
+            className={`btn-sm gap-1.5 ${tab === 'presensi' ? 'bg-white dark:bg-slate-900 text-purple-900 dark:text-purple-300 shadow-sm font-bold' : 'text-gray-600 dark:text-slate-400'}`}
           >
             <ClipboardCheck size={15} /> Presensi Acara
           </button>

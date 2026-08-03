@@ -1053,13 +1053,13 @@ export default function AdminPage() {
 
       {/* Modal konfirmasi reset tugas */}
       {showResetTugasConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+        <div className="modal-overlay">
+          <div className="modal-card w-full max-w-md p-6 space-y-4">
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-red-100 rounded-lg shrink-0"><AlertTriangle className="text-red-600" size={20}/></div>
+              <div className="p-2 bg-red-100 dark:bg-red-950/60 rounded-lg shrink-0 border border-red-200 dark:border-red-800/50"><AlertTriangle className="text-red-600 dark:text-red-400" size={20}/></div>
               <div>
-                <h3 className="font-bold text-gray-900">Reset Data Tugas</h3>
-                <p className="text-sm text-gray-600 mt-1">
+                <h3 className="font-bold text-gray-900 dark:text-white">Reset Data Tugas</h3>
+                <p className="text-sm text-gray-600 dark:text-slate-300 mt-1">
                   Tindakan ini akan menghapus <strong>permanen</strong>:
                 </p>
                 <ul className="text-sm text-gray-600 mt-2 list-disc pl-4 space-y-0.5">
@@ -1231,18 +1231,18 @@ export default function AdminPage() {
 
       {/* ── Mass Reset Confirm Modal ── */}
       {showMassResetConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md w-full p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-red-100 rounded-lg"><KeyRound size={20} className="text-red-600"/></div>
-              <h3 className="font-bold text-lg text-gray-900">Konfirmasi Mass Reset Password</h3>
+              <div className="p-2 bg-red-100 dark:bg-red-950/60 rounded-lg border border-red-200 dark:border-red-800/50"><KeyRound size={20} className="text-red-600 dark:text-red-400"/></div>
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white">Konfirmasi Mass Reset Password</h3>
             </div>
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-sm text-red-700">
+            <div className="bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800/50 rounded-xl p-3 mb-4 text-sm text-red-700 dark:text-red-300">
               ⚠️ Tindakan ini akan mereset password SEMUA anggota (Active + Pending).
               Mereka perlu login ulang dengan password baru.
             </div>
-            <p className="text-sm text-gray-600 mb-2">
-              Ketik <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono font-bold text-red-700">RESET SEMUA</code> untuk konfirmasi:
+            <p className="text-sm text-gray-600 dark:text-slate-300 mb-2">
+              Ketik <code className="bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono font-bold text-red-700 dark:text-red-400">RESET SEMUA</code> untuk konfirmasi:
             </p>
             <input
               type="text"
@@ -1268,17 +1268,17 @@ export default function AdminPage() {
 
       {/* ── Delete Account Confirm Modal ── */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+        <div className="modal-overlay">
+          <div className="modal-card max-w-md w-full p-6">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 bg-red-100 rounded-lg"><Trash2 size={20} className="text-red-600"/></div>
-              <h3 className="font-bold text-lg text-gray-900">Hapus Akun</h3>
+              <div className="p-2 bg-red-100 dark:bg-red-950/60 rounded-lg border border-red-200 dark:border-red-800/50"><Trash2 size={20} className="text-red-600 dark:text-red-400"/></div>
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white">Hapus Akun</h3>
             </div>
-            <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-sm text-red-700">
+            <div className="bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800/50 rounded-xl p-3 mb-4 text-sm text-red-700 dark:text-red-300">
               ⚠️ Akun <strong>{showDeleteConfirm.user?.nama_panggilan}</strong> (@{showDeleteConfirm.user?.nickname}) akan dihapus/dinonaktifkan permanen.
             </div>
-            <p className="text-sm text-gray-600 mb-2">
-              Ketik <code className="bg-gray-100 px-1.5 py-0.5 rounded font-mono font-bold text-red-700">hapus {showDeleteConfirm.user?.nickname}</code> untuk konfirmasi:
+            <p className="text-sm text-gray-600 dark:text-slate-300 mb-2">
+              Ketik <code className="bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono font-bold text-red-700 dark:text-red-400">hapus {showDeleteConfirm.user?.nickname}</code> untuk konfirmasi:
             </p>
             <input
               type="text"
@@ -1304,15 +1304,15 @@ export default function AdminPage() {
 
       {/* ── Per-user Reset Result ── */}
       {singleResetResult && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+        <div className="modal-overlay">
+          <div className="modal-card max-w-sm w-full p-6">
             <CheckCircle2 size={36} className="text-green-500 mx-auto mb-3"/>
-            <h3 className="font-bold text-center text-lg mb-1">Password Berhasil Direset</h3>
-            <p className="text-center text-sm text-gray-500 mb-4">Password baru:</p>
-            <div className="bg-gray-100 rounded-xl px-4 py-3 font-mono text-center text-xl font-bold tracking-widest text-gray-800 mb-4">
+            <h3 className="font-bold text-center text-lg text-gray-900 dark:text-white mb-1">Password Berhasil Direset</h3>
+            <p className="text-center text-sm text-gray-500 dark:text-slate-400 mb-4">Password baru:</p>
+            <div className="bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 font-mono text-center text-xl font-bold tracking-widest text-gray-800 dark:text-slate-100 mb-4">
               {singleResetResult.password}
             </div>
-            <p className="text-xs text-gray-400 text-center mb-4">Salin dan kirim ke anggota via WhatsApp sebelum menutup jendela ini.</p>
+            <p className="text-xs text-gray-400 dark:text-slate-400 text-center mb-4">Salin dan kirim ke anggota via WhatsApp sebelum menutup jendela ini.</p>
             <div className="flex gap-2">
               <button
                 onClick={() => { navigator.clipboard.writeText(singleResetResult.password); toast.success('Disalin!'); }}
