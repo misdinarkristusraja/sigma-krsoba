@@ -130,10 +130,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
     setUser(null);
     setProfile(null);
     setProfileError(false);
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.warn('signOut error:', err);
+    }
   }
 
   const role       = (profile?.role ?? null) as UserRole | null;

@@ -29,11 +29,11 @@ export default function ChangePasswordPage() {
       if (error) throw new Error(error.message);
       if (data?.ok === false) throw new Error(data.error || 'Gagal ganti password');
 
-      toast.success('Password berhasil diperbarui! Login ulang dengan password baru. 🎉');
+      toast.success('Password berhasil diperbarui! Silakan login ulang dengan password baru. 🎉');
 
-      // Logout → session lama tidak valid lagi setelah password diganti
+      // Logout → session lama tidak valid lagi setelah password diganti.
+      // ProtectedRoute di App.tsx akan mendeteksi user null dan mengarahkan ke /login secara otomatis.
       await signOut();
-      navigate('/login');
 
     } catch (err: any) {
       toast.error(err.message || 'Gagal ganti password. Hubungi admin.');
