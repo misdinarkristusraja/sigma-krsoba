@@ -1,10 +1,11 @@
 import React, { Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Layout from './components/layout/Layout';
 import LoadingScreen from './components/ui/LoadingScreen';
 import ErrorBoundary from './components/ui/ErrorBoundary';
 import { lazyWithRetry as lazy } from './lib/lazyWithRetry';
+import { shouldRedirectToChangePassword } from './lib/routeHelpers';
 
 const LoginPage          = lazy(() => import('./pages/LoginPage'));
 const RegisterPage       = lazy(() => import('./pages/RegisterPage'));
@@ -52,11 +53,12 @@ const STAFF = ['Administrator', 'Pengurus', 'Pendamping', 'Pelatih'];
 
 function ProtectedRoute({ children, roles }: { children: React.ReactNode; roles?: string[] | null }) {
   const { user, profile, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) return <LoadingScreen />;
   if (!user)   return <Navigate to="/login" replace />;
 
-  if (profile?.must_change_password) {
+  if (shouldRedirectToChangePassword(profile, location.pathname)) {
     return <Navigate to="/change-password" replace />;
   }
 

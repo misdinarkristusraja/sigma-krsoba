@@ -5,7 +5,8 @@ import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
 import { buildQRUrl } from '../lib/utils';
-import { CreditCard, Download, Search, FileDown, Loader } from 'lucide-react';
+import { toggleSelectMember, toggleSelectAll, getSelectedMembers } from '../lib/cardExportHelpers';
+import { CreditCard, Download, Search, FileDown, Loader, CheckSquare, Square } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 function titleCase(s: string): string {
@@ -37,9 +38,14 @@ function rr(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: n
   ctx.closePath();
 }
 
-async function drawCard(member: any, qrDataUrl: string, type: string): Promise<string> {
+async function drawCard(
+  member: any,
+  qrDataUrl: string,
+  type: string,
+  options: { scale?: number; format?: 'png' | 'jpeg'; quality?: number } = {}
+): Promise<string> {
   const isTugas = type === 'tugas';
-  const SC = 3, W = 380, H = 225;
+  const SC = options.scale || 3, W = 380, H = 225;
   const cv = document.createElement('canvas');
   cv.width = W * SC; cv.height = H * SC;
   const c = cv.getContext('2d')!;
@@ -174,13 +180,16 @@ async function drawCard(member: any, qrDataUrl: string, type: string): Promise<s
   c.stroke();
   c.restore();
 
-  return cv.toDataURL('image/png', 1.0);
+  const format = options.format === 'jpeg' ? 'image/jpeg' : 'image/png';
+  const quality = options.quality !== undefined ? options.quality : (format === 'image/jpeg' ? 0.85 : 1.0);
+  return cv.toDataURL(format, quality);
 }
 
 export default function CardsPage() {
   const { profile, isPengurus } = useAuth();
   const [members,  setMembers]  = useState<any[]>([]);
   const [selected, setSelected] = useState<any>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [search,   setSearch]   = useState('');
   const [cardPngs, setCardPngs] = useState<Record<string, string>>({ latihan: '', tugas: '' });
   const [genLoading, setGenLoading] = useState(false);
@@ -191,9 +200,11 @@ export default function CardsPage() {
       .select('id, nickname, myid, nama_panggilan, lingkungan')
       .eq('status','Active').order('nama_panggilan')
       .then(({ data }: { data: any }) => {
-        setMembers(data || []);
+        const list = data || [];
+        setMembers(list);
+        setSelectedIds(new Set(list.map((m: any) => m.id)));
         if (!isPengurus && profile) {
-          const me = (data||[]).find((m: any) => m.id === profile.id);
+          const me = list.find((m: any) => m.id === profile.id);
           if (me) setSelected(me);
         }
       });
@@ -236,39 +247,43 @@ export default function CardsPage() {
   }
 
   async function bulkExport() {
-    if (!isPengurus || !members.length) return;
+    const targetMembers = getSelectedMembers(members, selectedIds);
+    if (!isPengurus || !targetMembers.length) {
+      toast.error('Pilih minimal 1 anggota untuk diexport');
+      return;
+    }
     setGenLoading(true);
-    setBulkProg({ done: 0, total: members.length });
-    // 1 halaman per kartu (landscape card-size)
+    setBulkProg({ done: 0, total: targetMembers.length });
+    // 1 halaman per kartu (landscape card-size) using optimized JPEG compression to prevent String Length Error
     const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: [85, 54] });
     let firstPage = true;
 
     try {
-      for (let i = 0; i < members.length; i++) {
-        const m = members[i];
+      for (let i = 0; i < targetMembers.length; i++) {
+        const m = targetMembers[i];
         if (!m.myid) { setBulkProg(p => p ? ({...p, done: i+1}) : null); continue; }
         const [lQR, tQR] = await Promise.all([
           makeQR(buildQRUrl(m.nickname, m.myid, 'latihan')),
           makeQR(buildQRUrl(m.nickname, m.myid, 'tugas')),
         ]);
-        const [lPng, tPng] = await Promise.all([
-          drawCard(m, lQR, 'latihan'),
-          drawCard(m, tQR, 'tugas'),
+        const [lJpeg, tJpeg] = await Promise.all([
+          drawCard(m, lQR, 'latihan', { scale: 2, format: 'jpeg', quality: 0.85 }),
+          drawCard(m, tQR, 'tugas', { scale: 2, format: 'jpeg', quality: 0.85 }),
         ]);
 
         // Kartu Latihan (1 halaman)
         if (!firstPage) pdf.addPage([85, 54], 'landscape');
         firstPage = false;
-        pdf.addImage(lPng, 'PNG', 0, 0, 85, 54);
+        pdf.addImage(lJpeg, 'JPEG', 0, 0, 85, 54, undefined, 'FAST');
 
         // Kartu Tugas (1 halaman)
         pdf.addPage([85, 54], 'landscape');
-        pdf.addImage(tPng, 'PNG', 0, 0, 85, 54);
+        pdf.addImage(tJpeg, 'JPEG', 0, 0, 85, 54, undefined, 'FAST');
 
-        setBulkProg({ done: i + 1, total: members.length });
+        setBulkProg({ done: i + 1, total: targetMembers.length });
       }
-      pdf.save('semua-kartu-sigma.pdf');
-      toast.success(`${members.length * 2} kartu (latihan + tugas) selesai!`);
+      pdf.save(`kartu-sigma-terpilih-${targetMembers.length}.pdf`);
+      toast.success(`${targetMembers.length * 2} kartu (${targetMembers.length} anggota) selesai diexport!`);
     } catch (e: any) {
       toast.error('Gagal: ' + e.message);
     } finally {
@@ -281,6 +296,9 @@ export default function CardsPage() {
     m.nickname?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const allFilteredIds = filtered.map(m => m.id);
+  const isAllSelected = members.length > 0 && selectedIds.size === members.length;
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -289,45 +307,91 @@ export default function CardsPage() {
           <p className="page-subtitle">QR untuk scan absensi · Latihan & Tugas</p>
         </div>
         {isPengurus && (
-          <button onClick={bulkExport} disabled={genLoading}
-            className="btn-outline gap-2 transition-all hover:scale-105 active:scale-95">
+          <button onClick={bulkExport} disabled={genLoading || selectedIds.size === 0}
+            className="btn-primary gap-2 transition-all hover:scale-105 active:scale-95 disabled:opacity-40 shadow-md">
             <FileDown size={16}/>
-            {bulkProg ? `${bulkProg.done}/${bulkProg.total}...` : 'Bulk Export PDF'}
+            {bulkProg
+              ? `${bulkProg.done}/${bulkProg.total}...`
+              : `Export PDF (${selectedIds.size} Anggota)`
+            }
           </button>
         )}
       </div>
 
       {bulkProg && (
-        <div className="space-y-1">
-          <div className="bg-gray-100 rounded-full h-2 overflow-hidden">
-            <div className="bg-brand-800 h-2 rounded-full transition-all duration-300"
+        <div className="space-y-1 bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+          <div className="bg-gray-100 rounded-full h-2.5 overflow-hidden">
+            <div className="bg-brand-800 h-2.5 rounded-full transition-all duration-300"
               style={{ width: `${Math.round(bulkProg.done/bulkProg.total*100)}%` }}/>
           </div>
-          <p className="text-xs text-gray-500 text-center">{bulkProg.done}/{bulkProg.total} kartu</p>
+          <p className="text-xs text-gray-500 text-center font-medium">
+            Memproses export {bulkProg.done} dari {bulkProg.total} anggota...
+          </p>
         </div>
       )}
 
       <div className="grid lg:grid-cols-3 gap-6">
         {isPengurus && (
           <div className="card space-y-3">
-            <h3 className="font-semibold text-gray-700 text-sm">Pilih Anggota</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-gray-700 text-sm">Pilih Anggota Export</h3>
+              <button
+                onClick={() => setSelectedIds(toggleSelectAll(selectedIds, members.map(m => m.id)))}
+                className="text-xs font-semibold text-brand-800 hover:text-brand-900 flex items-center gap-1 hover:underline">
+                {isAllSelected ? <CheckSquare size={13}/> : <Square size={13}/>}
+                {isAllSelected ? 'Batal Semua' : 'Pilih Semua'}
+              </button>
+            </div>
+
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
               <input className="input pl-8 text-sm" placeholder="Cari nama..."
                 value={search} onChange={e => setSearch(e.target.value)}/>
             </div>
-            <div className="max-h-80 overflow-y-auto space-y-0.5">
-              {filtered.map(m => (
-                <button key={m.id} onClick={() => setSelected(m)}
-                  className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-all duration-150 hover:scale-[1.01] active:scale-[0.99] ${
-                    selected?.id === m.id ? 'bg-brand-800 text-white shadow-sm' : 'hover:bg-gray-50'
-                  }`}>
-                  <div className="font-medium">{titleCase(m.nama_panggilan)}</div>
-                  <div className={`text-xs ${selected?.id===m.id?'text-brand-200':'text-gray-400'}`}>
-                    @{m.nickname} · {m.lingkungan}
+
+            <div className="text-xs text-gray-400 font-medium px-1 flex justify-between">
+              <span>{selectedIds.size} dari {members.length} anggota terpilih</span>
+              {search && <span>({filtered.length} cocok)</span>}
+            </div>
+
+            <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
+              {filtered.map(m => {
+                const isChecked = selectedIds.has(m.id);
+                const isCurrent = selected?.id === m.id;
+                return (
+                  <div
+                    key={m.id}
+                    className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all duration-150 border ${
+                      isCurrent
+                        ? 'bg-brand-50 border-brand-200 text-brand-950 font-medium shadow-xs'
+                        : 'bg-white border-transparent hover:bg-gray-50 text-gray-700'
+                    }`}>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedIds(prev => toggleSelectMember(prev, m.id));
+                      }}
+                      className="text-brand-800 hover:scale-110 transition-transform shrink-0"
+                      title={isChecked ? 'Hapus centang' : 'Centang untuk export'}>
+                      {isChecked
+                        ? <CheckSquare size={17} className="text-brand-800 fill-brand-100"/>
+                        : <Square size={17} className="text-gray-300"/>
+                      }
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelected(m)}
+                      className="flex-1 text-left min-w-0">
+                      <div className="font-medium truncate">{titleCase(m.nama_panggilan)}</div>
+                      <div className="text-xs text-gray-400 truncate">
+                        @{m.nickname} · {m.lingkungan}
+                      </div>
+                    </button>
                   </div>
-                </button>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -374,3 +438,4 @@ export default function CardsPage() {
     </div>
   );
 }
+
