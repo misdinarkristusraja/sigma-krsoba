@@ -197,13 +197,22 @@ export default function CardsPage() {
 
   useEffect(() => {
     supabase.from('users')
-      .select('id, nickname, myid, nama_panggilan, lingkungan')
-      .eq('status','Active').order('nama_panggilan')
+      .select('id, nickname, myid, nama_panggilan, lingkungan, status')
+      .in('status', ['Active', 'Pending']).order('nama_panggilan')
       .then(({ data }: { data: any }) => {
         const list = data || [];
         setMembers(list);
         setSelectedIds(new Set(list.map((m: any) => m.id)));
-        if (!isPengurus && profile) {
+        const params = new URLSearchParams(window.location.search);
+        const targetId = params.get('user');
+        if (targetId) {
+          const target = list.find((m: any) => m.id === targetId);
+          if (target) setSelected(target);
+          else if (!isPengurus && profile) {
+            const me = list.find((m: any) => m.id === profile.id);
+            if (me) setSelected(me);
+          }
+        } else if (!isPengurus && profile) {
           const me = list.find((m: any) => m.id === profile.id);
           if (me) setSelected(me);
         }
@@ -384,7 +393,14 @@ export default function CardsPage() {
                       type="button"
                       onClick={() => setSelected(m)}
                       className="flex-1 text-left min-w-0">
-                      <div className="font-medium truncate">{titleCase(m.nama_panggilan)}</div>
+                      <div className="font-medium truncate flex items-center gap-1.5">
+                        <span className="truncate">{titleCase(m.nama_panggilan)}</span>
+                        {m.status === 'Pending' && (
+                          <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded font-semibold shrink-0">
+                            Pending
+                          </span>
+                        )}
+                      </div>
                       <div className="text-xs text-gray-400 truncate">
                         @{m.nickname} · {m.lingkungan}
                       </div>
