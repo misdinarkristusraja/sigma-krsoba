@@ -1,16 +1,102 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { approveRegistrationAction } from '../registration';
+import {
+  approveRegistrationAction,
+  validateRegistrationPayload,
+  createRegistrationAction,
+  updateRegistrationAction
+} from '../registration';
 import { supabase } from '../supabase';
 
 vi.mock('../supabase', () => ({
   supabase: {
-    rpc: vi.fn()
+    rpc: vi.fn(),
+    from: vi.fn(),
   }
 }));
 
 vi.mock('../utils', () => ({
   generateMyID: vi.fn().mockResolvedValue('MYID123456')
 }));
+
+describe('validateRegistrationPayload', () => {
+  it('should validate required fields', () => {
+    expect(validateRegistrationPayload({})).toEqual({ valid: false, error: 'Nama lengkap wajib diisi.' });
+    expect(validateRegistrationPayload({ nama_lengkap: 'Budi' })).toEqual({ valid: false, error: 'Nama panggilan wajib diisi.' });
+    expect(validateRegistrationPayload({ nama_lengkap: 'Budi', nama_panggilan: 'Budi' })).toEqual({ valid: false, error: 'Nickname wajib diisi.' });
+    expect(validateRegistrationPayload({ nama_lengkap: 'Budi', nama_panggilan: 'Budi', nickname: 'budi' })).toEqual({ valid: false, error: 'Lingkungan wajib diisi.' });
+    expect(validateRegistrationPayload({ nama_lengkap: 'Budi', nama_panggilan: 'Budi', nickname: 'budi', lingkungan: 'St. Paulus' })).toEqual({ valid: true });
+  });
+});
+
+describe('createRegistrationAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should fail if payload is invalid', async () => {
+    const res = await createRegistrationAction({ nama_lengkap: '', nama_panggilan: '', nickname: '', lingkungan: '' });
+    expect(res.ok).toBe(false);
+    expect(res.error).toBe('Nama lengkap wajib diisi.');
+  });
+
+  it('should call supabase insert when payload is valid', async () => {
+    const mockSingle = vi.fn().mockResolvedValue({ data: { id: 'reg-1', nickname: 'budi' }, error: null });
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
+    const mockInsert = vi.fn().mockReturnValue({ select: mockSelect });
+    vi.mocked(supabase.from).mockReturnValue({ insert: mockInsert } as any);
+
+    const res = await createRegistrationAction({
+      nama_lengkap: 'Budi Santoso',
+      nama_panggilan: 'Budi',
+      nickname: 'Budi',
+      lingkungan: 'St. Paulus'
+    });
+
+    expect(res.ok).toBe(true);
+    expect(res.data).toEqual({ id: 'reg-1', nickname: 'budi' });
+    expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({
+      nama_lengkap: 'Budi Santoso',
+      nama_panggilan: 'Budi',
+      nickname: 'budi',
+      lingkungan: 'St. Paulus',
+      status: 'Pending'
+    }));
+  });
+});
+
+describe('updateRegistrationAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('should fail if id is missing', async () => {
+    const res = await updateRegistrationAction('', { nama_lengkap: 'Budi' });
+    expect(res.ok).toBe(false);
+    expect(res.error).toBe('ID pendaftaran tidak valid.');
+  });
+
+  it('should call supabase update when payload is valid', async () => {
+    const mockSingle = vi.fn().mockResolvedValue({ data: { id: 'reg-1', nickname: 'budi' }, error: null });
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle });
+    const mockEq = vi.fn().mockReturnValue({ select: mockSelect });
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq });
+    vi.mocked(supabase.from).mockReturnValue({ update: mockUpdate } as any);
+
+    const res = await updateRegistrationAction('reg-1', {
+      nama_lengkap: 'Budi Update',
+      nama_panggilan: 'Budi',
+      nickname: 'Budi',
+      lingkungan: 'St. Paulus'
+    });
+
+    expect(res.ok).toBe(true);
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({
+      nama_lengkap: 'Budi Update',
+      nickname: 'budi'
+    }));
+    expect(mockEq).toHaveBeenCalledWith('id', 'reg-1');
+  });
+});
 
 describe('approveRegistrationAction', () => {
   beforeEach(() => {
@@ -95,3 +181,4 @@ describe('approveRegistrationAction', () => {
     });
   });
 });
+

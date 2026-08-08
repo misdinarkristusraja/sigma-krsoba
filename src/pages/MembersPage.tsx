@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
-import { truncate, ROLE_LABELS, STATUS_LABELS, formatDate, buildWALink, generateMyID } from '../lib/utils';
-import { approveRegistrationAction } from '../lib/registration';
+import { truncate, ROLE_LABELS, STATUS_LABELS, formatDate, buildWALink, generateMyID, toNickname, PENDIDIKAN_OPTIONS } from '../lib/utils';
+import { approveRegistrationAction, createRegistrationAction, updateRegistrationAction } from '../lib/registration';
+import { LINGKUNGAN_LIST, getWilayah } from '../lib/wilayah';
 import {
   Search, CheckCircle, XCircle, Eye,
   Download, RefreshCw, AlertTriangle, Users,
   ShieldAlert, ShieldCheck, ChevronDown, Edit2, MessageCircle,
-  KeyRound, Copy, Share2,
+  KeyRound, Copy, Share2, UserPlus, Plus, X,
 } from 'lucide-react';
 
 const VIDEO_TUTORIAL_LINK = 'https://youtu.be/zVN7jL6fUqQ';
@@ -41,6 +42,7 @@ export default function MembersPage() {
   const [sendPasswordMode, setSendPasswordMode] = useState(false);
   const [reregSet,         setReregSet]         = useState<Set<string>>(new Set());
   const [filterRereg,      setFilterRereg]      = useState('');  // '' | 'done' | 'not_done'
+  const [regModal,         setRegModal]         = useState<{ open: boolean; mode: 'add' | 'edit'; data?: any }>({ open: false, mode: 'add' });
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -332,7 +334,14 @@ export default function MembersPage() {
             {tab === 'all' ? `${total} total anggota` : `${filtered.length} anggota`}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {isPengurus && tab === 'pending' && (
+            <button
+              onClick={() => setRegModal({ open: true, mode: 'add' })}
+              className="btn-primary gap-1.5 btn-sm">
+              <UserPlus size={14} /> Tambah Pendaftar
+            </button>
+          )}
           {isPengurus && (
             <button
               onClick={() => setSendPasswordMode(v => !v)}
@@ -406,7 +415,14 @@ export default function MembersPage() {
                   </div>
                 </div>
                 {isPengurus && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
+                    <button 
+                      onClick={() => setRegModal({ open: true, mode: 'edit', data: reg })}
+                      disabled={approvingId !== null}
+                      className="btn-outline btn-sm gap-1 disabled:opacity-50 text-gray-700 dark:text-slate-200"
+                    >
+                      <Edit2 size={13} /> Edit
+                    </button>
                     <button 
                       onClick={() => approveRegistration(reg)}
                       disabled={approvingId !== null}
@@ -710,6 +726,313 @@ export default function MembersPage() {
           </div>
         </>
       )}
+      {/* Registration Form Modal (Add / Edit) */}
+      <RegistrationFormModal
+        isOpen={regModal.open}
+        mode={regModal.mode}
+        initialData={regModal.data}
+        onClose={() => setRegModal({ open: false, mode: 'add' })}
+        onSuccess={loadData}
+      />
+    </div>
+  );
+}
+
+function RegistrationFormModal({
+  isOpen,
+  mode,
+  initialData,
+  onClose,
+  onSuccess,
+}: {
+  isOpen: boolean;
+  mode: 'add' | 'edit';
+  initialData?: any;
+  onClose: () => void;
+  onSuccess: () => void;
+}) {
+  const [formData, setFormData] = useState<any>({
+    nama_lengkap: '',
+    nama_panggilan: '',
+    nickname: '',
+    tanggal_lahir: '',
+    lingkungan: '',
+    pendidikan: 'SD',
+    sekolah: '',
+    is_tarakanita: false,
+    hp_anak: '',
+    hp_ortu: '',
+    nama_ayah: '',
+    nama_ibu: '',
+    alasan_masuk: '',
+  });
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (initialData && mode === 'edit') {
+      setFormData({
+        nama_lengkap: initialData.nama_lengkap || '',
+        nama_panggilan: initialData.nama_panggilan || '',
+        nickname: initialData.nickname || '',
+        tanggal_lahir: initialData.tanggal_lahir || '',
+        lingkungan: initialData.lingkungan || '',
+        pendidikan: initialData.pendidikan || 'SD',
+        sekolah: initialData.sekolah || '',
+        is_tarakanita: !!initialData.is_tarakanita,
+        hp_anak: initialData.hp_anak || '',
+        hp_ortu: initialData.hp_ortu || '',
+        nama_ayah: initialData.nama_ayah || '',
+        nama_ibu: initialData.nama_ibu || '',
+        alasan_masuk: initialData.alasan_masuk || '',
+      });
+    } else {
+      setFormData({
+        nama_lengkap: '',
+        nama_panggilan: '',
+        nickname: '',
+        tanggal_lahir: '',
+        lingkungan: '',
+        pendidikan: 'SD',
+        sekolah: '',
+        is_tarakanita: false,
+        hp_anak: '',
+        hp_ortu: '',
+        nama_ayah: '',
+        nama_ibu: '',
+        alasan_masuk: '',
+      });
+    }
+  }, [initialData, mode, isOpen]);
+
+  if (!isOpen) return null;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+
+    const payload = {
+      ...formData,
+      wilayah: getWilayah(formData.lingkungan),
+    };
+
+    let res;
+    if (mode === 'add') {
+      res = await createRegistrationAction(payload);
+    } else {
+      res = await updateRegistrationAction(initialData.id, payload);
+    }
+
+    setLoading(false);
+
+    if (!res.ok) {
+      toast.error(res.error || 'Gagal menyimpan data');
+      return;
+    }
+
+    toast.success(
+      mode === 'add'
+        ? 'Pendaftaran manual berhasil ditambahkan!'
+        : 'Data pendaftar berhasil diperbarui!'
+    );
+    onSuccess();
+    onClose();
+  }
+
+  return (
+    <div className="modal-overlay">
+      <div className="modal-card p-6 w-full max-w-lg space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b pb-3 dark:border-slate-800">
+          <h3 className="font-bold text-gray-900 dark:text-white text-lg flex items-center gap-2">
+            <UserPlus size={18} className="text-brand-800 dark:text-amber-400" />
+            {mode === 'add' ? 'Tambah Pendaftar Manual' : 'Edit Data Pendaftar'}
+          </h3>
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-slate-200">
+            <X size={18} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-3 text-sm">
+          <div>
+            <label className="label">Nama Lengkap *</label>
+            <input
+              type="text"
+              required
+              className="input"
+              value={formData.nama_lengkap}
+              onChange={e => {
+                const val = e.target.value;
+                setFormData((f: any) => ({
+                  ...f,
+                  nama_lengkap: val,
+                  ...(mode === 'add' && !f.nama_panggilan ? { nama_panggilan: val.split(' ')[0], nickname: toNickname(val.split(' ')[0]) } : {})
+                }));
+              }}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Nama Panggilan *</label>
+              <input
+                type="text"
+                required
+                className="input"
+                value={formData.nama_panggilan}
+                onChange={e => {
+                  const val = e.target.value;
+                  setFormData((f: any) => ({
+                    ...f,
+                    nama_panggilan: val,
+                    ...(mode === 'add' ? { nickname: toNickname(val) } : {})
+                  }));
+                }}
+              />
+            </div>
+            <div>
+              <label className="label">Nickname *</label>
+              <input
+                type="text"
+                required
+                className="input font-mono"
+                value={formData.nickname}
+                onChange={e => setFormData((f: any) => ({ ...f, nickname: e.target.value.toLowerCase() }))}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Tanggal Lahir</label>
+              <input
+                type="date"
+                className="input"
+                value={formData.tanggal_lahir}
+                onChange={e => setFormData((f: any) => ({ ...f, tanggal_lahir: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="label">Lingkungan *</label>
+              <select
+                required
+                className="input"
+                value={formData.lingkungan}
+                onChange={e => setFormData((f: any) => ({ ...f, lingkungan: e.target.value }))}
+              >
+                <option value="">-- Pilih Lingkungan --</option>
+                {LINGKUNGAN_LIST.map(l => (
+                  <option key={l} value={l}>{l}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Pendidikan</label>
+              <select
+                className="input"
+                value={formData.pendidikan}
+                onChange={e => setFormData((f: any) => ({ ...f, pendidikan: e.target.value }))}
+              >
+                {PENDIDIKAN_OPTIONS.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">Sekolah</label>
+              <input
+                type="text"
+                className="input"
+                value={formData.sekolah}
+                onChange={e => setFormData((f: any) => ({ ...f, sekolah: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">HP Anak</label>
+              <input
+                type="text"
+                className="input"
+                placeholder="08xxxxxxxxxx"
+                value={formData.hp_anak}
+                onChange={e => setFormData((f: any) => ({ ...f, hp_anak: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="label">HP Ortu</label>
+              <input
+                type="text"
+                className="input"
+                placeholder="08xxxxxxxxxx"
+                value={formData.hp_ortu}
+                onChange={e => setFormData((f: any) => ({ ...f, hp_ortu: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Nama Ayah</label>
+              <input
+                type="text"
+                className="input"
+                value={formData.nama_ayah}
+                onChange={e => setFormData((f: any) => ({ ...f, nama_ayah: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="label">Nama Ibu</label>
+              <input
+                type="text"
+                className="input"
+                value={formData.nama_ibu}
+                onChange={e => setFormData((f: any) => ({ ...f, nama_ibu: e.target.value }))}
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pt-1">
+            <input
+              type="checkbox"
+              id="is_tarakanita"
+              className="checkbox"
+              checked={formData.is_tarakanita}
+              onChange={e => setFormData((f: any) => ({ ...f, is_tarakanita: e.target.checked }))}
+            />
+            <label htmlFor="is_tarakanita" className="text-xs font-semibold text-gray-700 dark:text-slate-300">
+              Siswa Tarakanita
+            </label>
+          </div>
+
+          <div>
+            <label className="label">Alasan Masuk / Catatan</label>
+            <textarea
+              rows={2}
+              className="input"
+              value={formData.alasan_masuk}
+              onChange={e => setFormData((f: any) => ({ ...f, alasan_masuk: e.target.value }))}
+            />
+          </div>
+
+          <div className="flex justify-end gap-2 pt-3">
+            <button type="button" onClick={onClose} className="btn-ghost btn-sm">
+              Batal
+            </button>
+            <button type="submit" disabled={loading} className="btn-primary btn-sm gap-1">
+              {loading ? (
+                <>
+                  <RefreshCw size={13} className="animate-spin" /> Menyimpan...
+                </>
+              ) : (
+                mode === 'add' ? 'Tambah Pendaftar' : 'Simpan Perubahan'
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
