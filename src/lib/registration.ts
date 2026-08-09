@@ -54,11 +54,12 @@ export async function createRegistrationAction(payload: RegistrationPayload): Pr
     return { ok: false, error: validation.error };
   }
 
+  const { nama_panggilan, ...dbFields } = payload;
+
   const cleanData = {
-    ...payload,
+    ...dbFields,
     nickname: payload.nickname.toLowerCase().trim(),
     nama_lengkap: payload.nama_lengkap.trim(),
-    nama_panggilan: payload.nama_panggilan.trim(),
     lingkungan: payload.lingkungan.trim(),
     status: payload.status || 'Pending',
     created_at: new Date().toISOString(),
@@ -87,11 +88,12 @@ export async function updateRegistrationAction(id: string, payload: Partial<Regi
     return { ok: false, error: validation.error };
   }
 
+  const { nama_panggilan, ...dbFields } = payload;
+
   const cleanData = {
-    ...payload,
+    ...dbFields,
     ...(payload.nickname ? { nickname: payload.nickname.toLowerCase().trim() } : {}),
     ...(payload.nama_lengkap ? { nama_lengkap: payload.nama_lengkap.trim() } : {}),
-    ...(payload.nama_panggilan ? { nama_panggilan: payload.nama_panggilan.trim() } : {}),
     ...(payload.lingkungan ? { lingkungan: payload.lingkungan.trim() } : {}),
   };
 

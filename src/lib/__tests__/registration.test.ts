@@ -56,11 +56,11 @@ describe('createRegistrationAction', () => {
     expect(res.data).toEqual({ id: 'reg-1', nickname: 'budi' });
     expect(mockInsert).toHaveBeenCalledWith(expect.objectContaining({
       nama_lengkap: 'Budi Santoso',
-      nama_panggilan: 'Budi',
       nickname: 'budi',
       lingkungan: 'St. Paulus',
       status: 'Pending'
     }));
+    expect(mockInsert.mock.calls[0][0]).not.toHaveProperty('nama_panggilan');
   });
 });
 
@@ -94,6 +94,7 @@ describe('updateRegistrationAction', () => {
       nama_lengkap: 'Budi Update',
       nickname: 'budi'
     }));
+    expect(mockUpdate.mock.calls[0][0]).not.toHaveProperty('nama_panggilan');
     expect(mockEq).toHaveBeenCalledWith('id', 'reg-1');
   });
 });
