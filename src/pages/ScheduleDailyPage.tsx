@@ -249,7 +249,7 @@ export function ScheduleDailyPage() {
       allUsers.length ? Promise.resolve({ data: allUsers }) :
         supabase.from('users').select('id, nama_panggilan, nickname, lingkungan, foto_url').eq('status', 'Active').order('nama_panggilan'),
       picUsers.length ? Promise.resolve({ data: picUsers }) :
-        supabase.from('users').select('id, nama_panggilan, hp_anak, hp_ortu, foto_url').in('role', ['Administrator','Pengurus']).eq('status', 'Active').order('nama_panggilan'),
+        supabase.from('users').select('id, nama_panggilan, hp_anak, hp_ortu, foto_url, role').in('role', ['Administrator','Pengurus','Pendamping','Pelatih']).eq('status', 'Active').order('nama_panggilan'),
     ]);
     if (!allUsers.length && usersRes.data) setAllUsers(usersRes.data as any[]);
     if (!picUsers.length && pengurusRes.data) setPicUsers(pengurusRes.data as any[]);

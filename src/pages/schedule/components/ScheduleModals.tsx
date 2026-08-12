@@ -203,7 +203,7 @@ function PicSlotEditor({ slot, slotLabel, pics, setPics, picOptions }: {
   picOptions: any[];
 }) {
   const staffOptions = picOptions.filter((p: any) =>
-    ['Administrator', 'Pengurus'].includes(p.role)
+    ['Administrator', 'Pengurus', 'Pendamping', 'Pelatih'].includes(p.role)
   );
 
   function addPic() {
@@ -254,7 +254,7 @@ function PicSlotEditor({ slot, slotLabel, pics, setPics, picOptions }: {
             >
               <option value="">— Pilih PIC —</option>
               {staffOptions.map((o: any) => (
-                <option key={o.id} value={o.nickname}>{o.nama_panggilan} (@{o.nickname})</option>
+                <option key={o.id} value={o.nickname}>{o.nama_panggilan} (@{o.nickname}) · {o.role}</option>
               ))}
             </select>
             {p.hp && <span className="text-[10px] text-gray-400 shrink-0">📱 {p.hp}</span>}

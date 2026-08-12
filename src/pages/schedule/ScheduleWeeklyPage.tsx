@@ -91,7 +91,7 @@ export default function ScheduleWeeklyPage() {
   useEffect(() => {
     supabase.from('users')
       .select('id, nickname, nama_panggilan, role, hp_anak, hp_ortu')
-      .in('role', ['Administrator','Pengurus','Pelatih'])
+      .in('role', ['Administrator','Pengurus','Pelatih','Pendamping'])
       .eq('status', 'Active')
       .order('nama_panggilan')
       .then(({ data }: { data: any[] | null }) => setPicOptions(data || []));
@@ -612,8 +612,8 @@ export default function ScheduleWeeklyPage() {
                       <label className="label text-xs">Pelatih {pos}{pos===1?' *':' (opsional)'}</label>
                       <select className={`input text-sm ${getPelatihField(ev,pos) ? 'border-teal-400 bg-teal-50' : ''}`}
                         value={getPelatihField(ev,pos)} onChange={e => setPelatihField(ev.id,pos,e.target.value)}>
-                        <option value="">— Pilih Pelatih —</option>
-                        {picOptions.map(u => <option key={u.id} value={u.nickname}>{u.nama_panggilan}</option>)}
+                        <option value="">— Pilih Pelatih / Pendamping —</option>
+                        {picOptions.map(u => <option key={u.id} value={u.nickname}>{u.nama_panggilan} ({u.role})</option>)}
                       </select>
                     </div>
                   ))}
