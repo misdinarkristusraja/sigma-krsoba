@@ -153,11 +153,11 @@ export function AddMisaModal({ showAddMisa, setShowAddMisa, addMisaForm, setAddM
 
             {/* Jumlah petugas per slot */}
             <div>
-              <label className="label">Jumlah Petugas per Slot</label>
+              <label className="label">Jumlah Petugas per Slot (Maks. 30)</label>
               <select className="input" value={addMisaForm.jumlah_petugas ?? 8}
                 onChange={e => setAddMisaForm((f: any) => ({ ...f, jumlah_petugas: Number(e.target.value) }))}>
-                {[4, 5, 6, 7, 8, 10, 12].map(n => (
-                  <option key={n} value={n}>{n} petugas/slot</option>
+                {[4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20, 22, 25, 28, 30].map(n => (
+                  <option key={n} value={n}>{n} petugas / slot</option>
                 ))}
               </select>
             </div>

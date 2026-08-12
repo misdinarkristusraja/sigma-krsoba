@@ -61,12 +61,20 @@ function EditPetugasSection({ ev, onSaved }: { ev: any, onSaved: () => void }) {
     })();
   }, [ev?.id]);
 
+  const [slotLimits, setSlotLimits] = useState<Record<number, number>>({});
+
   function toggleMember(slot: number, userId: string) {
+    const limit = slotLimits[slot] || ev.jumlah_petugas || 8;
     setAssigns((prev: any) => {
       const cur = prev[slot] || [];
+      const isAlreadySelected = cur.includes(userId);
+      if (!isAlreadySelected && cur.length >= limit) {
+        toast.error(`Slot ini sudah mencapai batas target (${limit} orang, Maksimal 30).`);
+        return prev;
+      }
       return {
         ...prev,
-        [slot]: cur.includes(userId)
+        [slot]: isAlreadySelected
           ? cur.filter((id: string) => id !== userId)
           : [...cur, userId],
       };
@@ -105,14 +113,34 @@ function EditPetugasSection({ ev, onSaved }: { ev: any, onSaved: () => void }) {
           m.lingkungan?.toLowerCase().includes(q)
         );
         const isOpen = !!open[slot];
+        const curLimit = slotLimits[slot] || ev.jumlah_petugas || 8;
         return (
           <div key={slot} className="mb-3">
-            <button type="button"
-              onClick={() => setOpen((p: any) => ({...p, [slot]: !p[slot]}))}
-              className="w-full flex items-center justify-between text-left px-3 py-2 rounded-xl border border-gray-200 hover:border-brand-800 transition-colors">
-              <span className="text-xs font-bold text-gray-700">{info.time}</span>
-              <span className="text-xs text-gray-500">{selected.length} dipilih ▾</span>
-            </button>
+            <div className="flex items-center justify-between px-3 py-2 rounded-xl border border-gray-200 hover:border-brand-800 transition-colors bg-white dark:bg-slate-900">
+              <button type="button"
+                onClick={() => setOpen((p: any) => ({...p, [slot]: !p[slot]}))}
+                className="flex-1 text-left flex items-center justify-between">
+                <span className="text-xs font-bold text-gray-700 dark:text-slate-200">{info.time}</span>
+                <span className="text-xs text-gray-500 dark:text-slate-400 mr-3">
+                  {selected.length} / {curLimit} Terisi ▾
+                </span>
+              </button>
+              <div className="flex items-center gap-1 shrink-0">
+                <span className="text-[10px] text-gray-400">Target:</span>
+                <select
+                  value={curLimit}
+                  onChange={e => {
+                    const val = Number(e.target.value);
+                    setSlotLimits(p => ({ ...p, [slot]: val }));
+                  }}
+                  className="text-[11px] bg-gray-100 dark:bg-slate-800 text-gray-800 dark:text-slate-200 rounded px-1 py-0.5 border border-gray-300 dark:border-slate-700 font-medium"
+                >
+                  {[4, 5, 6, 7, 8, 10, 12, 14, 16, 18, 20, 22, 25, 28, 30].map(n => (
+                    <option key={n} value={n}>{n} org</option>
+                  ))}
+                </select>
+              </div>
+            </div>
             {selected.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1.5 px-1">
                 {selected.map((uid: string) => {

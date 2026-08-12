@@ -77,6 +77,13 @@ const OPTIN_LABELS: Record<string, { label: string; color: string; icon: string 
   Pas_Libur:  { label: 'Pas Libur',  color: 'badge-yellow', icon: '🏖️' },
 };
 
+function parseRomoFromNote(draftNote: string | null): { nama: string; foto: string } {
+  if (!draftNote) return { nama: '', foto: '' };
+  const m = draftNote.match(/Romo:\s*([^|]*)\|?(.*)/i);
+  if (!m) return { nama: draftNote.startsWith('Romo') ? draftNote : '', foto: '' };
+  return { nama: (m[1] || '').trim(), foto: (m[2] || '').trim() };
+}
+
 // ═══════════════════════════════════════════════════════════════
 export function ScheduleDailyPage() {
   const { profile, isPengurus } = useAuth();
@@ -89,16 +96,18 @@ export function ScheduleDailyPage() {
   const [generating, setGen]    = useState(false);
   const [progress, setProgress] = useState<{ label: string; current: number; total: number } | null>(null);
 
-  // Opt-in
+  // Opt-in & PIC Availability
   const [myOptin,      setMyOptin]    = useState<any>(null);
   const [optinList,    setOptinList]  = useState<any[]>([]);
   const [loadingOpt,   setLoadingOpt] = useState(false);
   const [editOptinId,  setEditOptinId]= useState<any>(null);  // user_id yang sedang diedit pengurus
   const [searchOptin,  setSearchOptin]= useState('');
+  const [picWeeklyAvail, setPicWeeklyAvail] = useState<Record<string, Record<number, string>>>({});
+  const [availWeekFilter, setAvailWeekFilter] = useState<number | 0>(0);
 
   const tableRef = useRef(null);
   const [editModal,    setEditModal]    = useState<{ ev: any; assignments: any[]; pic: any | null } | null>(null);
-  const [editFields,   setEditFields]   = useState({ perayaan: '', warna_liturgi: 'Hijau' });
+  const [editFields,   setEditFields]   = useState({ perayaan: '', warna_liturgi: 'Hijau', romo_nama: '', romo_foto_url: '' });
   const [allUsers,     setAllUsers]     = useState<any[]>([]);
   const [picUsers,     setPicUsers]     = useState<any[]>([]);
   const [addUserId,    setAddUserId]    = useState('');
@@ -106,6 +115,28 @@ export function ScheduleDailyPage() {
   const [savingEdit,   setSavingEdit]   = useState(false);
   const [pngModal,     setPngModal]     = useState(false);
   const [exportingPng, setExportingPng] = useState(false);
+
+  // Load PIC weekly availability from localStorage / state
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`sigma_pic_avail_${year}_${month}`);
+      if (stored) setPicWeeklyAvail(JSON.parse(stored));
+      else setPicWeeklyAvail({});
+    } catch (e) {
+      console.error(e);
+    }
+  }, [year, month]);
+
+  function savePicAvailability(userId: string, weekNum: number, status: string) {
+    setPicWeeklyAvail(prev => {
+      const userObj = prev[userId] || {};
+      const next = { ...prev, [userId]: { ...userObj, [weekNum]: status } };
+      try {
+        localStorage.setItem(`sigma_pic_avail_${year}_${month}`, JSON.stringify(next));
+      } catch (e) { console.error(e); }
+      return next;
+    });
+  }
 
   // Target bulan opt-in = bulan berikutnya dari bulan yang dipilih
   const nextMonth = month === 12 ? 1  : month + 1;
@@ -121,7 +152,7 @@ export function ScheduleDailyPage() {
     const end     = `${year}-${padM}-${String(lastDay).padStart(2,'0')}`;
     const { data, error } = await supabase
       .from('events')
-      .select(`*, assignments(user_id, users(nama_lengkap, nama_panggilan, lingkungan, pendidikan)), event_pics(id, slot, nama, hp, urutan)`)
+      .select(`*, assignments(user_id, users(nama_lengkap, nama_panggilan, lingkungan, pendidikan, foto_url)), event_pics(id, slot, nama, hp, urutan)`)
       .eq('tipe_event', 'Misa_Harian')
       .gte('tanggal_tugas', start)
       .lte('tanggal_tugas', end)
@@ -202,17 +233,23 @@ export function ScheduleDailyPage() {
     loadOptinList();
   }
 
-  // ── Edit event (perayaan, warna, petugas, PIC) ──────────
+  // ── Edit event (perayaan, warna, petugas, PIC, Romo) ──────────
   async function openEdit(ev: any) {
-    setEditFields({ perayaan: ev.perayaan || '', warna_liturgi: ev.warna_liturgi || 'Hijau' });
+    const romo = parseRomoFromNote(ev.draft_note);
+    setEditFields({
+      perayaan: ev.perayaan || '',
+      warna_liturgi: ev.warna_liturgi || 'Hijau',
+      romo_nama: romo.nama,
+      romo_foto_url: romo.foto,
+    });
     const pic = (ev.event_pics || []).find((p: any) => p.slot === 1) || null;
     setEditModal({ ev, assignments: ev.assignments || [], pic });
     setEditPicId('');
     const [usersRes, pengurusRes] = await Promise.all([
       allUsers.length ? Promise.resolve({ data: allUsers }) :
-        supabase.from('users').select('id, nama_panggilan, nickname, lingkungan').eq('status', 'Active').order('nama_panggilan'),
+        supabase.from('users').select('id, nama_panggilan, nickname, lingkungan, foto_url').eq('status', 'Active').order('nama_panggilan'),
       picUsers.length ? Promise.resolve({ data: picUsers }) :
-        supabase.from('users').select('id, nama_panggilan, hp_anak, hp_ortu').in('role', ['Administrator','Pengurus']).eq('status', 'Active').order('nama_panggilan'),
+        supabase.from('users').select('id, nama_panggilan, hp_anak, hp_ortu, foto_url').in('role', ['Administrator','Pengurus']).eq('status', 'Active').order('nama_panggilan'),
     ]);
     if (!allUsers.length && usersRes.data) setAllUsers(usersRes.data as any[]);
     if (!picUsers.length && pengurusRes.data) setPicUsers(pengurusRes.data as any[]);
@@ -221,9 +258,14 @@ export function ScheduleDailyPage() {
   async function saveEdit() {
     if (!editModal) return;
     setSavingEdit(true);
+    const draftNote = editFields.romo_nama
+      ? `Romo: ${editFields.romo_nama}|${editFields.romo_foto_url || ''}`
+      : editModal.ev.draft_note;
+
     const { error } = await supabase.from('events').update({
       perayaan:      editFields.perayaan,
       warna_liturgi: editFields.warna_liturgi,
+      draft_note:    draftNote,
     }).eq('id', editModal.ev.id);
     setSavingEdit(false);
     if (error) { toast.error(error.message); return; }
@@ -804,11 +846,12 @@ export function ScheduleDailyPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 dark:bg-slate-800 rounded-xl p-1 w-fit">
+      <div className="flex gap-1 bg-gray-100 dark:bg-slate-800 rounded-xl p-1 w-fit flex-wrap">
         {[
           { key: 'jadwal', label: '📅 Jadwal' },
           { key: 'optin',  label: `👥 Opt-in ${MONTHS[nextMonth-1]}` +
             (optinStats.belumIsi > 0 ? ` (${optinStats.belumIsi} belum)` : '') },
+          { key: 'ketersediaan', label: '📋 Ketersediaan PIC (Solo)' },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${tab===t.key?'bg-white dark:bg-slate-900 text-brand-800 dark:text-amber-400 shadow-sm':'text-gray-500 dark:text-slate-400'}`}>
@@ -886,6 +929,7 @@ export function ScheduleDailyPage() {
                       const asgns = ev.assignments || [];
                       const d     = new Date(ev.tanggal_tugas + 'T00:00:00');
                       const rs    = Math.max(asgns.length, 1);
+                      const romoInfo = parseRomoFromNote(ev.draft_note);
                       const statusBadge = ev.is_draft
                         ? <span className="badge-yellow text-xs">Draft</span>
                         : <span className="badge-green text-xs">Published</span>;
@@ -920,12 +964,30 @@ export function ScheduleDailyPage() {
                         </td>
                       );
 
+                      const perayaanCell = (
+                        <td rowSpan={rs} className="text-xs">
+                          <div className="space-y-1">
+                            <div className="font-medium">{ev.perayaan || '—'}</div>
+                            {romoInfo.nama && (
+                              <div className="inline-flex items-center gap-1.5 bg-amber-100/90 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 rounded-full px-2 py-0.5 text-[10px] font-bold shadow-2xs">
+                                {romoInfo.foto ? (
+                                  <img src={romoInfo.foto} alt="Romo" className="w-3.5 h-3.5 rounded-full object-cover shrink-0" />
+                                ) : (
+                                  <span>✝️</span>
+                                )}
+                                <span>{romoInfo.nama}</span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      );
+
                       if (!asgns.length) return (
                         <tr key={ev.id} className={lc.bg}>
                           <td className={`font-bold ${lc.text}`}>{formatDate(ev.tanggal_tugas,'dd')}</td>
                           <td>{HARI[d.getDay()]}</td>
                           <td><div className="flex items-center gap-1"><div className={`w-3 h-3 rounded-full ${lc.dot}`}/><span className="text-xs">{ev.warna_liturgi}</span></div></td>
-                          <td className="text-xs">{ev.perayaan||'—'}</td>
+                          {perayaanCell}
                           {picCell}
                           <td className="text-orange-400 text-xs italic">Kosong</td>
                           <td>—</td>
@@ -939,10 +1001,21 @@ export function ScheduleDailyPage() {
                             <td rowSpan={rs} className={`font-bold ${lc.text}`}>{formatDate(ev.tanggal_tugas,'dd')}</td>
                             <td rowSpan={rs}>{HARI[d.getDay()]}</td>
                             <td rowSpan={rs}><div className="flex items-center gap-1"><div className={`w-3 h-3 rounded-full ${lc.dot}`}/><span className="text-xs">{ev.warna_liturgi}</span></div></td>
-                            <td rowSpan={rs} className="text-xs">{ev.perayaan||'—'}</td>
+                            {perayaanCell}
                             {picCell}
                           </>}
-                          <td className="font-semibold text-sm text-gray-900 dark:text-slate-100">{a.users?.nama_panggilan||'—'}</td>
+                          <td className="py-2">
+                            <div className="flex items-center gap-2">
+                              {a.users?.foto_url ? (
+                                <img src={a.users.foto_url} alt={a.users.nama_panggilan || 'Petugas'} className="w-6 h-6 rounded-full object-cover border border-white dark:border-slate-700 shadow-xs shrink-0" />
+                              ) : (
+                                <div className="w-6 h-6 rounded-full bg-brand-100 dark:bg-slate-700 text-brand-800 dark:text-amber-400 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                  {(a.users?.nama_panggilan || '?').slice(0, 2).toUpperCase()}
+                                </div>
+                              )}
+                              <span className="font-semibold text-sm text-gray-900 dark:text-slate-100">{a.users?.nama_panggilan || '—'}</span>
+                            </div>
+                          </td>
                           <td className="text-xs text-gray-500 dark:text-slate-400">{a.users?.lingkungan||'—'}</td>
                           {i===0 && <td rowSpan={rs}>{statusBadge}</td>}
                           {i===0 && actionCell}
@@ -955,6 +1028,159 @@ export function ScheduleDailyPage() {
             </div>
           </div>
         </>
+      )}
+
+      {/* ─── TAB KETERSEDIAAN PIC (CHECKLIST) ─── */}
+      {tab === 'ketersediaan' && (
+        <div className="space-y-5">
+          <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/20 rounded-2xl p-5">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 text-amber-800 dark:text-amber-300 flex items-center justify-center shrink-0">
+                <CheckCircle size={20} />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-bold text-gray-900 dark:text-white text-base">Checklist Ketersediaan PIC Mingguan</h3>
+                <p className="text-xs text-gray-600 dark:text-slate-300 mt-1 leading-relaxed">
+                  Fitur ini memudahkan anggota (khususnya yang bersekolah/kuliah di Solo atau luar kota) untuk menandai pekan mana saja yang bisa bertugas sebagai PIC Misa Harian / Mingguan di bulan <strong>{MONTHS[month-1]} {year}</strong>.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick self-check card for logged-in user */}
+          {profile && (
+            <div className="card border border-brand-800/20 bg-brand-50/40 dark:bg-slate-800/60 p-4 space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h4 className="font-bold text-sm text-gray-900 dark:text-white flex items-center gap-2">
+                    <span>{profile.nama_panggilan}</span>
+                    <span className="text-xs font-normal text-gray-500 dark:text-slate-400">({profile.lingkungan})</span>
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">Atur ketersediaan Anda per pekan di bulan ini:</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+                {[1, 2, 3, 4, 5].map(wk => {
+                  const currentSt = (picWeeklyAvail[profile.id] || {})[wk] || 'Bisa';
+                  return (
+                    <div key={wk} className="p-2 bg-white dark:bg-slate-900 rounded-xl border border-gray-200 dark:border-slate-700 flex flex-col gap-1.5">
+                      <span className="text-xs font-bold text-gray-700 dark:text-slate-200">Pekan {wk}</span>
+                      <select
+                        value={currentSt}
+                        onChange={e => savePicAvailability(profile.id, wk, e.target.value)}
+                        className={`text-xs font-semibold rounded-lg px-2 py-1 border transition-colors ${
+                          currentSt === 'Bisa' ? 'bg-green-50 text-green-800 border-green-300' :
+                          currentSt === 'Solo' ? 'bg-red-50 text-red-800 border-red-300' :
+                          currentSt === 'Weekend' ? 'bg-amber-50 text-amber-800 border-amber-300' :
+                          'bg-gray-50 text-gray-700 border-gray-300'
+                        }`}
+                      >
+                        <option value="Bisa">🟢 Bisa PIC</option>
+                        <option value="Weekend">🟡 Weekend Only</option>
+                        <option value="Solo">🔴 Di Solo (Off)</option>
+                        <option value="Libur">🏖️ Libur</option>
+                      </select>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Matrix table of all PIC officers */}
+          <div className="card overflow-hidden p-0">
+            <div className="p-4 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h4 className="font-bold text-gray-900 dark:text-white text-sm">Matriks Ketersediaan PIC ({MONTHS[month-1]} {year})</h4>
+                <p className="text-xs text-gray-400">Daftar PIC & Pengurus beserta status pekan yang bisa bertugas</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-gray-500 dark:text-slate-400">Filter Pekan:</span>
+                <select
+                  value={availWeekFilter}
+                  onChange={e => setAvailWeekFilter(Number(e.target.value))}
+                  className="input text-xs py-1"
+                >
+                  <option value={0}>Semua Pekan</option>
+                  {[1, 2, 3, 4, 5].map(w => (
+                    <option key={w} value={w}>Hanya yang Bisa Pekan {w}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>Nama PIC</th>
+                    <th>Lingkungan</th>
+                    <th>Pekan 1</th>
+                    <th>Pekan 2</th>
+                    <th>Pekan 3</th>
+                    <th>Pekan 4</th>
+                    <th>Pekan 5</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(optinList.length ? optinList : allUsers).filter(u => {
+                    if (!availWeekFilter) return true;
+                    const st = (picWeeklyAvail[u.id] || {})[availWeekFilter] || 'Bisa';
+                    return st === 'Bisa' || st === 'Weekend';
+                  }).map(u => (
+                    <tr key={u.id}>
+                      <td className="font-semibold text-sm text-gray-900 dark:text-slate-100 flex items-center gap-2">
+                        {u.foto_url ? (
+                          <img src={u.foto_url} alt={u.nama_panggilan} className="w-6 h-6 rounded-full object-cover shrink-0" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-brand-100 dark:bg-slate-700 text-brand-800 dark:text-amber-400 font-bold text-[10px] flex items-center justify-center shrink-0">
+                            {(u.nama_panggilan || '?').slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <span>{u.nama_panggilan}</span>
+                      </td>
+                      <td className="text-xs text-gray-500 dark:text-slate-400">{u.lingkungan || '—'}</td>
+                      {[1, 2, 3, 4, 5].map(wk => {
+                        const st = (picWeeklyAvail[u.id] || {})[wk] || 'Bisa';
+                        return (
+                          <td key={wk} className="text-xs">
+                            {isPengurus ? (
+                              <select
+                                value={st}
+                                onChange={e => savePicAvailability(u.id, wk, e.target.value)}
+                                className={`text-[11px] font-medium rounded px-1.5 py-0.5 border ${
+                                  st === 'Bisa' ? 'bg-green-50 text-green-800 border-green-200' :
+                                  st === 'Solo' ? 'bg-red-50 text-red-800 border-red-200' :
+                                  st === 'Weekend' ? 'bg-amber-50 text-amber-800 border-amber-200' :
+                                  'bg-gray-50 text-gray-700 border-gray-200'
+                                }`}
+                              >
+                                <option value="Bisa">🟢 Bisa</option>
+                                <option value="Weekend">🟡 Weekend</option>
+                                <option value="Solo">🔴 Solo</option>
+                                <option value="Libur">🏖️ Libur</option>
+                              </select>
+                            ) : (
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                st === 'Bisa' ? 'bg-green-100 text-green-800' :
+                                st === 'Solo' ? 'bg-red-100 text-red-800' :
+                                st === 'Weekend' ? 'bg-amber-100 text-amber-800' :
+                                'bg-gray-100 text-gray-700'
+                              }`}>
+                                {st === 'Bisa' ? '🟢 Bisa' : st === 'Solo' ? '🔴 Solo' : st === 'Weekend' ? '🟡 Weekend' : '🏖️ Libur'}
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ─── PNG Export Modal ─── */}
@@ -1048,6 +1274,37 @@ export function ScheduleDailyPage() {
                   })}
                 </div>
               </div>
+              {/* Romo Selebran */}
+              <div className="p-3 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl space-y-2">
+                <label className="label text-amber-900 dark:text-amber-300 font-bold flex items-center gap-1.5">
+                  <span>✝️ Romo Selebran</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <input
+                    className="input text-xs"
+                    value={editFields.romo_nama}
+                    onChange={e => setEditFields(f => ({ ...f, romo_nama: e.target.value }))}
+                    placeholder="Nama Romo (cth: Romo Yohanes, Pr)"
+                  />
+                  <input
+                    className="input text-xs"
+                    value={editFields.romo_foto_url}
+                    onChange={e => setEditFields(f => ({ ...f, romo_foto_url: e.target.value }))}
+                    placeholder="URL Foto Romo (opsional)"
+                  />
+                </div>
+                {editFields.romo_nama && (
+                  <div className="flex items-center gap-2 pt-1">
+                    {editFields.romo_foto_url ? (
+                      <img src={editFields.romo_foto_url} alt="Preview Romo" className="w-7 h-7 rounded-full object-cover border border-amber-300 shadow-xs" />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full bg-amber-200 text-amber-900 text-xs font-bold flex items-center justify-center">✝️</div>
+                    )}
+                    <span className="text-xs font-semibold text-amber-950 dark:text-amber-200">{editFields.romo_nama}</span>
+                  </div>
+                )}
+              </div>
+
               {/* Petugas */}
               <div>
                 <label className="label">Petugas ({editModal.assignments.length})</label>
@@ -1056,10 +1313,19 @@ export function ScheduleDailyPage() {
                     <p className="text-sm text-gray-400 italic">Belum ada petugas</p>
                   )}
                   {editModal.assignments.map((a: any) => (
-                    <div key={a.user_id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
-                      <div>
-                        <span className="text-sm font-medium">{a.users?.nama_panggilan || a.user_id}</span>
-                        {a.users?.lingkungan && <span className="text-xs text-gray-400 ml-2">· {a.users.lingkungan}</span>}
+                    <div key={a.user_id} className="flex items-center justify-between bg-gray-50 dark:bg-slate-800/80 rounded-lg px-3 py-2">
+                      <div className="flex items-center gap-2">
+                        {a.users?.foto_url ? (
+                          <img src={a.users.foto_url} alt={a.users.nama_panggilan || 'Petugas'} className="w-6 h-6 rounded-full object-cover border border-gray-200 shrink-0" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-brand-100 dark:bg-slate-700 text-brand-800 dark:text-amber-400 font-bold text-[10px] flex items-center justify-center shrink-0">
+                            {(a.users?.nama_panggilan || '?').slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <span className="text-sm font-medium">{a.users?.nama_panggilan || a.user_id}</span>
+                          {a.users?.lingkungan && <span className="text-xs text-gray-400 ml-2">· {a.users.lingkungan}</span>}
+                        </div>
                       </div>
                       <button onClick={() => removeAssignment(a.user_id)} className="p-1 text-red-400 hover:text-red-600 rounded">
                         <X size={14}/>
