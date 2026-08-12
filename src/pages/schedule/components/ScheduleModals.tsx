@@ -155,30 +155,30 @@ function EditPetugasSection({ ev, onSaved }: { ev: any, onSaved: () => void }) {
               </div>
             )}
             {isOpen && (
-              <div className="mt-1 border border-gray-200 rounded-xl overflow-hidden shadow-lg bg-white z-20 relative">
-                <div className="p-2 border-b border-gray-100">
+              <div className="mt-1 border border-gray-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-lg bg-white dark:bg-slate-900 z-20 relative">
+                <div className="p-2 border-b border-gray-100 dark:border-slate-800">
                   <input autoFocus type="text" className="input text-sm py-1.5" placeholder="Cari nama, lingkungan…"
                     value={search[slot] || ''} onChange={e => setSearch((p:any) => ({...p, [slot]: e.target.value}))} />
                 </div>
                 <div className="max-h-52 overflow-y-auto">
-                  {filtered.length === 0 && <p className="text-xs text-gray-400 text-center py-3">Tidak ditemukan</p>}
+                  {filtered.length === 0 && <p className="text-xs text-gray-400 dark:text-slate-500 text-center py-3">Tidak ditemukan</p>}
                   {filtered.map(m => {
                     const isSel = selected.includes(m.id);
                     return (
                       <button key={m.id} type="button" onClick={() => toggleMember(slot, m.id)}
-                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 ${isSel ? 'bg-green-50' : ''}`}>
-                        <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSel ? 'bg-green-500 border-green-500' : 'border-gray-300'}`}>
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-slate-800 transition-colors border-b border-gray-50 dark:border-slate-800/60 last:border-0 ${isSel ? 'bg-green-50 dark:bg-green-950/40' : ''}`}>
+                        <span className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${isSel ? 'bg-green-500 border-green-500' : 'border-gray-300 dark:border-slate-700'}`}>
                           {isSel && <Check size={10} className="text-white"/>}
                         </span>
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-medium text-gray-800 truncate">{m.nama_panggilan}</p>
-                          <p className="text-[10px] text-gray-400">{m.pendidikan} · {m.lingkungan}</p>
+                          <p className="text-xs font-medium text-gray-800 dark:text-slate-100 truncate">{m.nama_panggilan}</p>
+                          <p className="text-[10px] text-gray-400 dark:text-slate-400">{m.pendidikan} · {m.lingkungan}</p>
                         </div>
                       </button>
                     );
                   })}
                 </div>
-                <div className="p-2 border-t border-gray-100">
+                <div className="p-2 border-t border-gray-100 dark:border-slate-800">
                   <button type="button" onClick={() => setOpen((p:any) => ({...p, [slot]: false}))}
                     className="btn-outline btn-sm w-full text-xs">Tutup</button>
                 </div>

@@ -142,12 +142,12 @@ export default function DirectoryPage() {
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Direktori Anggota</h1>
-          <p className="text-sm text-gray-500">Data lengkap semua anggota — akses terbatas Admin & Pengurus</p>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">Direktori Anggota</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400">Data lengkap semua anggota — akses terbatas Admin & Pengurus</p>
         </div>
         <div className="flex gap-2 flex-wrap">
           <button onClick={load} disabled={loading}
-            className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors" title="Refresh">
+            className="p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors" title="Refresh">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
           {isPengurus && (
@@ -156,7 +156,7 @@ export default function DirectoryPage() {
               className={`inline-flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg font-medium transition-colors ${
                 sendPasswordMode
                   ? 'bg-green-600 hover:bg-green-700 text-white'
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  : 'bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200'
               }`}
               title="Mode kirim pesan onboarding + password ke anggota via WA">
               <MessageCircle size={15}/>
@@ -173,7 +173,7 @@ export default function DirectoryPage() {
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
         <div className="relative flex-1 min-w-[200px]">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
           <input
             className="input pl-9 text-sm w-full"
             placeholder="Cari nama, lingkungan, HP..."
@@ -185,7 +185,7 @@ export default function DirectoryPage() {
           {statuses.map(s => (
             <button key={s} onClick={() => setStatusF(s)}
               className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                statusF === s ? 'bg-brand-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                statusF === s ? 'bg-brand-800 text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300 hover:bg-gray-200 dark:hover:bg-slate-700'
               }`}>
               {s.replace('_', ' ')}
             </button>
@@ -194,48 +194,33 @@ export default function DirectoryPage() {
       </div>
 
       {sendPasswordMode && (
-        <div className="bg-green-50 border border-green-200 rounded-xl p-3 flex items-center gap-3">
-          <MessageCircle size={16} className="text-green-600 flex-shrink-0"/>
+        <div className="bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800/60 rounded-xl p-3 flex items-center gap-3">
+          <MessageCircle size={16} className="text-green-600 dark:text-green-400 flex-shrink-0"/>
           <div className="flex-1">
-            <p className="text-sm font-semibold text-green-800">Mode Kirim Password Aktif</p>
-            <p className="text-xs text-green-600">
-              Setiap baris menampilkan tombol WA untuk kirim pesan onboarding ke anak dan/atau ortu.
-              Ganti <code className="bg-green-100 px-1 rounded">[password]</code> di WA sebelum kirim.
-            </p>
+            <p className="text-sm font-semibold text-green-800 dark:text-green-200">Mode Kirim Password Aktif</p>
+            <p className="text-xs text-green-700 dark:text-green-300">Klik tombol "Ortu" atau "Anak" di baris anggota untuk membuka WA dengan format pesan lengkap (username &amp; password sementara).</p>
           </div>
-          <button onClick={() => setSendPasswordMode(false)} className="text-green-600 hover:text-green-800 text-xs font-medium underline flex-shrink-0">
-            Matikan
-          </button>
-        </div>
-      )}
-
-      <p className="text-xs text-gray-400">{filtered.length} anggota</p>
-
-      {/* Loading */}
-      {loading && (
-        <div className="flex justify-center py-12 text-gray-400">
-          <RefreshCw size={20} className="animate-spin mr-2" /> Memuat...
         </div>
       )}
 
       {/* Table */}
       {!loading && (
-        <div className="rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
+        <div className="rounded-2xl border border-gray-200 dark:border-slate-800 overflow-hidden shadow-sm bg-white dark:bg-slate-900">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 border-b border-gray-200 sticky top-0 z-10">
-                <tr className="text-xs text-gray-500 uppercase tracking-wide text-left">
+              <thead className="bg-gray-50 dark:bg-slate-800/90 border-b border-gray-200 dark:border-slate-800 sticky top-0 z-10">
+                <tr className="text-xs text-gray-500 dark:text-slate-400 uppercase tracking-wide text-left">
                   <th className="px-4 py-3 font-medium">Nama</th>
                   <th className="px-4 py-3 font-medium">Lingkungan</th>
                   <th className="px-4 py-3 font-medium">Tgl Lahir</th>
                   <th className="px-4 py-3 font-medium">HP Anak</th>
                   <th className="px-4 py-3 font-medium">HP Ortu</th>
                   <th className="px-4 py-3 font-medium">Status</th>
-                  {sendPasswordMode && <th className="px-4 py-3 font-medium text-green-700">Kirim WA</th>}
+                  {sendPasswordMode && <th className="px-4 py-3 font-medium text-green-700 dark:text-green-400">Kirim WA</th>}
                   <th className="px-4 py-3 font-medium w-8"></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100">
+              <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                 {pg.paged.map(m => {
                   const isOpen = expanded === m.id;
                   const umur = age(m.tanggal_lahir);
@@ -243,19 +228,19 @@ export default function DirectoryPage() {
                     <React.Fragment key={m.id}>
                       <tr
                         onClick={() => setExpanded(isOpen ? null : m.id)}
-                        className="cursor-pointer hover:bg-blue-50/30 transition-colors bg-white"
+                        className="cursor-pointer hover:bg-blue-50/30 dark:hover:bg-slate-800/50 transition-colors bg-white dark:bg-slate-900"
                       >
                         <td className="px-4 py-3">
-                          <p className="font-medium text-gray-800">{m.nama_panggilan || m.nickname}</p>
-                          <p className="text-xs text-gray-400">{m.nama_lengkap}</p>
+                          <p className="font-medium text-gray-800 dark:text-slate-100">{m.nama_panggilan || m.nickname}</p>
+                          <p className="text-xs text-gray-400 dark:text-slate-400">{m.nama_lengkap}</p>
                         </td>
-                        <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                          {m.lingkungan || <span className="text-gray-300 italic">—</span>}
+                        <td className="px-4 py-3 text-gray-600 dark:text-slate-300 whitespace-nowrap">
+                          {m.lingkungan || <span className="text-gray-300 dark:text-slate-600 italic">—</span>}
                         </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                        <td className="px-4 py-3 whitespace-nowrap text-gray-600 dark:text-slate-300">
                           {m.tanggal_lahir ? (
-                            <span>{formatTgl(m.tanggal_lahir)}{umur ? <span className="text-xs text-gray-400 ml-1">({umur}th)</span> : null}</span>
-                          ) : <span className="text-gray-300 italic">—</span>}
+                            <span>{formatTgl(m.tanggal_lahir)}{umur ? <span className="text-xs text-gray-400 dark:text-slate-400 ml-1">({umur}th)</span> : null}</span>
+                          ) : <span className="text-gray-300 dark:text-slate-600 italic">—</span>}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           {m.hp_anak ? (

@@ -343,22 +343,22 @@ export default function CardsPage() {
         {isPengurus && (
           <div className="card space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-700 text-sm">Pilih Anggota Export</h3>
+              <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm">Pilih Anggota Export</h3>
               <button
                 onClick={() => setSelectedIds(toggleSelectAll(selectedIds, members.map(m => m.id)))}
-                className="text-xs font-semibold text-brand-800 hover:text-brand-900 flex items-center gap-1 hover:underline">
+                className="text-xs font-semibold text-brand-800 dark:text-amber-400 hover:text-brand-900 dark:hover:text-amber-300 flex items-center gap-1 hover:underline">
                 {isAllSelected ? <CheckSquare size={13}/> : <Square size={13}/>}
                 {isAllSelected ? 'Batal Semua' : 'Pilih Semua'}
               </button>
             </div>
 
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"/>
               <input className="input pl-8 text-sm" placeholder="Cari nama..."
                 value={search} onChange={e => setSearch(e.target.value)}/>
             </div>
 
-            <div className="text-xs text-gray-400 font-medium px-1 flex justify-between">
+            <div className="text-xs text-gray-400 dark:text-slate-400 font-medium px-1 flex justify-between">
               <span>{selectedIds.size} dari {members.length} anggota terpilih</span>
               {search && <span>({filtered.length} cocok)</span>}
             </div>
@@ -372,8 +372,8 @@ export default function CardsPage() {
                     key={m.id}
                     className={`flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-all duration-150 border ${
                       isCurrent
-                        ? 'bg-brand-50 border-brand-200 text-brand-950 font-medium shadow-xs'
-                        : 'bg-white border-transparent hover:bg-gray-50 text-gray-700'
+                        ? 'bg-brand-50 dark:bg-slate-800 border-brand-200 dark:border-slate-700 text-brand-950 dark:text-amber-300 font-medium shadow-xs'
+                        : 'bg-white dark:bg-slate-900 border-transparent hover:bg-gray-50 dark:hover:bg-slate-800 text-gray-700 dark:text-slate-200'
                     }`}>
                     <button
                       type="button"
@@ -381,11 +381,11 @@ export default function CardsPage() {
                         e.stopPropagation();
                         setSelectedIds(prev => toggleSelectMember(prev, m.id));
                       }}
-                      className="text-brand-800 hover:scale-110 transition-transform shrink-0"
+                      className="text-brand-800 dark:text-amber-400 hover:scale-110 transition-transform shrink-0"
                       title={isChecked ? 'Hapus centang' : 'Centang untuk export'}>
                       {isChecked
-                        ? <CheckSquare size={17} className="text-brand-800 fill-brand-100"/>
-                        : <Square size={17} className="text-gray-300"/>
+                        ? <CheckSquare size={17} className="text-brand-800 dark:text-amber-400 fill-brand-100 dark:fill-slate-800"/>
+                        : <Square size={17} className="text-gray-300 dark:text-slate-600"/>
                       }
                     </button>
 
@@ -393,7 +393,7 @@ export default function CardsPage() {
                       type="button"
                       onClick={() => setSelected(m)}
                       className="flex-1 text-left min-w-0">
-                      <div className="font-medium truncate flex items-center gap-1.5">
+                      <div className="font-medium truncate flex items-center gap-1.5 text-gray-900 dark:text-slate-100">
                         <span className="truncate">{titleCase(m.nama_panggilan)}</span>
                         {m.status === 'Pending' && (
                           <span className="text-[10px] px-1.5 py-0.5 bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 rounded font-semibold shrink-0">
@@ -401,7 +401,7 @@ export default function CardsPage() {
                           </span>
                         )}
                       </div>
-                      <div className="text-xs text-gray-400 truncate">
+                      <div className="text-xs text-gray-400 dark:text-slate-400 truncate">
                         @{m.nickname} · {m.lingkungan}
                       </div>
                     </button>

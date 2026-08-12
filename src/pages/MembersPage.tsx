@@ -511,10 +511,10 @@ export default function MembersPage() {
 
           {/* Count info */}
           {!loading && (
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+            <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-slate-400">
               <Users size={15} />
               <span>
-                <strong className="text-gray-800">{filtered.length}</strong> anggota
+                <strong className="text-gray-800 dark:text-slate-100">{filtered.length}</strong> anggota
                 {search && ` (filter: "${search}")`}
               </span>
             </div>
@@ -547,14 +547,14 @@ export default function MembersPage() {
                   ) : filtered.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="text-center py-10">
-                        <Users size={40} className="mx-auto text-gray-200 mb-2" />
-                        <p className="text-gray-400 text-sm">
+                        <Users size={40} className="mx-auto text-gray-200 dark:text-slate-600 mb-2" />
+                        <p className="text-gray-400 dark:text-slate-400 text-sm">
                           {search ? `Tidak ada hasil untuk "${search}"` : 'Belum ada anggota'}
                         </p>
                         {!search && tab === 'active' && (
-                          <p className="text-xs text-gray-400 mt-1">
+                          <p className="text-xs text-gray-400 dark:text-slate-400 mt-1">
                             Coba tab <button onClick={() => setTab('all')}
-                              className="text-brand-800 underline">Semua</button> untuk lihat semua data
+                              className="text-brand-800 dark:text-amber-400 underline">Semua</button> untuk lihat semua data
                           </p>
                         )}
                       </td>
@@ -563,14 +563,14 @@ export default function MembersPage() {
                     <tr key={m.id}>
                       <td>
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 bg-brand-100 rounded-full flex items-center justify-center text-brand-800 font-bold text-xs flex-shrink-0">
+                          <div className="w-7 h-7 bg-brand-100 dark:bg-slate-800 rounded-full flex items-center justify-center text-brand-800 dark:text-amber-400 font-bold text-xs flex-shrink-0">
                             {(m.nama_panggilan || m.nickname || '?')[0].toUpperCase()}
                           </div>
                           <div>
-                            <div className="font-semibold text-gray-900 text-sm">
+                            <div className="font-semibold text-gray-900 dark:text-slate-100 text-sm">
                               {m.nama_panggilan || m.nickname}
                             </div>
-                            <div className="text-xs text-gray-400">@{m.nickname}</div>
+                            <div className="text-xs text-gray-400 dark:text-slate-400">@{m.nickname}</div>
                           </div>
                           {m.is_tarakanita && (
                             <span className="badge-blue text-[10px]">T</span>
@@ -578,14 +578,14 @@ export default function MembersPage() {
                         </div>
                       </td>
                       <td>
-                        <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded font-mono text-gray-700">
+                        <code className="text-xs bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono text-gray-700 dark:text-slate-200">
                           {m.myid || '—'}
                         </code>
                       </td>
                       <td>
                         <span className="badge-gray">{m.pendidikan || '—'}</span>
                       </td>
-                      <td className="text-gray-600 text-sm">{m.lingkungan || '—'}</td>
+                      <td className="text-gray-600 dark:text-slate-300 text-sm">{m.lingkungan || '—'}</td>
                       <td className="text-center">
                         {reregSet.has(m.id)
                           ? <span className="badge-green text-xs">✅ Sudah</span>
