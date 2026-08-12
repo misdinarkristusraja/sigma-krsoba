@@ -155,12 +155,12 @@ export function truncate(str: string | null | undefined, len = 30): string {
 
 // ── Liturgy color mapping ─────────────────────────────────
 export const LITURGY_COLORS: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-  Hijau:     { bg: 'bg-green-50',  text: 'text-green-800',  dot: 'bg-green-600',  label: 'Hijau'      },
-  Merah:     { bg: 'bg-red-50',    text: 'text-red-800',    dot: 'bg-red-600',    label: 'Merah'      },
-  Putih:     { bg: 'bg-amber-50',  text: 'text-amber-800',  dot: 'bg-amber-400',  label: 'Putih'      },
-  Ungu:      { bg: 'bg-purple-50', text: 'text-purple-800', dot: 'bg-purple-600', label: 'Ungu'       },
-  MerahMuda: { bg: 'bg-pink-50',   text: 'text-pink-800',   dot: 'bg-pink-500',   label: 'Merah Muda' },
-  Hitam:     { bg: 'bg-gray-100',  text: 'text-gray-800',   dot: 'bg-gray-700',   label: 'Hitam'      },
+  Hijau:     { bg: 'bg-green-50/80 dark:bg-emerald-950/40',  text: 'text-emerald-950 dark:text-emerald-200',  dot: 'bg-green-600 dark:bg-emerald-400',  label: 'Hijau'      },
+  Merah:     { bg: 'bg-red-50/80 dark:bg-red-950/40',        text: 'text-red-950 dark:text-red-200',        dot: 'bg-red-600 dark:bg-red-400',        label: 'Merah'      },
+  Putih:     { bg: 'bg-amber-50/80 dark:bg-amber-950/40',    text: 'text-amber-950 dark:text-amber-200',    dot: 'bg-amber-500 dark:bg-amber-400',    label: 'Putih'      },
+  Ungu:      { bg: 'bg-purple-50/80 dark:bg-purple-950/40',  text: 'text-purple-950 dark:text-purple-200',  dot: 'bg-purple-600 dark:bg-purple-400', label: 'Ungu'       },
+  MerahMuda: { bg: 'bg-pink-50/80 dark:bg-pink-950/40',      text: 'text-pink-950 dark:text-pink-200',      dot: 'bg-pink-500 dark:bg-pink-400',      label: 'Merah Muda' },
+  Hitam:     { bg: 'bg-gray-100 dark:bg-slate-800/80',    text: 'text-gray-900 dark:text-slate-100',    dot: 'bg-gray-700 dark:bg-slate-400',    label: 'Hitam'      },
 };
 
 export function getLiturgyClass(color: string | null | undefined) {

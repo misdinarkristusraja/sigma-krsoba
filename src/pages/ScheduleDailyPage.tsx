@@ -968,16 +968,16 @@ export function ScheduleDailyPage() {
                           {pic ? (
                             pic.hp
                               ? <a href={`https://wa.me/${pic.hp.replace(/\D/g,'')}`} target="_blank" rel="noreferrer"
-                                  className="text-green-700 dark:text-green-400 hover:underline font-medium">{pic.nama}</a>
-                              : <span className="font-medium text-gray-700 dark:text-slate-200">{pic.nama}</span>
-                          ) : <span className="text-gray-300 dark:text-slate-600 italic">—</span>}
+                                  className="text-emerald-700 dark:text-emerald-300 font-bold hover:underline">{pic.nama}</a>
+                              : <span className={`font-bold ${lc.text}`}>{pic.nama}</span>
+                          ) : <span className="text-gray-400 dark:text-slate-500 italic">—</span>}
                         </td>
                       );
 
                       const perayaanCell = (
                         <td rowSpan={rs} className="text-xs">
                           <div className="space-y-1">
-                            <div className="font-medium">{ev.perayaan || '—'}</div>
+                            <div className={`font-semibold ${lc.text}`}>{ev.perayaan || '—'}</div>
                             {romoInfo.nama && (
                               <div className="inline-flex items-center gap-1.5 bg-amber-100/90 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 border border-amber-300 dark:border-amber-700/60 rounded-full px-2 py-0.5 text-[10px] font-bold shadow-2xs">
                                 {romoInfo.foto ? (
@@ -995,12 +995,12 @@ export function ScheduleDailyPage() {
                       if (!asgns.length) return (
                         <tr key={ev.id} className={lc.bg}>
                           <td className={`font-bold ${lc.text}`}>{formatDate(ev.tanggal_tugas,'dd')}</td>
-                          <td>{HARI[d.getDay()]}</td>
-                          <td><div className="flex items-center gap-1"><div className={`w-3 h-3 rounded-full ${lc.dot}`}/><span className="text-xs">{ev.warna_liturgi}</span></div></td>
+                          <td className={`text-xs ${lc.text}`}>{HARI[d.getDay()]}</td>
+                          <td className={`text-xs ${lc.text}`}><div className="flex items-center gap-1"><div className={`w-3 h-3 rounded-full ${lc.dot}`}/><span className="text-xs">{ev.warna_liturgi}</span></div></td>
                           {perayaanCell}
                           {picCell}
                           <td className="text-orange-400 text-xs italic">Kosong</td>
-                          <td>—</td>
+                          <td className={`text-xs ${lc.text}`}>—</td>
                           <td>{statusBadge}</td>
                           {actionCell}
                         </tr>
@@ -1009,8 +1009,8 @@ export function ScheduleDailyPage() {
                         <tr key={`${ev.id}-${i}`} className={lc.bg}>
                           {i===0 && <>
                             <td rowSpan={rs} className={`font-bold ${lc.text}`}>{formatDate(ev.tanggal_tugas,'dd')}</td>
-                            <td rowSpan={rs}>{HARI[d.getDay()]}</td>
-                            <td rowSpan={rs}><div className="flex items-center gap-1"><div className={`w-3 h-3 rounded-full ${lc.dot}`}/><span className="text-xs">{ev.warna_liturgi}</span></div></td>
+                            <td rowSpan={rs} className={`text-xs ${lc.text}`}>{HARI[d.getDay()]}</td>
+                            <td rowSpan={rs} className={`text-xs ${lc.text}`}><div className="flex items-center gap-1"><div className={`w-3 h-3 rounded-full ${lc.dot}`}/><span className="text-xs">{ev.warna_liturgi}</span></div></td>
                             {perayaanCell}
                             {picCell}
                           </>}
@@ -1019,14 +1019,14 @@ export function ScheduleDailyPage() {
                               {a.users?.foto_url ? (
                                 <img src={a.users.foto_url} alt={a.users.nama_panggilan || 'Petugas'} className="w-6 h-6 rounded-full object-cover border border-white dark:border-slate-700 shadow-xs shrink-0" />
                               ) : (
-                                <div className="w-6 h-6 rounded-full bg-brand-100 dark:bg-slate-700 text-brand-800 dark:text-amber-400 font-bold text-[10px] flex items-center justify-center shrink-0">
+                                <div className="w-6 h-6 rounded-full bg-brand-800 text-white font-bold text-[10px] flex items-center justify-center shrink-0">
                                   {(a.users?.nama_panggilan || '?').slice(0, 2).toUpperCase()}
                                 </div>
                               )}
-                              <span className="font-semibold text-sm text-gray-900 dark:text-slate-100">{a.users?.nama_panggilan || '—'}</span>
+                              <span className={`font-semibold text-sm ${lc.text}`}>{a.users?.nama_panggilan || '—'}</span>
                             </div>
                           </td>
-                          <td className="text-xs text-gray-500 dark:text-slate-400">{a.users?.lingkungan||'—'}</td>
+                          <td className={`text-xs ${lc.text} opacity-85`}>{a.users?.lingkungan||'—'}</td>
                           {i===0 && <td rowSpan={rs}>{statusBadge}</td>}
                           {i===0 && actionCell}
                         </tr>
