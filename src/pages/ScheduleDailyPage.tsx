@@ -1241,14 +1241,14 @@ export function ScheduleDailyPage() {
 
       {/* ─── Edit Modal ─── */}
       {editModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+        <div className="modal-overlay">
+          <div className="modal-card w-full max-w-md max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-slate-800">
               <div>
-                <h3 className="font-bold text-gray-900">Edit Misa Harian</h3>
-                <p className="text-xs text-gray-400 mt-0.5">{formatDate(editModal.ev.tanggal_tugas, 'EEEE, dd MMMM yyyy')}</p>
+                <h3 className="font-bold text-gray-900 dark:text-white">Edit Misa Harian</h3>
+                <p className="text-xs text-gray-400 dark:text-slate-400 mt-0.5">{formatDate(editModal.ev.tanggal_tugas, 'EEEE, dd MMMM yyyy')}</p>
               </div>
-              <button onClick={() => setEditModal(null)} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400"><X size={18}/></button>
+              <button onClick={() => setEditModal(null)} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-800 text-gray-400 dark:text-slate-400"><X size={18}/></button>
             </div>
             <div className="p-5 space-y-4">
               {/* Perayaan */}
@@ -1273,8 +1273,8 @@ export function ScheduleDailyPage() {
                         onClick={() => setEditFields(f => ({ ...f, warna_liturgi: w }))}
                         className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm transition-all ${
                           editFields.warna_liturgi === w
-                            ? 'border-brand-800 bg-brand-50 font-semibold'
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-brand-800 dark:border-amber-400 bg-brand-50 dark:bg-amber-950/40 text-brand-900 dark:text-amber-300 font-semibold'
+                            : 'border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:border-gray-300 dark:hover:border-slate-600'
                         }`}
                       >
                         <div className={`w-3 h-3 rounded-full flex-shrink-0 ${cls?.dot}`}/>
@@ -1330,21 +1330,21 @@ export function ScheduleDailyPage() {
                 <label className="label">Petugas ({editModal.assignments.length})</label>
                 <div className="space-y-1.5 mb-3">
                   {editModal.assignments.length === 0 && (
-                    <p className="text-sm text-gray-400 italic">Belum ada petugas</p>
+                    <p className="text-sm text-gray-400 dark:text-slate-500 italic">Belum ada petugas</p>
                   )}
                   {editModal.assignments.map((a: any) => (
                     <div key={a.user_id} className="flex items-center justify-between bg-gray-50 dark:bg-slate-800/80 rounded-lg px-3 py-2">
                       <div className="flex items-center gap-2">
                         {a.users?.foto_url ? (
-                          <img src={a.users.foto_url} alt={a.users.nama_panggilan || 'Petugas'} className="w-6 h-6 rounded-full object-cover border border-gray-200 shrink-0" />
+                          <img src={a.users.foto_url} alt={a.users.nama_panggilan || 'Petugas'} className="w-6 h-6 rounded-full object-cover border border-gray-200 dark:border-slate-700 shrink-0" />
                         ) : (
                           <div className="w-6 h-6 rounded-full bg-brand-100 dark:bg-slate-700 text-brand-800 dark:text-amber-400 font-bold text-[10px] flex items-center justify-center shrink-0">
                             {(a.users?.nama_panggilan || '?').slice(0, 2).toUpperCase()}
                           </div>
                         )}
                         <div>
-                          <span className="text-sm font-medium">{a.users?.nama_panggilan || a.user_id}</span>
-                          {a.users?.lingkungan && <span className="text-xs text-gray-400 ml-2">· {a.users.lingkungan}</span>}
+                          <span className="text-sm font-medium text-gray-900 dark:text-slate-100">{a.users?.nama_panggilan || a.user_id}</span>
+                          {a.users?.lingkungan && <span className="text-xs text-gray-400 dark:text-slate-400 ml-2">· {a.users.lingkungan}</span>}
                         </div>
                       </div>
                       <button onClick={() => removeAssignment(a.user_id)} className="p-1 text-red-400 hover:text-red-600 rounded">
@@ -1377,17 +1377,17 @@ export function ScheduleDailyPage() {
               <div>
                 <label className="label">PIC Pengurus</label>
                 {editModal.pic ? (
-                  <div className="flex items-center justify-between bg-blue-50 rounded-lg px-3 py-2 mb-2">
+                  <div className="flex items-center justify-between bg-blue-50 dark:bg-blue-950/50 rounded-lg px-3 py-2 mb-2">
                     <div>
-                      <span className="text-sm font-medium text-blue-800">{editModal.pic.nama}</span>
-                      {editModal.pic.hp && <span className="text-xs text-blue-500 ml-2">· {editModal.pic.hp}</span>}
+                      <span className="text-sm font-medium text-blue-800 dark:text-blue-300">{editModal.pic.nama}</span>
+                      {editModal.pic.hp && <span className="text-xs text-blue-500 dark:text-blue-400 ml-2">· {editModal.pic.hp}</span>}
                     </div>
                     <button onClick={removePIC} className="p-1 text-red-400 hover:text-red-600 rounded">
                       <X size={14}/>
                     </button>
                   </div>
                 ) : (
-                  <p className="text-sm text-gray-400 italic mb-2">Belum ada PIC</p>
+                  <p className="text-sm text-gray-400 dark:text-slate-500 italic mb-2">Belum ada PIC</p>
                 )}
                 <div className="flex gap-2">
                   <select
