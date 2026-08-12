@@ -77,11 +77,21 @@ const OPTIN_LABELS: Record<string, { label: string; color: string; icon: string 
   Pas_Libur:  { label: 'Pas Libur',  color: 'badge-yellow', icon: '🏖️' },
 };
 
+export function convertGoogleDriveUrl(url: string | null | undefined): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  const match = trimmed.match(/\/d\/([a-zA-Z0-9_-]+)/) || trimmed.match(/id=([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return `https://lh3.googleusercontent.com/d/${match[1]}`;
+  }
+  return trimmed;
+}
+
 function parseRomoFromNote(draftNote: string | null): { nama: string; foto: string } {
   if (!draftNote) return { nama: '', foto: '' };
   const m = draftNote.match(/Romo:\s*([^|]*)\|?(.*)/i);
   if (!m) return { nama: draftNote.startsWith('Romo') ? draftNote : '', foto: '' };
-  return { nama: (m[1] || '').trim(), foto: (m[2] || '').trim() };
+  return { nama: (m[1] || '').trim(), foto: convertGoogleDriveUrl((m[2] || '').trim()) };
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -1276,9 +1286,12 @@ export function ScheduleDailyPage() {
               </div>
               {/* Romo Selebran */}
               <div className="p-3 bg-amber-50/60 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl space-y-2">
-                <label className="label text-amber-900 dark:text-amber-300 font-bold flex items-center gap-1.5">
-                  <span>✝️ Romo Selebran</span>
-                </label>
+                <div className="flex items-center justify-between">
+                  <label className="label text-amber-900 dark:text-amber-300 font-bold flex items-center gap-1.5">
+                    <span>✝️ Romo Selebran</span>
+                  </label>
+                  <span className="text-[10px] text-amber-800 dark:text-amber-300 font-medium">✨ Auto-Convert Link Google Drive</span>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <input
                     className="input text-xs"
@@ -1289,12 +1302,19 @@ export function ScheduleDailyPage() {
                   <input
                     className="input text-xs"
                     value={editFields.romo_foto_url}
-                    onChange={e => setEditFields(f => ({ ...f, romo_foto_url: e.target.value }))}
-                    placeholder="URL Foto Romo (opsional)"
+                    onChange={e => {
+                      const val = e.target.value;
+                      const converted = convertGoogleDriveUrl(val);
+                      setEditFields(f => ({ ...f, romo_foto_url: converted }));
+                    }}
+                    placeholder="Link Foto (Google Drive / Web)"
                   />
                 </div>
+                <p className="text-[10px] text-amber-800/80 dark:text-amber-300/80">
+                  💡 <strong>Cara Pakai Google Drive:</strong> Upload foto ke Drive → Klik Bagikan (*Share*) → Ubah akses ke <u>"Siapa saja yang memiliki link"</u> → Co-Pas (*Paste*) link di sini.
+                </p>
                 {editFields.romo_nama && (
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-center gap-2 pt-1 border-t border-amber-200/50 dark:border-amber-900/40">
                     {editFields.romo_foto_url ? (
                       <img src={editFields.romo_foto_url} alt="Preview Romo" className="w-7 h-7 rounded-full object-cover border border-amber-300 shadow-xs" />
                     ) : (
