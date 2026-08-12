@@ -206,7 +206,7 @@ export default function NotificationAdminPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Form Send Broadcast */}
         <div className="lg:col-span-1 card p-5 space-y-4 border border-brand-100 dark:border-slate-800">
-          <div className="flex items-center gap-2 text-brand-800 dark:text-brand-400 font-bold border-b pb-3">
+          <div className="flex items-center gap-2 text-brand-800 dark:text-amber-400 font-bold border-b border-gray-100 dark:border-slate-800 pb-3">
             <Megaphone size={20} />
             <span>Kirim Broadcast Pengumuman</span>
           </div>

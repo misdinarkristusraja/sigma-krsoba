@@ -166,8 +166,8 @@ export default function SakristanPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="font-bold text-gray-900 text-base">Divisi Sakristan &amp; PIC Latihan</h2>
-          <p className="text-xs text-gray-500">Log Presensi Khusus Pengurus &amp; PIC Sakristan berbasis Kamera Watermark (Terpisah dari presensi misdinar).</p>
+          <h2 className="font-bold text-gray-900 dark:text-white text-base">Divisi Sakristan &amp; PIC Latihan</h2>
+          <p className="text-xs text-gray-500 dark:text-slate-400">Log Presensi Khusus Pengurus &amp; PIC Sakristan berbasis Kamera Watermark (Terpisah dari presensi misdinar).</p>
         </div>
 
         <div className="flex gap-2">
@@ -184,8 +184,8 @@ export default function SakristanPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Camera Container */}
           <div className="card p-5 space-y-4">
-            <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-              <Camera size={18} className="text-red-700" /> Presensi Web Camera Live
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
+              <Camera size={18} className="text-red-700 dark:text-red-400" /> Presensi Web Camera Live
             </h3>
 
             <div className="relative bg-gray-900 rounded-2xl overflow-hidden aspect-video flex items-center justify-center border border-gray-800">
@@ -233,13 +233,13 @@ export default function SakristanPage() {
 
           {/* Captured Result Preview & Confirm */}
           <div className="card p-5 space-y-4">
-            <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-              <CheckCircle size={18} className="text-emerald-600" /> Hasil Foto &amp; Watermark
+            <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
+              <CheckCircle size={18} className="text-emerald-600 dark:text-emerald-400" /> Hasil Foto &amp; Watermark
             </h3>
 
             {capturedPhoto ? (
               <div className="space-y-4">
-                <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-md">
+                <div className="rounded-2xl overflow-hidden border border-gray-200 dark:border-slate-800 shadow-md">
                   <img src={capturedPhoto} alt="Watermarked Attendance" className="w-full h-auto" />
                 </div>
                 <div className="flex gap-2">
@@ -252,7 +252,7 @@ export default function SakristanPage() {
                 </div>
               </div>
             ) : (
-              <div className="border border-dashed border-gray-200 rounded-2xl p-10 text-center text-gray-400 space-y-2">
+              <div className="border border-dashed border-gray-200 dark:border-slate-800 rounded-2xl p-10 text-center text-gray-400 dark:text-slate-500 space-y-2">
                 <Camera size={40} className="mx-auto mb-2 opacity-30" />
                 <p className="text-sm">Klik "Ambil Foto" atau "Upload Foto" untuk pratinjau watermark waktu &amp; lokasi.</p>
               </div>
@@ -263,9 +263,9 @@ export default function SakristanPage() {
 
       {tab === 'analytics' && (
         <div className="card p-0 overflow-hidden">
-          <div className="p-4 border-b border-gray-100 font-bold text-gray-900 text-sm flex justify-between items-center">
+          <div className="p-4 border-b border-gray-100 dark:border-slate-800 font-bold text-gray-900 dark:text-white text-sm flex justify-between items-center">
             <span>Riwayat Presensi Pengurus &amp; PIC Sakristan</span>
-            <span className="text-xs text-purple-700 bg-purple-50 px-2.5 py-1 rounded-full font-bold">
+            <span className="text-xs text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/60 px-2.5 py-1 rounded-full font-bold">
               Database Terpisah: pengurus_presence_logs
             </span>
           </div>
@@ -281,13 +281,13 @@ export default function SakristanPage() {
             </thead>
             <tbody>
               {logs.length === 0 ? (
-                <tr><td colSpan={5} className="text-center py-8 text-gray-400">Belum ada riwayat presensi pengurus</td></tr>
+                <tr><td colSpan={5} className="text-center py-8 text-gray-400 dark:text-slate-500">Belum ada riwayat presensi pengurus</td></tr>
               ) : logs.map(l => (
                 <tr key={l.id}>
-                  <td className="text-xs text-gray-500">{new Date(l.timestamp).toLocaleString('id-ID')}</td>
+                  <td className="text-xs text-gray-500 dark:text-slate-400">{new Date(l.timestamp).toLocaleString('id-ID')}</td>
                   <td>
-                    <div className="font-semibold text-gray-900 text-sm">{l.user?.nama_panggilan || '—'}</div>
-                    <div className="text-[10px] text-purple-700 font-medium">Divisi: {l.user?.divisi || 'Pengurus'}</div>
+                    <div className="font-semibold text-gray-900 dark:text-slate-100 text-sm">{l.user?.nama_panggilan || '—'}</div>
+                    <div className="text-[10px] text-purple-700 dark:text-purple-300 font-medium">Divisi: {l.user?.divisi || 'Pengurus'}</div>
                   </td>
                   <td>
                     <span className="badge-purple text-xs">{l.tipe || 'PIC Sakristan'}</span>
@@ -297,11 +297,11 @@ export default function SakristanPage() {
                   </td>
                   <td>
                     {l.foto_url ? (
-                      <button onClick={() => setPreviewModalUrl(l.foto_url)} className="btn-ghost btn-xs text-brand-800 gap-1">
+                      <button onClick={() => setPreviewModalUrl(l.foto_url)} className="btn-ghost btn-xs text-brand-800 dark:text-amber-400 gap-1">
                         <Eye size={12} /> Lihat Foto
                       </button>
                     ) : (
-                      <span className="text-xs text-gray-400">—</span>
+                      <span className="text-xs text-gray-400 dark:text-slate-500">—</span>
                     )}
                   </td>
                 </tr>
@@ -313,13 +313,13 @@ export default function SakristanPage() {
 
       {/* Modal Preview Foto */}
       {previewModalUrl && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
-          <div className="bg-white rounded-2xl p-4 max-w-lg w-full space-y-3 shadow-2xl">
+        <div className="modal-overlay">
+          <div className="modal-card p-4 max-w-lg w-full space-y-3">
             <div className="flex justify-between items-center">
-              <h3 className="font-bold text-gray-900 text-sm">Bukti Foto Watermark Presensi PIC</h3>
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">Bukti Foto Watermark Presensi PIC</h3>
               <button onClick={() => setPreviewModalUrl(null)} className="btn-ghost btn-xs">✕ Tutup</button>
             </div>
-            <div className="rounded-xl overflow-hidden border">
+            <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-slate-800">
               <img src={previewModalUrl} alt="Presensi Watermark" className="w-full h-auto" />
             </div>
             <button onClick={() => setPreviewModalUrl(null)} className="btn-primary w-full text-xs">

@@ -145,12 +145,12 @@ Status Kesiapan: *READY UNTUK MISA MINGGUAN & HARI RAYA* 🌟`;
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="font-bold text-gray-900 text-base">Divisi Putsankris (Putri Sakristan)</h2>
-          <p className="text-xs text-gray-500">Pemeriksaan Alat &amp; Busana Liturgi Khusus Misa Mingguan &amp; Hari Raya (Periode Sabtu - Sabtu).</p>
+          <h2 className="font-bold text-gray-900 dark:text-white text-base">Divisi Putsankris (Putri Sakristan)</h2>
+          <p className="text-xs text-gray-500 dark:text-slate-400">Pemeriksaan Alat &amp; Busana Liturgi Khusus Misa Mingguan &amp; Hari Raya (Periode Sabtu - Sabtu).</p>
         </div>
 
-        <div className="flex items-center gap-2 bg-purple-50 text-purple-900 border border-purple-200 px-3 py-1.5 rounded-xl text-xs font-semibold">
-          <Sparkles size={14} className="text-purple-700" />
+        <div className="flex items-center gap-2 bg-purple-50 dark:bg-purple-950/60 text-purple-900 dark:text-purple-300 border border-purple-200 dark:border-purple-800/60 px-3 py-1.5 rounded-xl text-xs font-semibold">
+          <Sparkles size={14} className="text-purple-700 dark:text-purple-400" />
           <span>Siklus Audit: <strong>{cycleLabel}</strong></span>
         </div>
       </div>
@@ -158,12 +158,12 @@ Status Kesiapan: *READY UNTUK MISA MINGGUAN & HARI RAYA* 🌟`;
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Form Checklist */}
         <div className="card p-5 space-y-4">
-          <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-            <Shirt size={18} className="text-purple-700" /> Pemeriksaan Alat Liturgi (Mingguan &amp; Hari Raya)
+          <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
+            <Shirt size={18} className="text-purple-700 dark:text-purple-400" /> Pemeriksaan Alat Liturgi (Mingguan &amp; Hari Raya)
           </h3>
 
           <div>
-            <label className="text-xs font-semibold text-gray-700 mb-1 block">Pilih Misa Target Audit</label>
+            <label className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1 block">Pilih Misa Target Audit</label>
             <select
               className="input text-sm"
               value={selectedEventId}
@@ -182,8 +182,8 @@ Status Kesiapan: *READY UNTUK MISA MINGGUAN & HARI RAYA* 🌟`;
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-semibold text-gray-700 block">Daftar Kelengkapan Alat &amp; Jubah Pekan Ini</label>
-            <div className="space-y-1.5 bg-gray-50 p-3 rounded-xl border border-gray-100">
+            <label className="text-xs font-semibold text-gray-700 dark:text-slate-300 block">Daftar Kelengkapan Alat &amp; Jubah Pekan Ini</label>
+            <div className="space-y-1.5 bg-gray-50 dark:bg-slate-800/60 p-3 rounded-xl border border-gray-100 dark:border-slate-800">
               {DEFAULT_ITEMS.map(item => {
                 const isChecked = checkedState[item.key] ?? false;
                 return (
@@ -193,15 +193,15 @@ Status Kesiapan: *READY UNTUK MISA MINGGUAN & HARI RAYA* 🌟`;
                     onClick={() => toggleItem(item.key)}
                     className={`w-full flex items-center justify-between p-2.5 rounded-lg border text-xs font-medium transition-all ${
                       isChecked
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
-                        : 'bg-white border-red-200 text-red-700'
+                        ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/60 text-emerald-900 dark:text-emerald-200'
+                        : 'bg-white dark:bg-slate-900 border-red-200 dark:border-red-900/60 text-red-700 dark:text-red-300'
                     }`}
                   >
                     <span className="flex items-center gap-2">
-                      {isChecked ? <CheckCircle2 size={15} className="text-emerald-600" /> : <AlertCircle size={15} className="text-red-500" />}
+                      {isChecked ? <CheckCircle2 size={15} className="text-emerald-600 dark:text-emerald-400" /> : <AlertCircle size={15} className="text-red-500 dark:text-red-400" />}
                       {item.label}
                     </span>
-                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isChecked ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'}`}>
+                    <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${isChecked ? 'bg-emerald-100 dark:bg-emerald-900/60 text-emerald-800 dark:text-emerald-300' : 'bg-red-100 dark:bg-red-900/60 text-red-800 dark:text-red-300'}`}>
                       {isChecked ? 'Ready' : 'Belum Siap'}
                     </span>
                   </button>
@@ -211,7 +211,7 @@ Status Kesiapan: *READY UNTUK MISA MINGGUAN & HARI RAYA* 🌟`;
           </div>
 
           <div>
-            <label className="text-xs font-semibold text-gray-700 mb-1 block">Catatan Putsankris / Kondisi Alat</label>
+            <label className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1 block">Catatan Putsankris / Kondisi Alat</label>
             <input
               className="input"
               placeholder="misal: Arang tersisa 1 pax, wiruk butuh dibersihkan"
@@ -239,38 +239,38 @@ Status Kesiapan: *READY UNTUK MISA MINGGUAN & HARI RAYA* 🌟`;
 
         {/* History Audit Log */}
         <div className="card p-5 space-y-4">
-          <h3 className="font-bold text-gray-900 text-sm flex items-center gap-2">
-            <Clock size={18} className="text-brand-800" /> Histori Audit Kesiapan Misa (Sabtu - Sabtu)
+          <h3 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
+            <Clock size={18} className="text-brand-800 dark:text-amber-400" /> Histori Audit Kesiapan Misa (Sabtu - Sabtu)
           </h3>
 
           {history.length === 0 ? (
-            <div className="text-center py-10 text-gray-400">
+            <div className="text-center py-10 text-gray-400 dark:text-slate-500">
               <CheckSquare size={40} className="mx-auto mb-2 opacity-30" />
               <p className="text-sm">Belum ada histori audit checklist.</p>
             </div>
           ) : (
             <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
               {history.map(h => (
-                <div key={h.id} className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 space-y-2 text-xs">
+                <div key={h.id} className="p-3.5 bg-gray-50 dark:bg-slate-800/60 rounded-xl border border-gray-100 dark:border-slate-800 space-y-2 text-xs">
                   <div className="flex items-start justify-between">
                     <div>
-                      <p className="font-bold text-gray-900">{h.event?.perayaan || h.event?.nama_event}</p>
-                      <p className="text-[11px] text-purple-700 font-semibold">{h.event?.tanggal_tugas}</p>
+                      <p className="font-bold text-gray-900 dark:text-white">{h.event?.perayaan || h.event?.nama_event}</p>
+                      <p className="text-[11px] text-purple-700 dark:text-purple-300 font-semibold">{h.event?.tanggal_tugas}</p>
                     </div>
-                    <span className="text-[10px] text-gray-500 bg-white px-2 py-0.5 rounded border">
+                    <span className="text-[10px] text-gray-500 dark:text-slate-400 bg-white dark:bg-slate-900 px-2 py-0.5 rounded border border-gray-200 dark:border-slate-700">
                       {new Date(h.checked_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
                     </span>
                   </div>
 
                   {h.catatan && (
-                    <p className="text-gray-600 italic bg-white p-2 rounded border border-gray-100">
+                    <p className="text-gray-600 dark:text-slate-300 italic bg-white dark:bg-slate-900 p-2 rounded border border-gray-100 dark:border-slate-800">
                       "{h.catatan}"
                     </p>
                   )}
 
-                  <div className="flex justify-between items-center pt-1 border-t border-gray-200/50 text-[10px] text-gray-500">
-                    <span>Diperiksa oleh: <strong>{h.checked_user?.nama_panggilan || 'Putsankris'}</strong></span>
-                    <span className="text-emerald-700 font-bold">✓ Audit Valid</span>
+                  <div className="flex justify-between items-center pt-1 border-t border-gray-200/50 dark:border-slate-700/50 text-[10px] text-gray-500 dark:text-slate-400">
+                    <span>Diperiksa oleh: <strong className="text-gray-700 dark:text-slate-200">{h.checked_user?.nama_panggilan || 'Putsankris'}</strong></span>
+                    <span className="text-emerald-700 dark:text-emerald-400 font-bold">✓ Audit Valid</span>
                   </div>
                 </div>
               ))}

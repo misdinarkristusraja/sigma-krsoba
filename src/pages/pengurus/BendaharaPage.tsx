@@ -177,14 +177,14 @@ export default function BendaharaPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Jenis Transaksi</label>
+                <label className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1 block">Jenis Transaksi</label>
                 <select className="input" value={tipe} onChange={e => setTipe(e.target.value as any)}>
                   <option value="Pemasukan">Pemasukan (+)</option>
                   <option value="Pengeluaran">Pengeluaran (-)</option>
                 </select>
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Kategori</label>
+                <label className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1 block">Kategori</label>
                 <select className="input" value={kategori} onChange={e => setKategori(e.target.value)}>
                   <option value="Iuran Kas">Iuran Kas</option>
                   <option value="Donasi / Kolekte">Donasi / Kolekte</option>
@@ -198,22 +198,22 @@ export default function BendaharaPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Jumlah (Rp)</label>
+                <label className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1 block">Jumlah (Rp)</label>
                 <input type="number" className="input font-mono" placeholder="50000" value={jumlah} onChange={e => setJumlah(e.target.value)} required />
               </div>
               <div>
-                <label className="text-xs font-semibold text-gray-700 mb-1 block">Tanggal</label>
+                <label className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1 block">Tanggal</label>
                 <input type="date" className="input" value={tanggal} onChange={e => setTanggal(e.target.value)} required />
               </div>
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-700 mb-1 block">Keterangan Transaksi</label>
+              <label className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1 block">Keterangan Transaksi</label>
               <input className="input" placeholder="misal: Pembelian arang & wiruk baru" value={keterangan} onChange={e => setKeterangan(e.target.value)} required />
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-gray-700 mb-1 block">URL Bukti / Nota (Opsional)</label>
+              <label className="text-xs font-semibold text-gray-700 dark:text-slate-300 mb-1 block">URL Bukti / Nota (Opsional)</label>
               <input className="input" placeholder="https://..." value={buktiUrl} onChange={e => setBuktiUrl(e.target.value)} />
             </div>
 

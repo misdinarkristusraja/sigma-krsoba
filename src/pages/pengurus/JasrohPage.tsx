@@ -40,12 +40,12 @@ export default function JasrohPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="font-bold text-gray-900 text-base">Divisi Jasmani &amp; Rohani (Jasroh Hub)</h2>
-          <p className="text-xs text-gray-500">Pusat Manajemen Kegiatan Jasroh, Retret, Acara Khusus, dan Presensi Acara.</p>
+          <h2 className="font-bold text-gray-900 dark:text-white text-base">Divisi Jasmani &amp; Rohani (Jasroh Hub)</h2>
+          <p className="text-xs text-gray-500 dark:text-slate-400">Pusat Manajemen Kegiatan Jasroh, Retret, Acara Khusus, dan Presensi Acara.</p>
         </div>
 
         {/* Sub-Tab Navigation Switcher */}
-        <div className="flex gap-1.5 bg-gray-100 p-1.5 rounded-xl flex-wrap">
+        <div className="flex gap-1.5 bg-gray-100 dark:bg-slate-800 p-1.5 rounded-xl flex-wrap">
           <button
             onClick={() => setTab('proker')}
             className={`btn-sm gap-1.5 ${tab === 'proker' ? 'bg-white dark:bg-slate-900 text-purple-900 dark:text-purple-300 shadow-sm font-bold' : 'text-gray-600 dark:text-slate-400'}`}
@@ -70,24 +70,24 @@ export default function JasrohPage() {
       {tab === 'proker' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {acaraList.length === 0 ? (
-            <div className="col-span-2 card text-center py-10 text-gray-400">
+            <div className="col-span-2 card text-center py-10 text-gray-400 dark:text-slate-500">
               <HeartHandshake size={40} className="mx-auto mb-2 opacity-30" />
               <p>Belum ada kegiatan Jasroh terdaftar.</p>
             </div>
           ) : (
             acaraList.map((a) => (
-              <div key={a.id} className="card p-5 border border-gray-100 space-y-3">
+              <div key={a.id} className="card p-5 border border-gray-100 dark:border-slate-800 space-y-3">
                 <div className="flex justify-between items-start">
-                  <h3 className="font-bold text-gray-900 text-base">{a.nama_acara}</h3>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-base">{a.nama_acara}</h3>
                   <span className="badge-purple text-xs">{a.tipe || 'Kegiatan'}</span>
                 </div>
-                <div className="space-y-1 text-xs text-gray-600">
+                <div className="space-y-1 text-xs text-gray-600 dark:text-slate-300">
                   <p className="flex items-center gap-1.5"><Calendar size={13} /> {a.tanggal}</p>
                   {a.lokasi && <p className="flex items-center gap-1.5"><MapPin size={13} /> {a.lokasi}</p>}
-                  {a.pj && <p className="flex items-center gap-1.5"><User size={13} /> PJ: <strong>{a.pj}</strong></p>}
+                  {a.pj && <p className="flex items-center gap-1.5"><User size={13} /> PJ: <strong className="text-gray-800 dark:text-slate-200">{a.pj}</strong></p>}
                 </div>
                 {a.deskripsi && (
-                  <p className="text-xs text-gray-500 bg-gray-50 p-2.5 rounded-lg italic">"{a.deskripsi}"</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 bg-gray-50 dark:bg-slate-800/60 p-2.5 rounded-lg italic">"{a.deskripsi}"</p>
                 )}
               </div>
             ))

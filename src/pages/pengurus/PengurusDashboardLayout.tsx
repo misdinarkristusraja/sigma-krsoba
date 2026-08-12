@@ -57,7 +57,7 @@ export default function PengurusDashboardLayout() {
       </div>
 
       {/* Navigation Switcher Tabs (For Executive or allowed division) */}
-      <div className="bg-white p-2 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
+      <div className="bg-white dark:bg-slate-900 p-2 rounded-2xl shadow-sm border border-gray-100 dark:border-slate-800 overflow-x-auto">
         <div className="flex items-center gap-1.5 min-w-max">
           {DIVISI_NAV.map((nav) => {
             const Icon = nav.icon;
@@ -74,7 +74,7 @@ export default function PengurusDashboardLayout() {
                   `flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold transition-all ${
                     isActive
                       ? 'bg-red-800 text-white shadow-sm'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      : 'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-800 hover:text-gray-900 dark:hover:text-white'
                   }`
                 }
               >
