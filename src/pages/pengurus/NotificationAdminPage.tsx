@@ -269,12 +269,12 @@ export default function NotificationAdminPage() {
 
         {/* History Notifikasi */}
         <div className="lg:col-span-2 card p-5 space-y-4">
-          <div className="flex items-center justify-between border-b pb-3">
+          <div className="flex items-center justify-between border-b border-gray-100 dark:border-slate-800 pb-3">
             <div className="flex items-center gap-2 font-bold text-gray-900 dark:text-white">
               <Clock size={18} className="text-amber-500" />
               <span>Riwayat Notifikasi Terkirim ({history.length})</span>
             </div>
-            <button onClick={loadHistory} className="text-xs text-brand-800 dark:text-brand-400 hover:underline">
+            <button onClick={loadHistory} className="text-xs text-brand-800 dark:text-amber-400 hover:underline">
               Refresh
             </button>
           </div>
@@ -290,7 +290,7 @@ export default function NotificationAdminPage() {
                 <div key={item.id} className="py-3 flex items-start justify-between gap-3 hover:bg-gray-50/50 dark:hover:bg-slate-800/40 p-2 rounded-xl transition-colors">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[11px] font-bold text-brand-800 dark:text-brand-400">
+                      <span className="text-[11px] font-bold text-brand-800 dark:text-amber-400">
                         {item.judul}
                       </span>
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300">

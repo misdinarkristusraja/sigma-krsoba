@@ -150,19 +150,19 @@ export default function MembersPage() {
       case 'misdinar_aktif':
         return { label: '🟢 Misdinar Aktif', color: 'badge-green' };
       case 'pengurus':
-        return { label: `⭐ Pengurus${m.divisi ? ` (${m.divisi})` : ''}`, color: 'bg-purple-100 text-purple-900 border border-purple-300 font-bold' };
+        return { label: `⭐ Pengurus${m.divisi ? ` (${m.divisi})` : ''}`, color: 'bg-purple-100 text-purple-900 dark:bg-purple-950/80 dark:text-purple-300 border border-purple-300 dark:border-purple-800/60 font-bold' };
       case 'pendamping':
-        return { label: '👔 Pendamping / Pelatih', color: 'bg-blue-100 text-blue-900 border border-blue-300 font-semibold' };
+        return { label: '👔 Pendamping / Pelatih', color: 'bg-blue-100 text-blue-900 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-300 dark:border-blue-800/60 font-semibold' };
       case 'admin':
-        return { label: '⚡ Administrator', color: 'bg-amber-100 text-amber-900 border border-amber-300 font-bold' };
+        return { label: '⚡ Administrator', color: 'bg-amber-100 text-amber-900 dark:bg-amber-950/80 dark:text-amber-300 border border-amber-300 dark:border-amber-800/60 font-bold' };
       case 'cuti':
-        return { label: '🟡 Cuti / Libur', color: 'bg-yellow-100 text-yellow-800 border border-yellow-300 font-semibold' };
+        return { label: '🟡 Cuti / Libur', color: 'bg-yellow-100 text-yellow-800 dark:bg-amber-950/80 dark:text-amber-300 border border-yellow-300 dark:border-amber-800/60 font-semibold' };
       case 'pensiun':
-        return { label: '🎓 Alumni / Pensiun', color: 'bg-gray-100 text-gray-700 border border-gray-300' };
+        return { label: '🎓 Alumni / Pensiun', color: 'bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-200 border border-gray-300 dark:border-slate-700' };
       case 'suspended':
         return { label: '⛔ Suspended', color: 'badge-red' };
       case 'disabled':
-        return { label: '🔴 Nonaktif (Disabled)', color: 'bg-red-200 text-red-900 font-bold' };
+        return { label: '🔴 Nonaktif (Disabled)', color: 'bg-red-200 text-red-900 dark:bg-red-950/80 dark:text-red-300 border border-red-300 dark:border-red-800/60 font-bold' };
       case 'pending':
         return { label: '⏳ Pending', color: 'badge-yellow' };
       default:

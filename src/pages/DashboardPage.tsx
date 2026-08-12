@@ -246,12 +246,12 @@ export default function DashboardPage() {
 
       {/* Banner NDU — wajib isi jika sudah rereg tapi belum ada nomor */}
       {nduBanner && (
-        <div className="bg-orange-50 border-2 border-orange-300 rounded-2xl px-4 py-4 space-y-3">
+        <div className="bg-orange-50 dark:bg-orange-950/40 border-2 border-orange-300 dark:border-orange-700/80 rounded-2xl px-4 py-4 space-y-3">
           <div className="flex items-start gap-3">
-            <AlertTriangle size={20} className="text-orange-600 shrink-0 mt-0.5" />
+            <AlertTriangle size={20} className="text-orange-600 dark:text-orange-400 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold text-orange-800 text-sm">Lengkapi Nomor Data Umat</p>
-              <p className="text-xs text-orange-700 mt-0.5">
+              <p className="font-bold text-orange-800 dark:text-orange-300 text-sm">Lengkapi Nomor Data Umat</p>
+              <p className="text-xs text-orange-700 dark:text-orange-400 mt-0.5">
                 Kamu sudah daftar ulang, tapi <strong>Nomor Data Umat</strong> belum diisi.
                 Tanyakan ke <strong>PIC Data Umat Lingkungan</strong>, lalu isi di bawah ini.
               </p>
@@ -285,7 +285,7 @@ export default function DashboardPage() {
       {isPengurus && (
         <div className="card">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-gray-900">Statistik Bulan Ini</h2>
+            <h2 className="font-bold text-gray-900 dark:text-slate-100">Statistik Bulan Ini</h2>
             {loadingPStats && <div className="w-4 h-4 border-2 border-brand-300 border-t-brand-800 rounded-full animate-spin"/>}
           </div>
           {pengurusStats ? (
@@ -296,12 +296,12 @@ export default function DashboardPage() {
               animate="visible"
             >
               {[
-                { label:'Misdinar Aktif',  val: pengurusStats.totalAktif,     color:'bg-brand-50 text-brand-800'   },
-                { label:'Pendaftar Baru',  val: pengurusStats.totalPending,   color:'bg-yellow-50 text-yellow-700' },
-                { label:'Total Scan',      val: pengurusStats.scanBulanIni,   color:'bg-green-50 text-green-700'   },
-                { label:'Jadwal Dibuat',   val: pengurusStats.jadwalBulanIni, color:'bg-blue-50 text-blue-700'     },
-                { label:'Tukar Jadwal',    val: pengurusStats.tukarBulanIni,  color:'bg-purple-50 text-purple-700' },
-                { label:'Absen Bulan Ini', val: pengurusStats.absenBulanIni,  color:'bg-red-50 text-red-700'       },
+                { label:'Misdinar Aktif',  val: pengurusStats.totalAktif,     color:'bg-brand-50 dark:bg-amber-950/40 text-brand-800 dark:text-amber-300'   },
+                { label:'Pendaftar Baru',  val: pengurusStats.totalPending,   color:'bg-yellow-50 dark:bg-amber-950/40 text-yellow-700 dark:text-amber-400' },
+                { label:'Total Scan',      val: pengurusStats.scanBulanIni,   color:'bg-green-50 dark:bg-emerald-950/40 text-green-700 dark:text-emerald-300'   },
+                { label:'Jadwal Dibuat',   val: pengurusStats.jadwalBulanIni, color:'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300'     },
+                { label:'Tukar Jadwal',    val: pengurusStats.tukarBulanIni,  color:'bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300' },
+                { label:'Absen Bulan Ini', val: pengurusStats.absenBulanIni,  color:'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300'       },
               ].map((s, i) => (
                 <AnimatedStatMini key={s.label} label={s.label} val={s.val} color={s.color} index={i} />
               ))}
