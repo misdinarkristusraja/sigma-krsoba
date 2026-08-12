@@ -301,6 +301,11 @@ export default function AdminPage() {
   const [editNdu,        setEditNdu]        = useState<{ reregId: string; userId: string; value: string } | null>(null);
   const [savingNdu,      setSavingNdu]      = useState(false);
 
+  // Pending Reregistration Copy & Remind
+  const [pendingReregUsers, setPendingReregUsers] = useState<any[]>([]);
+  const [showPendingModal, setShowPendingModal]   = useState(false);
+  const [pendingSearch,     setPendingSearch]     = useState('');
+
   // State untuk Auto-Retire
   const [autoRetiring,   setAutoRetiring]   = useState(false);
   const [retireResult,   setRetireResult]   = useState<number | null>(null);
@@ -318,12 +323,9 @@ export default function AdminPage() {
   const loadUsers = useCallback(async () => {
     const { data, error } = await supabase
       .from('users')
-      .select('id, nickname, nama_panggilan, email, status, role, hp_ortu, hp_anak, lingkungan')
+      .select('*')
       .order('nama_panggilan');
-    if (error) {
-      toast.error('Gagal memuat daftar user: ' + error.message);
-      return;
-    }
+    if (error) console.error('[loadUsers]', error.message);
     setUsers(data ?? []);
   }, []);
 
@@ -652,24 +654,24 @@ export default function AdminPage() {
     <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
       {/* ── Header ── */}
       <div className="flex items-center gap-3">
-        <Settings className="text-indigo-600" size={28} />
+        <Settings className="text-indigo-600 dark:text-indigo-400" size={28} />
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Admin Panel</h1>
-          <p className="text-sm text-gray-500">Kelola konfigurasi dan akun anggota</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Panel</h1>
+          <p className="text-sm text-gray-500 dark:text-slate-400">Kelola konfigurasi dan akun anggota</p>
         </div>
       </div>
 
       {/* ── Section: Mass Reset Password ── */}
-      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <section className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
         {/* Section header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-red-50 to-orange-50">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-red-50 to-orange-50 dark:from-slate-800 dark:to-slate-800/80">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <KeyRound className="text-red-600" size={20} />
+            <div className="p-2 bg-red-100 dark:bg-red-950/60 rounded-lg border border-red-200 dark:border-red-800/50">
+              <KeyRound className="text-red-600 dark:text-red-400" size={20} />
             </div>
             <div>
-              <h2 className="font-semibold text-gray-900">Mass Reset Password</h2>
-              <p className="text-xs text-gray-500">
+              <h2 className="font-semibold text-gray-900 dark:text-white">Mass Reset Password</h2>
+              <p className="text-xs text-gray-500 dark:text-slate-400">
                 Generate ulang password semua anggota Active &amp; Pending
               </p>
             </div>
@@ -681,7 +683,7 @@ export default function AdminPage() {
             className={[
               'flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all',
               massLoading
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                ? 'bg-gray-100 dark:bg-slate-800 text-gray-400 dark:text-slate-500 cursor-not-allowed'
                 : 'bg-red-600 hover:bg-red-700 active:scale-95 text-white shadow-sm',
             ].join(' ')}
           >
@@ -703,18 +705,18 @@ export default function AdminPage() {
         <div className="px-6 py-4">
           {/* Belum pernah dijalankan */}
           {!massProgress && !massLoading && (
-            <p className="text-sm text-gray-400 italic text-center py-4">
+            <p className="text-sm text-gray-400 dark:text-slate-400 italic text-center py-4">
               Klik "Reset Semua" untuk memulai. Password baru akan tampil di tabel di bawah.
             </p>
           )}
 
           {/* Sedang berjalan */}
           {massLoading && (
-            <div className="flex items-center gap-3 bg-blue-50 text-blue-700 rounded-xl px-4 py-3">
+            <div className="flex items-center gap-3 bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 rounded-xl px-4 py-3 border border-blue-200 dark:border-blue-800/50">
               <Loader2 size={18} className="animate-spin shrink-0" />
               <div>
                 <p className="font-medium text-sm">Sedang memproses…</p>
-                <p className="text-xs text-blue-500">
+                <p className="text-xs text-blue-500 dark:text-blue-400">
                   Proses ini bisa memakan waktu 30–120 detik tergantung jumlah anggota.
                   Jangan tutup halaman ini.
                 </p>
@@ -724,18 +726,18 @@ export default function AdminPage() {
 
           {/* Selesai — sukses penuh */}
           {massProgress?.status === 'done' && massProgress.failed === 0 && (
-            <div className="flex items-start gap-3 bg-green-50 text-green-800 rounded-xl px-4 py-3">
+            <div className="flex items-start gap-3 bg-green-50 dark:bg-emerald-950/40 text-green-800 dark:text-emerald-300 border border-green-200 dark:border-emerald-800/60 rounded-xl px-4 py-3">
               <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium text-sm">
                   ✅ {massProgress.success} password berhasil direset!
                 </p>
                 {(massProgress.skipped ?? 0) > 0 && (
-                  <p className="text-xs text-green-600">
+                  <p className="text-xs text-green-600 dark:text-emerald-400">
                     {massProgress.skipped} user dilewati (email kosong).
                   </p>
                 )}
-                <p className="text-xs text-green-600 mt-1">
+                <p className="text-xs text-green-600 dark:text-emerald-400 mt-1">
                   Kirim password baru ke masing-masing anggota via WhatsApp di tabel di bawah.
                 </p>
               </div>
@@ -744,16 +746,16 @@ export default function AdminPage() {
 
           {/* Selesai — ada kegagalan sebagian */}
           {massProgress?.status === 'done' && (massProgress.failed ?? 0) > 0 && (
-            <div className="flex items-start gap-3 bg-yellow-50 text-yellow-800 rounded-xl px-4 py-3">
+            <div className="flex items-start gap-3 bg-yellow-50 dark:bg-amber-950/40 text-yellow-800 dark:text-amber-300 border border-yellow-200 dark:border-amber-800/60 rounded-xl px-4 py-3">
               <AlertTriangle size={18} className="shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium text-sm">
                   Selesai dengan peringatan — {massProgress.failed} user gagal direset
                 </p>
-                <p className="text-xs text-yellow-600">
+                <p className="text-xs text-yellow-600 dark:text-amber-400">
                   Sukses: {massProgress.success} | Dilewati: {massProgress.skipped} | Gagal: {massProgress.failed}
                 </p>
-                <p className="text-xs text-yellow-600 mt-1">
+                <p className="text-xs text-yellow-600 dark:text-amber-400 mt-1">
                   Cek kolom "Gagal" di tabel untuk detail error per-user.
                 </p>
               </div>
@@ -762,15 +764,15 @@ export default function AdminPage() {
 
           {/* Error total */}
           {massProgress?.status === 'error' && (
-            <div className="flex items-start gap-3 bg-red-50 text-red-800 rounded-xl px-4 py-3">
+            <div className="flex items-start gap-3 bg-red-50 dark:bg-red-950/40 text-red-800 dark:text-red-300 border border-red-200 dark:border-red-800/60 rounded-xl px-4 py-3">
               <XCircle size={18} className="shrink-0 mt-0.5" />
               <div>
                 <p className="font-medium text-sm">Mass reset gagal</p>
-                <p className="text-xs text-red-600 mt-0.5 font-mono">
+                <p className="text-xs text-red-600 dark:text-red-400 mt-0.5 font-mono">
                   {massProgress.error}
                 </p>
                 {massProgress.hint && (
-                  <p className="text-xs text-red-500 mt-1 bg-red-100 px-2 py-1 rounded">
+                  <p className="text-xs text-red-500 dark:text-red-400 mt-1 bg-red-100 dark:bg-red-950/60 px-2 py-1 rounded">
                     💡 {massProgress.hint}
                   </p>
                 )}
@@ -784,20 +786,20 @@ export default function AdminPage() {
       </section>
 
       {/* ── Section: Reset Daftar Ulang ── */}
-      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-purple-50 to-fuchsia-50">
-          <div className="p-2 bg-purple-100 rounded-lg">
-            <RotateCcw className="text-purple-600" size={20} />
+      <section className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-purple-50 to-fuchsia-50 dark:from-slate-800 dark:to-slate-800/80">
+          <div className="p-2 bg-purple-100 dark:bg-purple-950/60 rounded-lg border border-purple-200 dark:border-purple-800/50">
+            <RotateCcw className="text-purple-600 dark:text-purple-400" size={20} />
           </div>
           <div>
-            <h2 className="font-semibold text-gray-900">Reset Daftar Ulang</h2>
-            <p className="text-xs text-gray-500">Hapus status daftar ulang anggota untuk tahun tertentu</p>
+            <h2 className="font-semibold text-gray-900 dark:text-white">Reset Daftar Ulang</h2>
+            <p className="text-xs text-gray-500 dark:text-slate-400">Hapus status daftar ulang anggota untuk tahun tertentu</p>
           </div>
         </div>
         <div className="px-6 py-5 space-y-4">
           <div className="flex flex-wrap items-end gap-3">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Tahun</label>
+              <label className="block text-xs font-medium text-gray-500 dark:text-slate-300 mb-1">Tahun</label>
               <input
                 type="number"
                 className="input w-32 text-sm font-mono"
@@ -810,7 +812,7 @@ export default function AdminPage() {
             <button
               onClick={() => loadReregStats(reregYear)}
               disabled={!reregYear}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+              className="px-4 py-2 bg-gray-100 dark:bg-slate-800 hover:bg-gray-200 dark:hover:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
             >
               Cek Status
             </button>
@@ -830,33 +832,52 @@ export default function AdminPage() {
 
           {reregStats && (
             <div className="flex flex-wrap gap-4 text-sm">
-              <div className="bg-green-50 rounded-xl px-4 py-3 text-center min-w-[100px]">
-                <p className="text-2xl font-black text-green-700">{reregStats.done}</p>
-                <p className="text-xs text-green-600">Sudah Daftar Ulang</p>
+              <div className="bg-green-50 dark:bg-emerald-950/40 border border-green-200 dark:border-emerald-800/60 rounded-xl px-4 py-3 text-center min-w-[100px]">
+                <p className="text-2xl font-black text-green-700 dark:text-emerald-300">{reregStats.done}</p>
+                <p className="text-xs text-green-600 dark:text-emerald-400">Sudah Daftar Ulang</p>
               </div>
-              <div className="bg-orange-50 rounded-xl px-4 py-3 text-center min-w-[100px]">
-                <p className="text-2xl font-black text-orange-600">{reregStats.total - reregStats.done}</p>
-                <p className="text-xs text-orange-500">Belum Daftar Ulang</p>
+              <div className="bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/60 rounded-xl px-4 py-3 flex-1 min-w-[240px] flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-2xl font-black text-orange-600 dark:text-orange-300">{reregStats.total - reregStats.done}</p>
+                  <p className="text-xs text-orange-500 dark:text-orange-400 font-medium">Belum Daftar Ulang</p>
+                </div>
+                {reregStats.total - reregStats.done > 0 && (
+                  <div className="flex gap-1.5 flex-wrap">
+                    <button
+                      onClick={() => copyPendingReregText('wa')}
+                      className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm transition-all"
+                      title="Copy pengumuman format WA"
+                    >
+                      <ClipboardCopy size={13} /> Copy WA
+                    </button>
+                    <button
+                      onClick={() => setShowPendingModal(true)}
+                      className="px-3 py-1.5 bg-orange-100 dark:bg-orange-900/60 text-orange-800 dark:text-orange-200 hover:bg-orange-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all"
+                    >
+                      <Eye size={13} /> Detail
+                    </button>
+                  </div>
+                )}
               </div>
-              <div className="bg-gray-50 rounded-xl px-4 py-3 text-center min-w-[100px]">
-                <p className="text-2xl font-black text-gray-700">{reregStats.total}</p>
-                <p className="text-xs text-gray-500">Total Anggota Aktif</p>
+              <div className="bg-gray-50 dark:bg-slate-800/90 border border-gray-200 dark:border-slate-700 rounded-xl px-4 py-3 text-center min-w-[100px]">
+                <p className="text-2xl font-black text-gray-700 dark:text-slate-100">{reregStats.total}</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">Total Anggota Aktif</p>
               </div>
             </div>
           )}
 
           {/* List yang sudah daftar ulang */}
           {reregStats && reregStats.done > 0 && (
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-200">
-                <span className="text-sm font-semibold text-gray-700">
+            <div className="border border-gray-200 dark:border-slate-800 rounded-xl overflow-hidden">
+              <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 dark:bg-slate-800/90 border-b border-gray-200 dark:border-slate-800">
+                <span className="text-sm font-semibold text-gray-700 dark:text-slate-200">
                   Sudah Daftar Ulang ({reregStats.done})
                 </span>
-                {reregListLoading && <span className="text-xs text-gray-400">Memuat...</span>}
+                {reregListLoading && <span className="text-xs text-gray-400 dark:text-slate-400">Memuat...</span>}
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-xs text-gray-500">
+                  <thead className="bg-gray-50 dark:bg-slate-800 text-xs text-gray-500 dark:text-slate-300">
                     <tr>
                       <th className="px-4 py-2 text-left font-medium">#</th>
                       <th className="px-4 py-2 text-left font-medium">Nama</th>
@@ -866,17 +887,17 @@ export default function AdminPage() {
                       <th className="px-4 py-2"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                     {pgRereg.paged.map((r: any, i: number) => (
-                      <tr key={r.id} className="hover:bg-gray-50">
-                        <td className="px-4 py-2.5 text-xs text-gray-400">
+                      <tr key={r.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                        <td className="px-4 py-2.5 text-xs text-gray-400 dark:text-slate-400">
                           {(pgRereg.page - 1) * pgRereg.pageSize + i + 1}
                         </td>
                         <td className="px-4 py-2.5">
-                          <span className="font-medium text-gray-900">{r.users?.nama_panggilan || '—'}</span>
-                          <span className="text-gray-400 text-xs ml-1.5">@{r.users?.nickname}</span>
+                          <span className="font-medium text-gray-900 dark:text-slate-100">{r.users?.nama_panggilan || '—'}</span>
+                          <span className="text-gray-400 dark:text-slate-400 text-xs ml-1.5">@{r.users?.nickname}</span>
                         </td>
-                        <td className="px-4 py-2.5 text-gray-500 text-xs">{r.users?.lingkungan || '—'}</td>
+                        <td className="px-4 py-2.5 text-gray-500 dark:text-slate-300 text-xs">{r.users?.lingkungan || '—'}</td>
                         <td className="px-4 py-2.5 text-xs">
                           {editNdu?.reregId === r.id ? (
                             <div className="flex items-center gap-1">
@@ -889,7 +910,7 @@ export default function AdminPage() {
                                 onChange={e => setEditNdu(n => n ? { ...n, value: e.target.value } : null)}
                                 onKeyDown={e => { if (e.key === 'Enter') saveNdu(); if (e.key === 'Escape') setEditNdu(null); }}
                               />
-                              <button onClick={saveNdu} disabled={savingNdu} className="p-1 text-green-600 hover:text-green-800 disabled:opacity-40">
+                              <button onClick={saveNdu} disabled={savingNdu} className="p-1 text-green-600 dark:text-green-400 hover:text-green-800 disabled:opacity-40">
                                 {savingNdu ? <Loader2 size={13} className="animate-spin"/> : <Check size={13}/>}
                               </button>
                               <button onClick={() => setEditNdu(null)} className="p-1 text-gray-400 hover:text-gray-600">
@@ -899,8 +920,8 @@ export default function AdminPage() {
                           ) : (
                             <div className="flex items-center gap-1.5 group">
                               {r.users?.nomor_data_umat
-                                ? <span className="font-mono font-medium text-brand-800">{r.users.nomor_data_umat}</span>
-                                : <span className="text-gray-300">—</span>
+                                ? <span className="font-mono font-medium text-brand-800 dark:text-amber-400">{r.users.nomor_data_umat}</span>
+                                : <span className="text-gray-300 dark:text-slate-500">—</span>
                               }
                               <button
                                 onClick={() => setEditNdu({ reregId: r.id, userId: r.user_id, value: r.users?.nomor_data_umat || '' })}
@@ -912,7 +933,7 @@ export default function AdminPage() {
                             </div>
                           )}
                         </td>
-                        <td className="px-4 py-2.5 text-gray-500 text-xs">
+                        <td className="px-4 py-2.5 text-gray-500 dark:text-slate-300 text-xs">
                           {r.submitted_at ? new Date(r.submitted_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                         </td>
                         <td className="px-4 py-2.5 text-right">
@@ -938,19 +959,19 @@ export default function AdminPage() {
           )}
 
           {/* Auto-retire */}
-          <div className="border-t border-gray-100 pt-4">
+          <div className="border-t border-gray-100 dark:border-slate-800 pt-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-gray-800">Auto-Retire Non-Rereg</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">Auto-Retire Non-Rereg</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">
                   Misdinar Aktif yang belum daftar ulang setelah <code>rereg_close_date</code> otomatis di-set Retired.
                   Hanya jalan jika close date sudah lewat.
                 </p>
                 {configs['rereg_close_date'] ? (
                   <p className={`text-xs mt-1 font-medium ${
                     new Date(configs['rereg_close_date']) < new Date()
-                      ? 'text-orange-600'
-                      : 'text-blue-600'
+                      ? 'text-orange-600 dark:text-orange-400'
+                      : 'text-blue-600 dark:text-blue-400'
                   }`}>
                     Close date: {configs['rereg_close_date']}
                     {new Date(configs['rereg_close_date']) < new Date()
@@ -958,13 +979,13 @@ export default function AdminPage() {
                       : ' — belum lewat, Auto-Retire tidak akan jalan'}
                   </p>
                 ) : (
-                  <p className="text-xs mt-1 text-red-500">rereg_close_date belum diset di Konfigurasi Sistem</p>
+                  <p className="text-xs mt-1 text-red-500 dark:text-red-400">rereg_close_date belum diset di Konfigurasi Sistem</p>
                 )}
               </div>
               <button
                 onClick={autoRetireNonRereg}
                 disabled={autoRetiring}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-gray-800 dark:bg-slate-700 hover:bg-gray-900 dark:hover:bg-slate-600 text-white rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
               >
                 {autoRetiring
                   ? <><Loader2 size={14} className="animate-spin" /> Memproses...</>
@@ -973,7 +994,7 @@ export default function AdminPage() {
               </button>
             </div>
             {retireResult !== null && (
-              <div className={`mt-3 rounded-xl px-4 py-3 text-sm font-medium ${retireResult > 0 ? 'bg-orange-50 text-orange-700' : 'bg-green-50 text-green-700'}`}>
+              <div className={`mt-3 rounded-xl px-4 py-3 text-sm font-medium ${retireResult > 0 ? 'bg-orange-50 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300' : 'bg-green-50 dark:bg-emerald-950/40 text-green-700 dark:text-emerald-300'}`}>
                 {retireResult > 0
                   ? `✓ ${retireResult} anggota berhasil di-retire.`
                   : '✓ Tidak ada yang perlu di-retire (close date belum lewat atau semua sudah rereg).'}
@@ -982,11 +1003,11 @@ export default function AdminPage() {
           </div>
 
           {/* Recalculate Rekap */}
-          <div className="border-t border-gray-100 pt-4">
+          <div className="border-t border-gray-100 dark:border-slate-800 pt-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-gray-800">Hitung Ulang Rekap Poin</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">Hitung Ulang Rekap Poin</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">
                   Recalculate semua rekap poin dari data scan. Jalankan jika Papan Poin kosong atau datanya terlihat salah.
                 </p>
               </div>
@@ -1002,18 +1023,18 @@ export default function AdminPage() {
               </button>
             </div>
             {recalcResult && (
-              <div className="mt-3 rounded-xl px-4 py-3 text-sm font-medium bg-green-50 text-green-700">
+              <div className="mt-3 rounded-xl px-4 py-3 text-sm font-medium bg-green-50 dark:bg-emerald-950/40 text-green-700 dark:text-emerald-300 border border-green-200 dark:border-emerald-800/60">
                 ✓ {recalcResult.processed} minggu berhasil dihitung ulang.
               </div>
             )}
           </div>
 
           {/* Export Data Anggota */}
-          <div className="border-t border-gray-100 pt-4">
+          <div className="border-t border-gray-100 dark:border-slate-800 pt-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-gray-800">Export Data Anggota</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">Export Data Anggota</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">
                   Unduh semua data anggota (nama, kontak, lingkungan, role, status, dll) sebagai file Excel.
                 </p>
               </div>
@@ -1027,13 +1048,13 @@ export default function AdminPage() {
           </div>
 
           {/* Reset Data Tugas */}
-          <div className="border-t border-gray-100 pt-4">
+          <div className="border-t border-gray-100 dark:border-slate-800 pt-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-gray-800">Reset Data Tugas</p>
-                <p className="text-xs text-gray-500">
+                <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">Reset Data Tugas</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">
                   Hapus semua data scan, tugas (assignments), jadwal yang sudah digenerate, poin, dan riwayat tukar jadwal.
-                  <span className="text-red-500 font-medium"> Data personal anggota tidak terhapus.</span>
+                  <span className="text-red-500 dark:text-red-400 font-medium"> Data personal anggota tidak terhapus.</span>
                 </p>
               </div>
               <button
@@ -1062,19 +1083,19 @@ export default function AdminPage() {
                 <p className="text-sm text-gray-600 dark:text-slate-300 mt-1">
                   Tindakan ini akan menghapus <strong>permanen</strong>:
                 </p>
-                <ul className="text-sm text-gray-600 mt-2 list-disc pl-4 space-y-0.5">
+                <ul className="text-sm text-gray-600 dark:text-slate-300 mt-2 list-disc pl-4 space-y-0.5">
                   <li>Semua record scan</li>
                   <li>Semua assignments (tugas yang sudah digenerate)</li>
                   <li>Semua rekap &amp; poin</li>
                   <li>Riwayat tukar jadwal</li>
                   <li>Absensi latihan</li>
                 </ul>
-                <p className="text-sm text-gray-600 mt-2">Data events (kalender liturgi) dan data personal anggota <strong>tidak</strong> terhapus.</p>
+                <p className="text-sm text-gray-600 dark:text-slate-300 mt-2">Data events (kalender liturgi) dan data personal anggota <strong>tidak</strong> terhapus.</p>
               </div>
             </div>
             <div>
-              <label className="text-xs font-medium text-gray-700">
-                Ketik <code className="bg-gray-100 px-1 rounded">RESET TUGAS</code> untuk konfirmasi:
+              <label className="text-xs font-medium text-gray-700 dark:text-slate-300">
+                Ketik <code className="bg-gray-100 dark:bg-slate-800 px-1.5 py-0.5 rounded font-mono font-bold text-red-700 dark:text-red-400">RESET TUGAS</code> untuk konfirmasi:
               </label>
               <input
                 className="input mt-1 w-full font-mono"
@@ -1105,23 +1126,23 @@ export default function AdminPage() {
           u.nickname?.toLowerCase().includes(userSearch.toLowerCase())
         );
         return (
-          <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-            <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-slate-50 to-gray-50">
-              <div className="p-2 bg-slate-100 rounded-lg"><Users className="text-slate-600" size={20}/></div>
+          <section className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-slate-50 to-gray-50 dark:from-slate-800 dark:to-slate-800/80">
+              <div className="p-2 bg-slate-100 dark:bg-slate-800 rounded-lg"><Users className="text-slate-600 dark:text-slate-300" size={20}/></div>
               <div>
-                <h2 className="font-semibold text-gray-900">Kelola Akun Anggota</h2>
-                <p className="text-xs text-gray-500">Reset password individual atau hapus akun</p>
+                <h2 className="font-semibold text-gray-900 dark:text-white">Kelola Akun Anggota</h2>
+                <p className="text-xs text-gray-500 dark:text-slate-400">Reset password individual atau hapus akun</p>
               </div>
             </div>
             <div className="px-6 py-4 space-y-3">
               <div className="relative">
                 <input className="input pl-9 w-full text-sm" placeholder="Cari nama / nickname..."
                   value={userSearch} onChange={e => setUserSearch(e.target.value)}/>
-                <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+                <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500"/>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-xs text-gray-500">
+                  <thead className="bg-gray-50 dark:bg-slate-800 text-xs text-gray-500 dark:text-slate-300">
                     <tr>
                       <th className="px-3 py-2 text-left">Nama</th>
                       <th className="px-3 py-2 text-left">Lingkungan</th>
@@ -1130,20 +1151,20 @@ export default function AdminPage() {
                       <th className="px-3 py-2 text-right">Aksi</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-gray-100">
+                  <tbody className="divide-y divide-gray-100 dark:divide-slate-800">
                     {filteredUsers.slice(0, 50).map((u: any) => (
-                      <tr key={u.id} className="hover:bg-gray-50">
+                      <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50">
                         <td className="px-3 py-2.5">
-                          <div className="font-medium text-gray-900">{u.nama_panggilan}</div>
-                          <div className="text-xs text-gray-400">@{u.nickname}</div>
+                          <div className="font-medium text-gray-900 dark:text-slate-100">{u.nama_panggilan}</div>
+                          <div className="text-xs text-gray-400 dark:text-slate-400">@{u.nickname}</div>
                         </td>
-                        <td className="px-3 py-2.5 text-gray-500 text-xs">{u.lingkungan}</td>
-                        <td className="px-3 py-2.5 text-xs text-gray-500">{u.role?.replace('_',' ')}</td>
+                        <td className="px-3 py-2.5 text-gray-500 dark:text-slate-300 text-xs">{u.lingkungan}</td>
+                        <td className="px-3 py-2.5 text-xs text-gray-500 dark:text-slate-300">{u.role?.replace('_',' ')}</td>
                         <td className="px-3 py-2.5">
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                            u.status === 'Active' ? 'bg-green-100 text-green-700' :
-                            u.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-                            'bg-red-100 text-red-700'
+                            u.status === 'Active' ? 'bg-green-100 dark:bg-green-950/80 text-green-700 dark:text-green-300' :
+                            u.status === 'Pending' ? 'bg-yellow-100 dark:bg-yellow-950/80 text-yellow-700 dark:text-yellow-300' :
+                            'bg-red-100 dark:bg-red-950/80 text-red-700 dark:text-red-300'
                           }`}>{u.status}</span>
                         </td>
                         <td className="px-3 py-2.5 text-right">
@@ -1152,7 +1173,7 @@ export default function AdminPage() {
                               <button
                                 onClick={() => resetSinglePassword(u.id)}
                                 disabled={resettingUserId === u.id}
-                                className="text-xs px-2 py-1 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors disabled:opacity-40"
+                                className="text-xs px-2 py-1 rounded-lg bg-blue-50 dark:bg-slate-800 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-40"
                                 title="Reset password"
                               >
                                 {resettingUserId === u.id ? <Loader2 size={11} className="animate-spin"/> : <><KeyRound size={11} className="inline mr-0.5"/>Reset PW</>}
@@ -1162,7 +1183,7 @@ export default function AdminPage() {
                               <button
                                 onClick={() => { setDeleteInput(''); setShowDeleteConfirm({ user: u }); }}
                                 disabled={deletingUserId === u.id}
-                                className="text-xs px-2 py-1 rounded-lg bg-red-50 text-red-500 hover:bg-red-100 transition-colors disabled:opacity-40"
+                                className="text-xs px-2 py-1 rounded-lg bg-red-50 dark:bg-red-950/50 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/50 transition-colors disabled:opacity-40"
                                 title="Hapus akun"
                               >
                                 {deletingUserId === u.id ? <Loader2 size={11} className="animate-spin"/> : <><Trash2 size={11} className="inline mr-0.5"/>Hapus</>}
@@ -1176,7 +1197,7 @@ export default function AdminPage() {
                 </table>
               </div>
               {filteredUsers.length > 50 && (
-                <p className="text-xs text-gray-400 text-center">Tampil 50 dari {filteredUsers.length} — gunakan pencarian untuk menyaring</p>
+                <p className="text-xs text-gray-400 dark:text-slate-400 text-center">Tampil 50 dari {filteredUsers.length} — gunakan pencarian untuk menyaring</p>
               )}
             </div>
           </section>
@@ -1184,27 +1205,27 @@ export default function AdminPage() {
       })()}
 
       {/* ── Section: Konfigurasi Sistem ── */}
-      <section className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-indigo-50 to-blue-50">
-          <div className="p-2 bg-indigo-100 rounded-lg">
-            <Settings className="text-indigo-600" size={20} />
+      <section className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-200 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="flex items-center gap-3 px-6 py-4 border-b border-gray-100 dark:border-slate-800 bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-slate-800 dark:to-slate-800/80">
+          <div className="p-2 bg-indigo-100 dark:bg-indigo-950/60 rounded-lg border border-indigo-200 dark:border-indigo-800/50">
+            <Settings className="text-indigo-600 dark:text-indigo-400" size={20} />
           </div>
           <div>
-            <h2 className="font-semibold text-gray-900">Konfigurasi Sistem</h2>
-            <p className="text-xs text-gray-500">Kelola window pendaftaran, daftar ulang, dan parameter sistem</p>
+            <h2 className="font-semibold text-gray-900 dark:text-white">Konfigurasi Sistem</h2>
+            <p className="text-xs text-gray-500 dark:text-slate-400">Kelola window pendaftaran, daftar ulang, dan parameter sistem</p>
           </div>
         </div>
 
         <div className="p-6 space-y-6">
           {Object.entries(CONFIG_GROUPS).map(([groupLabel, keys]) => (
             <div key={groupLabel}>
-              <h3 className="text-sm font-semibold text-gray-700 mb-3 pb-1 border-b border-gray-100">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-3 pb-1 border-b border-gray-100 dark:border-slate-800">
                 {groupLabel}
               </h3>
               <div className="grid sm:grid-cols-2 gap-3">
                 {keys.map(key => (
                   <div key={key}>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">{key}</label>
+                    <label className="block text-xs font-medium text-gray-500 dark:text-slate-300 mb-1">{key}</label>
                     <div className="flex gap-2">
                       <input
                         className="input flex-1 text-sm font-mono"
@@ -1321,6 +1342,113 @@ export default function AdminPage() {
                 <ClipboardCopy size={14}/> Salin
               </button>
               <button onClick={() => setSingleResetResult(null)} className="btn-secondary">Tutup</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal Daftar Anggota Belum Daftar Ulang ── */}
+      {showPendingModal && (
+        <div className="modal-overlay">
+          <div className="modal-card w-full max-w-2xl p-6 space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-slate-800">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-orange-100 dark:bg-orange-950/60 rounded-lg border border-orange-200 dark:border-orange-800/50">
+                  <Users className="text-orange-600 dark:text-orange-400" size={18} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-gray-900 dark:text-white">
+                    Belum Daftar Ulang ({pendingReregUsers.length} Anggota)
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-slate-400">Periode {reregYear}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowPendingModal(false)} className="btn-ghost p-1.5">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex gap-2 flex-wrap items-center justify-between">
+              <div className="relative flex-1 min-w-48">
+                <input
+                  className="input pl-8 w-full text-xs"
+                  placeholder="Cari nama atau lingkungan..."
+                  value={pendingSearch}
+                  onChange={e => setPendingSearch(e.target.value)}
+                />
+                <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => copyPendingReregText('names')}
+                  className="px-3 py-1.5 bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-700 text-xs font-semibold rounded-lg flex items-center gap-1 transition-all"
+                >
+                  <ClipboardCopy size={13} /> Copy Nama Saja
+                </button>
+                <button
+                  onClick={() => copyPendingReregText('wa')}
+                  className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1 shadow-sm transition-all"
+                >
+                  <ClipboardCopy size={13} /> Copy Format WA
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-y-auto flex-1 border border-gray-100 dark:border-slate-800 rounded-xl">
+              <table className="tbl text-xs w-full">
+                <thead>
+                  <tr>
+                    <th className="w-8">#</th>
+                    <th>Nama</th>
+                    <th>Lingkungan</th>
+                    <th>Kontak</th>
+                    <th className="text-right">Pengingat</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingReregUsers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="text-center py-8 text-gray-400 dark:text-slate-400">
+                        🎉 Semua anggota aktif sudah daftar ulang!
+                      </td>
+                    </tr>
+                  ) : (
+                    pendingReregUsers
+                      .filter(u => !pendingSearch || u.nama_panggilan?.toLowerCase().includes(pendingSearch.toLowerCase()) || u.lingkungan?.toLowerCase().includes(pendingSearch.toLowerCase()))
+                      .map((u, i) => {
+                        const hp = u.hp_anak || u.hp_ortu || '';
+                        const cleanHp = hp.replace(/\D/g, '');
+                        const phone = cleanHp.startsWith('0') ? '62' + cleanHp.slice(1) : cleanHp;
+                        const waMsg = encodeURIComponent(`Halo ${u.nama_panggilan || u.nickname}, jangan lupa untuk segera melakukan Daftar Ulang SIGMA Misdinar periode ${reregYear} ya! Melalui link: sigma-krsoba.vercel.app. Terima kasih 🙏`);
+                        return (
+                          <tr key={u.id}>
+                            <td className="font-mono text-gray-400 dark:text-slate-400">{i + 1}</td>
+                            <td>
+                              <div className="font-semibold text-gray-900 dark:text-slate-100">{u.nama_panggilan || u.nama_lengkap}</div>
+                              <div className="text-gray-400 dark:text-slate-400 text-[11px]">@{u.nickname}</div>
+                            </td>
+                            <td className="text-gray-500 dark:text-slate-300">{u.lingkungan || '—'}</td>
+                            <td className="text-gray-500 dark:text-slate-300 font-mono text-[11px]">{hp || '—'}</td>
+                            <td className="text-right">
+                              {phone ? (
+                                <a
+                                  href={`https://wa.me/${phone}?text=${waMsg}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="inline-flex items-center gap-1 text-[11px] bg-green-50 dark:bg-emerald-950/60 text-green-700 dark:text-emerald-300 border border-green-200 dark:border-emerald-800/50 px-2 py-1 rounded-md hover:bg-green-100 dark:hover:bg-emerald-900/60 transition-colors"
+                                >
+                                  <MessageCircle size={11} /> Ingatkan
+                                </a>
+                              ) : (
+                                <span className="text-gray-400 text-[11px]">Tidak ada HP</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

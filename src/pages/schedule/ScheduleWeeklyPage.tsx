@@ -394,6 +394,16 @@ export default function ScheduleWeeklyPage() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="nav-tab-wrapper">
+        {TABS.map(t => (
+          <button key={t.key} onClick={() => setActiveTab(t.key)}
+            className={`px-4 py-2 rounded-lg text-sm transition-all ${activeTab === t.key ? 'nav-tab-active' : 'nav-tab-inactive'}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       {/* Status chips */}
       {events.length > 0 && (
         <div className="flex gap-3 flex-wrap">
@@ -401,16 +411,6 @@ export default function ScheduleWeeklyPage() {
           {pubCount   > 0 && <div className="badge-green  flex items-center gap-1.5 px-3 py-1.5"><Globe    size={13}/> {pubCount} published</div>}
         </div>
       )}
-
-      {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit flex-wrap">
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setActiveTab(t.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === t.key ? 'bg-white text-brand-800 shadow-sm' : 'text-gray-500'}`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
 
       {/* ── TAB: JADWAL ── */}
       {activeTab === 'jadwal' && (
@@ -456,7 +456,7 @@ export default function ScheduleWeeklyPage() {
               </div>
             )}
 
-            <div className="space-y-6">
+            <div className="space-y-4">
               {mainEvents.map((ev: any) => {
                 const [ey,em,ed] = ev.tanggal_tugas?.split('-').map(Number) || [0,0,0];
                 const dayBefore  = ey ? `${ey}-${String(em).padStart(2,'0')}-${String(ed-1).padStart(2,'0')}` : null;
@@ -508,8 +508,8 @@ export default function ScheduleWeeklyPage() {
                     <div className="flex items-center gap-3">
                       <div className={`w-3 h-3 rounded-full ${lc.dot}`}/>
                       <div>
-                        <p className="font-bold text-gray-900">{ev.perayaan || ev.nama_event}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="font-bold text-gray-900 dark:text-slate-100">{ev.perayaan || ev.nama_event}</p>
+                        <p className="text-xs text-gray-500 dark:text-slate-400">
                           {formatDate(ev.tanggal_latihan,'dd MMM')} – {formatDate(ev.tanggal_tugas,'dd MMM yyyy')}
                           {ev.is_draft ? ' · Draft' : ' · Published'}
                         </p>
@@ -529,13 +529,13 @@ export default function ScheduleWeeklyPage() {
                       {Array.from({ length: nSlots }, (_,i) => i+1).map(slot => {
                         const slotPics = (ev.event_pics || []).filter((p: any) => p.slot === slot).sort((a: any, b: any) => a.urutan - b.urutan);
                         return (
-                          <div key={slot} className="p-3 bg-gray-50 rounded-xl space-y-1">
-                            <p className="text-xs font-bold text-gray-700">{SLOT_INFO[slot]?.time || `Misa ${slot}`}</p>
+                          <div key={slot} className="p-3 bg-gray-50 dark:bg-slate-800/90 rounded-xl space-y-1 border border-gray-100 dark:border-slate-700">
+                            <p className="text-xs font-bold text-gray-700 dark:text-slate-200">{SLOT_INFO[slot]?.time || `Misa ${slot}`}</p>
                             {slotPics.length === 0
-                              ? <p className="text-[11px] text-red-400">PIC belum diisi</p>
+                              ? <p className="text-[11px] text-red-400 dark:text-red-300">PIC belum diisi</p>
                               : slotPics.map((p: any, i: number) => (
-                                <p key={i} className="text-[11px] text-brand-700 font-medium">
-                                  ✓ {p.nama}{p.hp ? <> · <a href={`https://wa.me/${p.hp.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="text-green-600 hover:underline">{p.hp}</a></> : ''}
+                                <p key={i} className="text-[11px] text-brand-700 dark:text-amber-400 font-medium">
+                                  ✓ {p.nama}{p.hp ? <> · <a href={`https://wa.me/${p.hp.replace(/\D/g,'')}`} target="_blank" rel="noreferrer" className="text-green-600 dark:text-green-400 hover:underline">{p.hp}</a></> : ''}
                                 </p>
                               ))
                             }
@@ -548,17 +548,17 @@ export default function ScheduleWeeklyPage() {
                       {Array.from({ length: nSlots }, (_,i) => i+1).map(slot => {
                         const slotPics = editPicSlots.filter(p => p.slot === slot).sort((a: any, b: any) => a.urutan - b.urutan);
                         return (
-                          <div key={slot} className="p-3 bg-blue-50 rounded-xl space-y-2">
+                          <div key={slot} className="p-3 bg-blue-50 dark:bg-slate-800/90 rounded-xl space-y-2 border border-blue-200 dark:border-slate-700">
                             <div className="flex items-center justify-between">
-                              <p className="text-xs font-bold text-gray-700">{SLOT_INFO[slot]?.time || `Misa ${slot}`}</p>
-                              <button type="button" onClick={() => addPicInline(slot)} className="text-[11px] text-brand-800 hover:text-brand-600 flex items-center gap-0.5 font-medium">
+                              <p className="text-xs font-bold text-gray-700 dark:text-slate-200">{SLOT_INFO[slot]?.time || `Misa ${slot}`}</p>
+                              <button type="button" onClick={() => addPicInline(slot)} className="text-[11px] text-brand-800 dark:text-amber-400 hover:text-brand-600 flex items-center gap-0.5 font-medium">
                                 <Plus size={11}/> Tambah
                               </button>
                             </div>
-                            {slotPics.length === 0 && <p className="text-[11px] text-gray-400 italic">Belum ada PIC</p>}
+                            {slotPics.length === 0 && <p className="text-[11px] text-gray-400 dark:text-slate-500 italic">Belum ada PIC</p>}
                             {slotPics.map((p, i) => (
                               <div key={p.urutan} className="flex items-center gap-1.5">
-                                <span className="text-[10px] text-gray-400 w-4 shrink-0">{i+1}.</span>
+                                <span className="text-[10px] text-gray-400 dark:text-slate-400 w-4 shrink-0">{i+1}.</span>
                                 <select className="input text-xs flex-1"
                                   value={staffOptions.find((o: any) => o.nama_panggilan === p.nama || o.nickname === p.nama)?.nickname || ''}
                                   onChange={e => updatePicInline(slot, p.urutan, e.target.value)}>
@@ -587,10 +587,10 @@ export default function ScheduleWeeklyPage() {
       {/* ── TAB: PELATIH ── */}
       {activeTab === 'pelatih' && (
         <div className="space-y-4">
-          <div className="bg-teal-50 border border-teal-200 rounded-xl p-3 flex items-center justify-between gap-3">
+          <div className="bg-teal-50 dark:bg-emerald-950/40 border border-teal-200 dark:border-emerald-800/60 rounded-xl p-3 flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm text-teal-700 font-semibold">Kelola Pelatih Piket per Event</p>
-              <p className="text-xs text-teal-600 mt-0.5">Maks 3 pelatih per minggu. Tampil di kartu jadwal dan PNG export.</p>
+              <p className="text-sm text-teal-700 dark:text-emerald-300 font-semibold">Kelola Pelatih Piket per Event</p>
+              <p className="text-xs text-teal-600 dark:text-emerald-400 mt-0.5">Maks 3 pelatih per minggu. Tampil di kartu jadwal dan PNG export.</p>
             </div>
             <button onClick={savePelatihBatch} disabled={savingPelatih || (Object.keys(pelatihBatch).length === 0 && Object.keys(latihanJamBatch).length === 0 && Object.keys(latihanTglBatch).length === 0 && Object.keys(latihanAltBatch).length === 0)} className="btn-primary btn-sm gap-1 whitespace-nowrap">
               {savingPelatih ? 'Menyimpan...' : `Simpan (${new Set([...Object.keys(pelatihBatch),...Object.keys(latihanJamBatch),...Object.keys(latihanTglBatch),...Object.keys(latihanAltBatch)]).size})`}
@@ -602,15 +602,15 @@ export default function ScheduleWeeklyPage() {
               <div key={ev.id} className="card space-y-3">
                 <div className="flex items-center gap-2 flex-wrap">
                   <div className={`w-3 h-3 rounded-full ${getLiturgyClass(ev.warna_liturgi).dot}`}/>
-                  <h3 className="font-bold text-gray-900">{ev.perayaan || ev.nama_event}</h3>
-                  <span className="text-xs text-gray-400">{formatDate(ev.tanggal_latihan,'dd MMM')} — {formatDate(ev.tanggal_tugas,'dd MMM')}</span>
+                  <h3 className="font-bold text-gray-900 dark:text-slate-100">{ev.perayaan || ev.nama_event}</h3>
+                  <span className="text-xs text-gray-400 dark:text-slate-400">{formatDate(ev.tanggal_latihan,'dd MMM')} — {formatDate(ev.tanggal_tugas,'dd MMM')}</span>
                   {ev.is_draft && <span className="badge-yellow text-xs">Draft</span>}
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[1,2,3].map(pos => (
                     <div key={pos}>
                       <label className="label text-xs">Pelatih {pos}{pos===1?' *':' (opsional)'}</label>
-                      <select className={`input text-sm ${getPelatihField(ev,pos) ? 'border-teal-400 bg-teal-50' : ''}`}
+                      <select className={`input text-sm ${getPelatihField(ev,pos) ? 'border-teal-400 bg-teal-50 dark:bg-emerald-950/60 dark:text-emerald-200' : ''}`}
                         value={getPelatihField(ev,pos)} onChange={e => setPelatihField(ev.id,pos,e.target.value)}>
                         <option value="">— Pilih Pelatih / Pendamping —</option>
                         {picOptions.map(u => <option key={u.id} value={u.nickname}>{u.nama_panggilan} ({u.role})</option>)}

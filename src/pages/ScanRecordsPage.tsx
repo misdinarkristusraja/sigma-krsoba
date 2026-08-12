@@ -140,20 +140,20 @@ export default function ScanRecordsPage() {
 
       {/* Anomali alert */}
       {anomalyCount > 0 && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-center gap-2">
-          <AlertTriangle size={16} className="text-red-600 flex-shrink-0" />
-          <p className="text-sm text-red-700">
+        <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 rounded-xl p-3 flex items-center gap-2">
+          <AlertTriangle size={16} className="text-red-600 dark:text-red-400 flex-shrink-0" />
+          <p className="text-sm text-red-700 dark:text-red-300">
             <strong>{anomalyCount} scan anomali</strong> ditemukan — checksum tidak cocok. Perlu dicek.
           </p>
           <button onClick={() => { setFilter(f => ({...f, anomaly: 'yes'})); setPage(0); }}
-            className="ml-auto text-xs text-red-600 underline">Lihat saja</button>
+            className="ml-auto text-xs text-red-600 dark:text-red-400 underline">Lihat saja</button>
         </div>
       )}
 
       {/* Filter bar */}
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-48">
-          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500" />
           <input className="input pl-9" placeholder="Cari nama, lingkungan, event..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
@@ -173,7 +173,7 @@ export default function ScanRecordsPage() {
         </select>
         {(filter.date || filter.scan_type || filter.anomaly) && (
           <button onClick={() => { setFilter({ scan_type: '', anomaly: '', date: '' }); setPage(0); }}
-            className="btn-ghost text-xs text-gray-400">Reset filter</button>
+            className="btn-ghost text-xs text-gray-400 dark:text-slate-400">Reset filter</button>
         )}
       </div>
 
@@ -194,26 +194,26 @@ export default function ScanRecordsPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-10 text-gray-400">Memuat...</td></tr>
+                <tr><td colSpan={7} className="text-center py-10 text-gray-400 dark:text-slate-400">Memuat...</td></tr>
               ) : filtered.length === 0 ? (
-                <tr><td colSpan={7} className="text-center py-10 text-gray-400">Tidak ada data</td></tr>
+                <tr><td colSpan={7} className="text-center py-10 text-gray-400 dark:text-slate-400">Tidak ada data</td></tr>
               ) : filtered.map(r => {
                 const sl = SCAN_TYPE_LABELS[r.scan_type] || { label: r.scan_type, color: 'badge-gray' };
                 return (
-                  <tr key={r.id} className={r.is_anomaly ? 'bg-red-50' : editRecord?.id === r.id ? 'bg-blue-50' : ''}>
-                    <td className="text-xs text-gray-500 whitespace-nowrap">{formatWIB(r.timestamp, 'dd/MM HH:mm')}</td>
+                  <tr key={r.id} className={r.is_anomaly ? 'bg-red-50/80 dark:bg-red-950/40' : editRecord?.id === r.id ? 'bg-blue-50 dark:bg-slate-800/80' : ''}>
+                    <td className="text-xs text-gray-500 dark:text-slate-400 whitespace-nowrap">{formatWIB(r.timestamp, 'dd/MM HH:mm')}</td>
                     <td>
-                      <div className="font-semibold text-gray-900 text-sm">{r.user?.nama_panggilan || '?'}</div>
-                      <div className="text-xs text-gray-400">@{r.user?.nickname} · {r.user?.lingkungan}</div>
+                      <div className="font-semibold text-gray-900 dark:text-slate-100 text-sm">{r.user?.nama_panggilan || '?'}</div>
+                      <div className="text-xs text-gray-400 dark:text-slate-400">@{r.user?.nickname} · {r.user?.lingkungan}</div>
                     </td>
                     <td>
                       <span className={`badge ${sl.color}`}>{sl.label}</span>
                       {r.is_walk_in && <span className="badge-yellow ml-1 text-xs">Mengganti</span>}
                     </td>
-                    <td className="text-xs text-gray-600 max-w-40 truncate">
+                    <td className="text-xs text-gray-600 dark:text-slate-300 max-w-40 truncate">
                       {r.event?.perayaan || r.event?.nama_event || '—'}
                     </td>
-                    <td className="text-xs text-gray-500">{r.scanner?.nama_panggilan || '—'}</td>
+                    <td className="text-xs text-gray-500 dark:text-slate-300">{r.scanner?.nama_panggilan || '—'}</td>
                     <td>
                       <span className={`badge text-xs ${r.qr_version === 'legacy' ? 'badge-yellow' : 'badge-gray'}`}>
                         {r.qr_version === 'legacy' ? 'Lama' : 'Baru'}

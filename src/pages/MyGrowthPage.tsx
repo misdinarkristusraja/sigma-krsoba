@@ -197,14 +197,14 @@ export default function MyGrowthPage() {
           <div className="h-64 w-full flex items-center justify-center">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart cx="50%" cy="50%" outerRadius="75%" data={radarData}>
-                <PolarGrid stroke="#e5e7eb" />
-                <PolarAngleAxis dataKey="subject" tick={{ fill: '#4b5563', fontSize: 11 }} />
+                <PolarGrid stroke="#475569" />
+                <PolarAngleAxis dataKey="subject" tick={{ fill: '#94a3b8', fontSize: 11 }} />
                 <Radar
                   name="Skor Kualitas"
                   dataKey="score"
-                  stroke="#991b1b"
-                  fill="#991b1b"
-                  fillOpacity={0.35}
+                  stroke="#ef4444"
+                  fill="#ef4444"
+                  fillOpacity={0.4}
                 />
                 <Tooltip formatter={(value: any) => [`${value}%`, 'Skor']} />
               </RadarChart>
@@ -228,12 +228,12 @@ export default function MyGrowthPage() {
                     key={b.key}
                     className={`p-3 rounded-xl border flex flex-col gap-1.5 transition-all ${
                       isEarned
-                        ? 'bg-amber-50/60 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800/50 text-amber-900 dark:text-amber-200'
-                        : 'bg-gray-50 dark:bg-slate-800/50 border-gray-100 dark:border-slate-800 text-gray-400 dark:text-slate-500 opacity-60'
+                        ? 'bg-amber-50/80 dark:bg-amber-950/50 border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-200'
+                        : 'bg-gray-50 dark:bg-slate-800/80 border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-300 opacity-90'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className={`p-1.5 rounded-lg ${isEarned ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300' : 'bg-gray-200 dark:bg-slate-700 text-gray-500 dark:text-slate-400'}`}>
+                      <div className={`p-1.5 rounded-lg ${isEarned ? 'bg-amber-100 dark:bg-amber-900/60 text-amber-700 dark:text-amber-300' : 'bg-gray-200 dark:bg-slate-700 text-gray-500 dark:text-slate-300'}`}>
                         {b.key === 'penjaga_fajar' ? <Clock size={16} /> :
                          b.key === 'sahabat_latihan' ? <CheckCircle size={16} /> :
                          b.key === 'spesialis_pekan_suci' ? <Crown size={16} /> : <Award size={16} />}
@@ -242,7 +242,7 @@ export default function MyGrowthPage() {
                     </div>
                     <div>
                       <p className="font-semibold text-xs text-gray-900 dark:text-slate-100">{b.title}</p>
-                      <p className="text-[11px] text-gray-500 dark:text-slate-400 leading-tight mt-0.5">{b.description}</p>
+                      <p className="text-[11px] text-gray-600 dark:text-slate-300 leading-tight mt-0.5">{b.description}</p>
                     </div>
                   </div>
                 );

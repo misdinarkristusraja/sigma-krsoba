@@ -14,9 +14,9 @@ export function PriorityMonitor({ data, loading, onRefresh }: PriorityMonitorPro
   return (
     <div className="space-y-5">
       {/* Formula explanation */}
-      <div className="card bg-blue-50 border border-blue-200 space-y-2">
-        <h3 className="font-bold text-blue-900 text-sm">Cara Rumus Prioritas Bekerja</h3>
-        <div className="text-xs text-blue-800 space-y-1 leading-relaxed">
+      <div className="card bg-blue-50 dark:bg-slate-900 border border-blue-200 dark:border-slate-800 space-y-2">
+        <h3 className="font-bold text-blue-900 dark:text-blue-300 text-sm">Cara Rumus Prioritas Bekerja</h3>
+        <div className="text-xs text-blue-800 dark:text-slate-300 space-y-1 leading-relaxed">
           <p><strong>Skor</strong> = hari sejak tugas terakhir + delta kondisi</p>
           <p>→ Hadir (K1-K3c/K4a/K4c): -5 s/d -1 (kurangi prioritas)</p>
           <p>→ K6 (absen) +10: naikkan prioritas agar cepat dijadwalkan ulang</p>
@@ -30,24 +30,24 @@ export function PriorityMonitor({ data, loading, onRefresh }: PriorityMonitorPro
         <>
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {[
-              { label: 'Anggota Aktif',     val: data.poolSize,                                                            color: 'bg-brand-50'  },
-              { label: 'Weekend',           val: data.weekendsInMonth + '×',                                               color: 'bg-green-50'  },
-              { label: 'Total Slot',        val: data.totalSlotsMonth,                                                     color: 'bg-blue-50'   },
-              { label: 'Slot Terisi',       val: `${data.filledSlots}/${data.totalSlotsMonth}`,                            color: data.filledSlots >= data.totalSlotsMonth ? 'bg-green-100' : 'bg-orange-50' },
-              { label: 'Ideal per Orang',   val: data.idealPerPerson + '×',                                                color: 'bg-yellow-50' },
+              { label: 'Anggota Aktif',     val: data.poolSize,                                                            color: 'bg-brand-50 dark:bg-slate-900/90'  },
+              { label: 'Weekend',           val: data.weekendsInMonth + '×',                                               color: 'bg-green-50 dark:bg-slate-900/90'  },
+              { label: 'Total Slot',        val: data.totalSlotsMonth,                                                     color: 'bg-blue-50 dark:bg-slate-900/90'   },
+              { label: 'Slot Terisi',       val: `${data.filledSlots}/${data.totalSlotsMonth}`,                            color: data.filledSlots >= data.totalSlotsMonth ? 'bg-green-100 dark:bg-slate-900/90' : 'bg-orange-50 dark:bg-slate-900/90' },
+              { label: 'Ideal per Orang',   val: data.idealPerPerson + '×',                                                color: 'bg-yellow-50 dark:bg-slate-900/90' },
             ].map(c => (
-              <div key={c.label} className={`card ${c.color} border-0 text-center`}>
-                <div className="text-2xl font-black text-gray-800">{c.val}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{c.label}</div>
+              <div key={c.label} className={`card ${c.color} border border-gray-100 dark:border-slate-800 text-center`}>
+                <div className="text-2xl font-black text-gray-800 dark:text-slate-100">{c.val}</div>
+                <div className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{c.label}</div>
               </div>
             ))}
           </div>
 
           {/* Quota warning */}
           <div className={`p-3 rounded-xl text-sm flex items-start gap-2 ${
-            Number(data.idealPerPerson) < 1  ? 'bg-red-50 border border-red-200 text-red-800' :
-            Number(data.idealPerPerson) > 4  ? 'bg-orange-50 border border-orange-200 text-orange-800' :
-                                                'bg-green-50 border border-green-200 text-green-800'
+            Number(data.idealPerPerson) < 1  ? 'bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800/60 text-red-800 dark:text-red-300' :
+            Number(data.idealPerPerson) > 4  ? 'bg-orange-50 dark:bg-orange-950/40 border border-orange-200 dark:border-orange-800/60 text-orange-800 dark:text-orange-300' :
+                                                'bg-green-50 dark:bg-emerald-950/40 border border-green-200 dark:border-emerald-800/60 text-green-800 dark:text-emerald-300'
           }`}>
             <span className="text-lg">
               {Number(data.idealPerPerson) < 1 ? '⚠️' : Number(data.idealPerPerson) > 4 ? '🔥' : '✅'}
@@ -65,10 +65,10 @@ export function PriorityMonitor({ data, loading, onRefresh }: PriorityMonitorPro
           {/* Progress bar */}
           <div className="card">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold text-gray-700 text-sm">Progress Jadwal Bulan Ini</h3>
-              <span className="text-xs text-gray-500">{data.filledSlots} / {data.totalSlotsMonth} slot terisi</span>
+              <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm">Progress Jadwal Bulan Ini</h3>
+              <span className="text-xs text-gray-500 dark:text-slate-400">{data.filledSlots} / {data.totalSlotsMonth} slot terisi</span>
             </div>
-            <div className="w-full bg-gray-100 rounded-full h-3 overflow-hidden">
+            <div className="w-full bg-gray-100 dark:bg-slate-800 rounded-full h-3 overflow-hidden">
               <div
                 className={`h-3 rounded-full transition-all ${
                   data.filledSlots >= data.totalSlotsMonth ? 'bg-green-500' :
@@ -77,7 +77,7 @@ export function PriorityMonitor({ data, loading, onRefresh }: PriorityMonitorPro
                 style={{ width: `${Math.min(100, Math.round(data.filledSlots / Math.max(1, data.totalSlotsMonth) * 100))}%` }}
               />
             </div>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-gray-400 dark:text-slate-400 mt-1">
               {data.filledSlots >= data.totalSlotsMonth ? '✅ Semua slot sudah terisi' : `Sisa ${data.totalSlotsMonth - data.filledSlots} slot kosong`}
             </p>
           </div>
@@ -86,14 +86,14 @@ export function PriorityMonitor({ data, loading, onRefresh }: PriorityMonitorPro
 
       {/* Priority table */}
       <div className="card overflow-hidden p-0">
-        <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-700">Daftar Prioritas Generate</h3>
+        <div className="px-4 py-3 border-b border-gray-100 dark:border-slate-800 flex items-center justify-between">
+          <h3 className="font-semibold text-gray-700 dark:text-slate-100">Daftar Prioritas Generate</h3>
           <div className="flex items-center gap-2">
             <div className="flex gap-2 text-[10px] font-medium hidden sm:flex">
-              <span className="text-red-500">🔴 Lama (&gt;30hr)</span>
-              <span className="text-orange-500">🟠 Sedang (7-30hr)</span>
-              <span className="text-green-600">🟢 Baru (&lt;7hr)</span>
-              <span className="text-blue-500">🆕 Belum pernah</span>
+              <span className="text-red-500 dark:text-red-400">🔴 Lama (&gt;30hr)</span>
+              <span className="text-orange-500 dark:text-orange-400">🟠 Sedang (7-30hr)</span>
+              <span className="text-green-600 dark:text-emerald-400">🟢 Baru (&lt;7hr)</span>
+              <span className="text-blue-500 dark:text-blue-400">🆕 Belum pernah</span>
             </div>
             <button onClick={onRefresh} disabled={loading} className="btn-ghost p-1.5">
               <RefreshCw size={14} className={loading ? 'animate-spin' : ''}/>
@@ -102,9 +102,9 @@ export function PriorityMonitor({ data, loading, onRefresh }: PriorityMonitorPro
         </div>
 
         {loading ? (
-          <div className="p-6 text-center text-gray-400">Menghitung prioritas...</div>
+          <div className="p-6 text-center text-gray-400 dark:text-slate-400">Menghitung prioritas...</div>
         ) : !data?.members.length ? (
-          <div className="p-6 text-center text-gray-400">Klik refresh untuk lihat data</div>
+          <div className="p-6 text-center text-gray-400 dark:text-slate-400">Klik refresh untuk lihat data</div>
         ) : (
           <div className="overflow-x-auto max-h-[60vh]">
             <table className="tbl text-xs w-full">
@@ -134,15 +134,15 @@ export function PriorityMonitor({ data, loading, onRefresh }: PriorityMonitorPro
                                     u.tier === 'medium' ? 'bg-orange-400' : 'bg-green-400';
                   const nextSlot  = i < PETUGAS_PER_SLOT;
                   return (
-                    <tr key={u.id} className={nextSlot ? 'bg-brand-50/50' : ''}>
-                      <td className="font-mono text-gray-400">
-                        {i + 1}{nextSlot && <span className="ml-1 text-brand-600 font-bold">▶</span>}
+                    <tr key={u.id} className={nextSlot ? 'bg-brand-50/50 dark:bg-slate-800/60' : ''}>
+                      <td className="font-mono text-gray-400 dark:text-slate-400">
+                        {i + 1}{nextSlot && <span className="ml-1 text-brand-600 dark:text-amber-400 font-bold">▶</span>}
                       </td>
                       <td>
-                        <div className="font-semibold text-gray-900">{u.nama_panggilan}</div>
-                        <div className="text-gray-400">@{u.nickname}</div>
+                        <div className="font-semibold text-gray-900 dark:text-slate-100">{u.nama_panggilan}</div>
+                        <div className="text-gray-400 dark:text-slate-400">@{u.nickname}</div>
                       </td>
-                      <td className="text-gray-500">{u.lingkungan}</td>
+                      <td className="text-gray-500 dark:text-slate-300">{u.lingkungan}</td>
                       <td>
                         {u.lastDate
                           ? <span className="text-gray-600">

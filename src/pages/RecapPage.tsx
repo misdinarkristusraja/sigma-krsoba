@@ -686,20 +686,20 @@ export default function RecapPage() {
                   const globalIdx = (pgAllRekap.page - 1) * pgAllRekap.pageSize + i + 1;
                   return (
                     <tr key={m.id}>
-                      <td className="text-gray-400 font-mono text-[10px]">{globalIdx}</td>
-                      <td className="font-semibold text-gray-900">{m.nama_panggilan}</td>
-                      <td className="text-gray-500 text-[11px]">{m.lingkungan}</td>
-                      <td className="font-bold text-blue-700">{m.hadir}</td>
-                      <td className={`text-center ${m.kCounts?.K1 > 0 ? 'font-bold text-purple-700' : 'text-gray-300'}`}>{m.kCounts?.K1 || 0}</td>
-                      <td className={`text-center ${m.kCounts?.K2a > 0 ? 'font-bold text-emerald-700' : 'text-gray-300'}`}>{m.kCounts?.K2a || 0}</td>
-                      <td className={`text-center ${m.kCounts?.K2b > 0 ? 'font-bold text-green-700' : 'text-gray-300'}`}>{m.kCounts?.K2b || 0}</td>
-                      <td className={`text-center ${m.kCounts?.K3a > 0 ? 'font-bold text-blue-700' : 'text-gray-300'}`}>{m.kCounts?.K3a || 0}</td>
-                      <td className={`text-center ${m.kCounts?.K3b > 0 ? 'font-bold text-sky-700' : 'text-gray-300'}`}>{m.kCounts?.K3b || 0}</td>
-                      <td className={`text-center ${m.kCounts?.K3c > 0 ? 'font-bold text-cyan-700' : 'text-gray-300'}`}>{m.kCounts?.K3c || 0}</td>
-                      <td className={`text-center ${m.kCounts?.K4a > 0 ? 'font-bold text-teal-700' : 'text-gray-300'}`}>{m.kCounts?.K4a || 0}</td>
-                      <td className={`text-center ${m.kCounts?.K4c > 0 ? 'font-bold text-yellow-700' : 'text-gray-300'}`}>{m.kCounts?.K4c || 0}</td>
-                      <td className={`text-center font-bold ${m.k6 > 0 ? 'text-red-600 bg-red-50' : 'text-gray-300'}`}>{m.k6}</td>
-                      <td className="text-gray-500">{m.minggu}</td>
+                      <td className="text-gray-400 dark:text-slate-400 font-mono text-[10px]">{globalIdx}</td>
+                      <td className="font-semibold text-gray-900 dark:text-slate-100">{m.nama_panggilan}</td>
+                      <td className="text-gray-500 dark:text-slate-300 text-[11px]">{m.lingkungan}</td>
+                      <td className="font-bold text-blue-700 dark:text-blue-400">{m.hadir}</td>
+                      <td className={`text-center ${m.kCounts?.K1 > 0 ? 'font-bold text-purple-700 dark:text-purple-400' : 'text-gray-300 dark:text-slate-600'}`}>{m.kCounts?.K1 || 0}</td>
+                      <td className={`text-center ${m.kCounts?.K2a > 0 ? 'font-bold text-emerald-700 dark:text-emerald-400' : 'text-gray-300 dark:text-slate-600'}`}>{m.kCounts?.K2a || 0}</td>
+                      <td className={`text-center ${m.kCounts?.K2b > 0 ? 'font-bold text-green-700 dark:text-green-400' : 'text-gray-300 dark:text-slate-600'}`}>{m.kCounts?.K2b || 0}</td>
+                      <td className={`text-center ${m.kCounts?.K3a > 0 ? 'font-bold text-blue-700 dark:text-blue-400' : 'text-gray-300 dark:text-slate-600'}`}>{m.kCounts?.K3a || 0}</td>
+                      <td className={`text-center ${m.kCounts?.K3b > 0 ? 'font-bold text-sky-700 dark:text-sky-400' : 'text-gray-300 dark:text-slate-600'}`}>{m.kCounts?.K3b || 0}</td>
+                      <td className={`text-center ${m.kCounts?.K3c > 0 ? 'font-bold text-cyan-700 dark:text-cyan-400' : 'text-gray-300 dark:text-slate-600'}`}>{m.kCounts?.K3c || 0}</td>
+                      <td className={`text-center ${m.kCounts?.K4a > 0 ? 'font-bold text-teal-700 dark:text-teal-400' : 'text-gray-300 dark:text-slate-600'}`}>{m.kCounts?.K4a || 0}</td>
+                      <td className={`text-center ${m.kCounts?.K4c > 0 ? 'font-bold text-yellow-700 dark:text-amber-400' : 'text-gray-300 dark:text-slate-600'}`}>{m.kCounts?.K4c || 0}</td>
+                      <td className={`text-center font-bold ${m.k6 > 0 ? 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/40' : 'text-gray-300 dark:text-slate-600'}`}>{m.k6}</td>
+                      <td className="text-gray-500 dark:text-slate-300">{m.minggu}</td>
                     </tr>
                   );
                 })}

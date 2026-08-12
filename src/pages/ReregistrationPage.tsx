@@ -175,15 +175,15 @@ export default function ReregistrationPage() {
       <div className="space-y-5">
         <h1 className="page-title">Daftar Ulang</h1>
         <div className="card text-center py-14">
-          <Lock size={48} className="mx-auto text-gray-300 mb-4" />
-          <h2 className="font-bold text-xl text-gray-700">Daftar Ulang Belum Dibuka</h2>
-          <p className="text-gray-500 text-sm mt-2">
+          <Lock size={48} className="mx-auto text-gray-300 dark:text-slate-600 mb-4" />
+          <h2 className="font-bold text-xl text-gray-700 dark:text-slate-100">Daftar Ulang Belum Dibuka</h2>
+          <p className="text-gray-500 dark:text-slate-300 text-sm mt-2">
             Daftar ulang akan dibuka pada <strong>{openLabel}</strong>.
           </p>
           {daysUntilOpen > 0 && (
-            <p className="text-brand-800 font-bold text-2xl mt-4">{daysUntilOpen} hari lagi</p>
+            <p className="text-brand-800 dark:text-amber-400 font-bold text-2xl mt-4">{daysUntilOpen} hari lagi</p>
           )}
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-gray-400 dark:text-slate-400 mt-1">
             Pastikan kamu siap memperbarui data sekolah, nomor HP, dan informasi lainnya.
           </p>
         </div>
@@ -199,35 +199,35 @@ export default function ReregistrationPage() {
         <h1 className="page-title">Daftar Ulang</h1>
         <div className="card text-center py-10">
           <CheckCircle size={48} className="mx-auto text-green-500 mb-4" />
-          <h2 className="font-bold text-xl text-gray-900">Daftar Ulang Selesai</h2>
-          <p className="text-gray-500 text-sm mt-2">
+          <h2 className="font-bold text-xl text-gray-900 dark:text-slate-100">Daftar Ulang Selesai</h2>
+          <p className="text-gray-500 dark:text-slate-300 text-sm mt-2">
             Kamu sudah melakukan daftar ulang untuk tahun {new Date().getFullYear()}.
           </p>
-          <p className="text-xs text-gray-400 mt-2">
+          <p className="text-xs text-gray-400 dark:text-slate-400 mt-2">
             Jika ada perubahan data, hubungi Pengurus secara langsung.
           </p>
         </div>
 
         {/* NDU section — selalu tampil di bawah */}
-        <div className={`card space-y-3 ${hasNdu ? 'border-green-200' : 'border-orange-300 border-2'}`}>
-          <h3 className="font-semibold text-gray-800 flex items-center gap-2">
+        <div className={`card space-y-3 ${hasNdu ? 'border-green-200 dark:border-emerald-800/60' : 'border-orange-300 dark:border-orange-700/80 border-2'}`}>
+          <h3 className="font-semibold text-gray-800 dark:text-slate-100 flex items-center gap-2">
             {hasNdu
-              ? <CheckCircle size={16} className="text-green-600"/>
-              : <AlertTriangle size={16} className="text-orange-500"/>
+              ? <CheckCircle size={16} className="text-green-600 dark:text-emerald-400"/>
+              : <AlertTriangle size={16} className="text-orange-500 dark:text-orange-400"/>
             }
             Nomor Data Umat
           </h3>
 
           {hasNdu ? (
-            <div className="flex items-center gap-3 bg-green-50 rounded-xl px-4 py-3">
-              <span className="text-sm text-gray-600">Nomor kamu:</span>
-              <span className="font-mono font-bold text-brand-800 text-lg">{(profile as any).nomor_data_umat}</span>
+            <div className="flex items-center gap-3 bg-green-50 dark:bg-emerald-950/40 rounded-xl px-4 py-3 border border-green-200 dark:border-emerald-800/50">
+              <span className="text-sm text-gray-600 dark:text-slate-300">Nomor kamu:</span>
+              <span className="font-mono font-bold text-brand-800 dark:text-amber-400 text-lg">{(profile as any).nomor_data_umat}</span>
             </div>
           ) : (
             <>
-              <div className="bg-amber-50 border border-amber-200 rounded-xl px-3 py-2.5">
-                <p className="text-xs font-semibold text-amber-800">Nomor Data Umat belum diisi</p>
-                <p className="text-xs text-amber-700 mt-0.5">
+              <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 rounded-xl px-3 py-2.5">
+                <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">Nomor Data Umat belum diisi</p>
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
                   Tanyakan ke <strong>PIC Data Umat Lingkungan</strong>, lalu isi di bawah ini.
                 </p>
               </div>
@@ -263,16 +263,16 @@ export default function ReregistrationPage() {
     <div className="space-y-5">
       <div>
         <h1 className="page-title flex items-center gap-2">
-          <RefreshCw size={24} className="text-brand-800" /> Daftar Ulang
+          <RefreshCw size={24} className="text-brand-800 dark:text-amber-400" /> Daftar Ulang
         </h1>
         <p className="page-subtitle">
           Perbarui data kamu untuk periode {openDate ? openDate.getFullYear() : new Date().getFullYear()}/{(openDate ? openDate.getFullYear() : new Date().getFullYear()) + 1}
         </p>
       </div>
 
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-        <p className="text-sm font-semibold text-blue-800">Tentang Daftar Ulang</p>
-        <p className="text-xs text-blue-700 mt-1">
+      <div className="bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800/60 rounded-xl p-4">
+        <p className="text-sm font-semibold text-blue-800 dark:text-blue-300">Tentang Daftar Ulang</p>
+        <p className="text-xs text-blue-700 dark:text-blue-200 mt-1">
           Pastikan semua data sudah benar — terutama <strong>sekolah</strong>, <strong>nomor HP</strong>, dan <strong>pendidikan</strong>.
           Data ini akan digunakan untuk penjadwalan Misa Harian.
           {closeDate && (
