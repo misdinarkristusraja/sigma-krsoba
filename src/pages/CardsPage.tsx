@@ -202,19 +202,28 @@ export default function CardsPage() {
       .then(({ data }: { data: any }) => {
         const list = data || [];
         setMembers(list);
-        setSelectedIds(new Set(list.map((m: any) => m.id)));
+        setSelectedIds(new Set());
         const params = new URLSearchParams(window.location.search);
         const targetId = params.get('user');
         if (targetId) {
           const target = list.find((m: any) => m.id === targetId);
-          if (target) setSelected(target);
+          if (target) {
+            setSelected(target);
+            setSelectedIds(new Set([target.id]));
+          }
           else if (!isPengurus && profile) {
             const me = list.find((m: any) => m.id === profile.id);
-            if (me) setSelected(me);
+            if (me) {
+              setSelected(me);
+              setSelectedIds(new Set([me.id]));
+            }
           }
         } else if (!isPengurus && profile) {
           const me = list.find((m: any) => m.id === profile.id);
-          if (me) setSelected(me);
+          if (me) {
+            setSelected(me);
+            setSelectedIds(new Set([me.id]));
+          }
         }
       });
   }, [profile, isPengurus]);
@@ -305,8 +314,8 @@ export default function CardsPage() {
     m.nickname?.toLowerCase().includes(search.toLowerCase())
   );
 
-  const allFilteredIds = filtered.map(m => m.id);
-  const isAllSelected = members.length > 0 && selectedIds.size === members.length;
+  const targetIds = search.trim() ? filtered.map(m => m.id) : members.map(m => m.id);
+  const isTargetAllSelected = targetIds.length > 0 && targetIds.every(id => selectedIds.has(id));
 
   return (
     <div className="space-y-5">
@@ -345,10 +354,12 @@ export default function CardsPage() {
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm">Pilih Anggota Export</h3>
               <button
-                onClick={() => setSelectedIds(toggleSelectAll(selectedIds, members.map(m => m.id)))}
+                onClick={() => setSelectedIds(toggleSelectAll(selectedIds, targetIds))}
                 className="text-xs font-semibold text-brand-800 dark:text-amber-400 hover:text-brand-900 dark:hover:text-amber-300 flex items-center gap-1 hover:underline">
-                {isAllSelected ? <CheckSquare size={13}/> : <Square size={13}/>}
-                {isAllSelected ? 'Batal Semua' : 'Pilih Semua'}
+                {isTargetAllSelected ? <CheckSquare size={13}/> : <Square size={13}/>}
+                {isTargetAllSelected
+                  ? (search.trim() ? `Batal (${targetIds.length})` : 'Batal Semua')
+                  : (search.trim() ? `Pilih (${targetIds.length})` : 'Pilih Semua')}
               </button>
             </div>
 

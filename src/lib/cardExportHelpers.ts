@@ -12,11 +12,16 @@ export function toggleSelectMember(selectedIds: Set<string>, id: string): Set<st
   return next;
 }
 
-export function toggleSelectAll(selectedIds: Set<string>, allIds: string[]): Set<string> {
-  if (selectedIds.size === allIds.length && allIds.length > 0) {
-    return new Set<string>();
+export function toggleSelectAll(selectedIds: Set<string>, targetIds: string[]): Set<string> {
+  if (targetIds.length === 0) return new Set(selectedIds);
+  const allTargetSelected = targetIds.every(id => selectedIds.has(id));
+  const next = new Set(selectedIds);
+  if (allTargetSelected) {
+    targetIds.forEach(id => next.delete(id));
+  } else {
+    targetIds.forEach(id => next.add(id));
   }
-  return new Set<string>(allIds);
+  return next;
 }
 
 export function getSelectedMembers<T extends { id: string }>(members: T[], selectedIds: Set<string>): T[] {
