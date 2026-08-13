@@ -10,7 +10,7 @@ import {
   Search, CheckCircle, XCircle, Eye,
   Download, RefreshCw, AlertTriangle, Users,
   ShieldAlert, ShieldCheck, ChevronDown, Edit2, MessageCircle,
-  KeyRound, Copy, Share2, UserPlus, Plus, X,
+  KeyRound, Copy, Share2, UserPlus, Plus, X, FileSpreadsheet,
 } from 'lucide-react';
 
 const VIDEO_TUTORIAL_LINK = 'https://youtu.be/zVN7jL6fUqQ';
@@ -322,6 +322,48 @@ export default function MembersPage() {
     a.click();
   }
 
+  function exportExcel() {
+    const isPendingRereg = filterRereg === 'not_done';
+    const rows = filtered.map((m, i) => ({
+      'No': i + 1,
+      'Nama Panggilan': m.nama_panggilan || '',
+      'Nama Lengkap': m.nama_lengkap || '',
+      'Nickname': m.nickname || '',
+      'Lingkungan': m.lingkungan || '',
+      'Wilayah': m.wilayah || '',
+      'Pendidikan': m.pendidikan || '',
+      'Sekolah': m.sekolah || '',
+      'HP Anak': m.hp_anak || '',
+      'HP Ortu': m.hp_ortu || '',
+      'Role': m.role || '',
+      'Status Daftar Ulang': reregSet.has(m.id) ? 'Sudah' : 'Belum',
+    }));
+    if (!rows.length) {
+      toast.error('Tidak ada data untuk diexport');
+      return;
+    }
+    const esc = (v: any) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const headers = Object.keys(rows[0]);
+    let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
+<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:11px;">
+<thead><tr style="background:#8B0000;color:#ffffff;">${headers.map(h => `<th style="font-weight:bold;padding:6px;">${esc(h)}</th>`).join('')}</tr></thead>
+<tbody>${rows.map(row => `<tr>${headers.map(h => `<td>${esc((row as any)[h])}</td>`).join('')}</tr>`).join('')}</tbody>
+</table></body></html>`;
+
+    const filename = isPendingRereg
+      ? `belum_daftar_ulang_${new Date().getFullYear()}.xls`
+      : `data_anggota_${new Date().toISOString().slice(0, 10)}.xls`;
+
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`File Excel (${rows.length} anggota) berhasil diunduh!`);
+  }
+
   const pendingCount = tab === 'pending' ? regs.length : 0;
 
   return (
@@ -350,6 +392,11 @@ export default function MembersPage() {
               <Share2 size={14}/> {sendPasswordMode ? 'Mode Kirim: ON' : 'Kirim Password'}
             </button>
           )}
+          <button onClick={exportExcel} disabled={filtered.length === 0}
+            className="btn-outline gap-1.5 btn-sm text-green-700 dark:text-emerald-400 border-green-300 dark:border-emerald-800 hover:bg-green-50 dark:hover:bg-emerald-950/40"
+            title="Export data anggota ke Excel (.xls)">
+            <FileSpreadsheet size={14} /> Export Excel
+          </button>
           <button onClick={exportCSV} disabled={filtered.length === 0}
             className="btn-outline gap-2 btn-sm">
             <Download size={14} /> Export CSV

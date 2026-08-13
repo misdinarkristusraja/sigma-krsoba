@@ -27,7 +27,7 @@ import {
   Settings, Save, Database, KeyRound, MessageCircle,
   CheckCircle2, XCircle, AlertTriangle, Loader2, Eye, EyeOff,
   RefreshCw, ClipboardCopy, SkipForward, Users, Download, RotateCcw, Trash2,
-  Edit2, Check, X, Search,
+  Edit2, Check, X, Search, FileSpreadsheet,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { usePagination } from '../hooks/usePagination';
@@ -329,6 +329,54 @@ export default function AdminPage() {
       navigator.clipboard.writeText(text);
       toast.success('Format WA berhasil disalin!');
     }
+  }
+
+  function exportPendingReregExcel() {
+    if (!pendingReregUsers.length) {
+      toast.error('Tidak ada pendaftar yang belum daftar ulang');
+      return;
+    }
+    const filtered = pendingReregUsers.filter(u =>
+      !pendingSearch ||
+      (u.nama_panggilan || u.nama_lengkap || u.nickname || '').toLowerCase().includes(pendingSearch.toLowerCase()) ||
+      (u.lingkungan || '').toLowerCase().includes(pendingSearch.toLowerCase())
+    );
+
+    if (!filtered.length) {
+      toast.error('Tidak ada data yang cocok dengan pencarian');
+      return;
+    }
+
+    const rows = filtered.map((m, i) => ({
+      'No': i + 1,
+      'Nama Panggilan': m.nama_panggilan || '',
+      'Nama Lengkap': m.nama_lengkap || '',
+      'Nickname': m.nickname || '',
+      'Lingkungan': m.lingkungan || '',
+      'Wilayah': m.wilayah || '',
+      'Pendidikan': m.pendidikan || '',
+      'Sekolah': m.sekolah || '',
+      'HP Anak': m.hp_anak || '',
+      'HP Ortu': m.hp_ortu || '',
+      'Status': m.status || 'Active',
+    }));
+
+    const esc = (v: any) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const headers = Object.keys(rows[0]);
+    let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>
+<table border="1" cellspacing="0" cellpadding="4" style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:11px;">
+<thead><tr style="background:#8B0000;color:#ffffff;">${headers.map(h => `<th style="font-weight:bold;padding:6px;">${esc(h)}</th>`).join('')}</tr></thead>
+<tbody>${rows.map(row => `<tr>${headers.map(h => `<td>${esc((row as any)[h])}</td>`).join('')}</tr>`).join('')}</tbody>
+</table></body></html>`;
+
+    const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `belum_daftar_ulang_${reregYear || new Date().getFullYear()}.xls`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`Excel ${filtered.length} anggota belum daftar ulang berhasil diunduh!`);
   }
 
   // State untuk Auto-Retire
@@ -876,6 +924,13 @@ export default function AdminPage() {
                       <ClipboardCopy size={13} /> Copy WA
                     </button>
                     <button
+                      onClick={exportPendingReregExcel}
+                      className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg text-xs font-semibold flex items-center gap-1 shadow-sm transition-all"
+                      title="Export data anggota belum daftar ulang ke Excel"
+                    >
+                      <FileSpreadsheet size={13} /> Export Excel
+                    </button>
+                    <button
                       onClick={() => setShowPendingModal(true)}
                       className="px-3 py-1.5 bg-orange-100 dark:bg-orange-900/60 text-orange-800 dark:text-orange-200 hover:bg-orange-200 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all"
                     >
@@ -1415,6 +1470,12 @@ export default function AdminPage() {
                   className="px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white text-xs font-semibold rounded-lg flex items-center gap-1 shadow-sm transition-all"
                 >
                   <ClipboardCopy size={13} /> Copy Format WA
+                </button>
+                <button
+                  onClick={exportPendingReregExcel}
+                  className="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold rounded-lg flex items-center gap-1 shadow-sm transition-all"
+                >
+                  <FileSpreadsheet size={13} /> Export Excel
                 </button>
               </div>
             </div>
