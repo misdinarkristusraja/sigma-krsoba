@@ -769,6 +769,7 @@ function RegistrationFormModal({
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    if (!isOpen) return;
     if (initialData && mode === 'edit') {
       setFormData({
         nama_lengkap: initialData.nama_lengkap || '',
@@ -802,7 +803,7 @@ function RegistrationFormModal({
         alasan_masuk: '',
       });
     }
-  }, [initialData, mode, isOpen]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

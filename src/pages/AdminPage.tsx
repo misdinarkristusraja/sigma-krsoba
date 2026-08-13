@@ -27,7 +27,7 @@ import {
   Settings, Save, Database, KeyRound, MessageCircle,
   CheckCircle2, XCircle, AlertTriangle, Loader2, Eye, EyeOff,
   RefreshCw, ClipboardCopy, SkipForward, Users, Download, RotateCcw, Trash2,
-  Edit2, Check, X,
+  Edit2, Check, X, Search,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { usePagination } from '../hooks/usePagination';
@@ -305,6 +305,31 @@ export default function AdminPage() {
   const [pendingReregUsers, setPendingReregUsers] = useState<any[]>([]);
   const [showPendingModal, setShowPendingModal]   = useState(false);
   const [pendingSearch,     setPendingSearch]     = useState('');
+
+  function copyPendingReregText(mode: 'names' | 'wa') {
+    if (!pendingReregUsers.length) {
+      toast.error('Tidak ada pendaftar yang belum daftar ulang');
+      return;
+    }
+    const filtered = pendingReregUsers.filter(u =>
+      !pendingSearch ||
+      (u.nama_panggilan || u.nickname || '').toLowerCase().includes(pendingSearch.toLowerCase()) ||
+      (u.lingkungan || '').toLowerCase().includes(pendingSearch.toLowerCase())
+    );
+
+    if (mode === 'names') {
+      const text = filtered.map((u, i) => `${i + 1}. ${u.nama_panggilan || u.nickname} (${u.lingkungan || '-'})`).join('\n');
+      navigator.clipboard.writeText(text);
+      toast.success('Daftar nama berhasil disalin!');
+    } else {
+      const text = `⚠️ PENGUMUMAN DAFTAR ULANG MISDINAR PERIODE ${reregYear}\n\n` +
+        `Dimohon kepada teman-teman berikut yang belum melakukan daftar ulang untuk segera mengisi form daftar ulang di aplikasi SIGMA:\n\n` +
+        filtered.map((u, i) => `${i + 1}. ${u.nama_panggilan || u.nickname} (${u.lingkungan || '-'})`).join('\n') +
+        `\n\nTerima kasih! Berkah Dalem 🙏`;
+      navigator.clipboard.writeText(text);
+      toast.success('Format WA berhasil disalin!');
+    }
+  }
 
   // State untuk Auto-Retire
   const [autoRetiring,   setAutoRetiring]   = useState(false);

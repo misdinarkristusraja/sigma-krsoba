@@ -93,6 +93,9 @@
   }
   .input-error  { @apply border-red-400; }
   .input-error:focus { box-shadow: 0 0 0 3px rgba(239,68,68,0.2); border-color: #f87171; }
+  select.input option {
+    @apply bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100;
+  }
   .label        { @apply block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1; }
 
   /* ── Badges ── */

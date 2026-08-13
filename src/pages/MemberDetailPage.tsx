@@ -261,33 +261,73 @@ export default function MemberDetailPage() {
     }
   }
 
-  function openWA(hp: any, pw: any) {
-    const phone = (hp || '').replace(/\D/g,'');
-    if (!phone) { toast.error('Nomor HP tidak ada'); return; }
-    const msg = buildWAMessage(member, pw);
-    window.open(`https://wa.me/${phone.startsWith('0') ? '62' + phone.slice(1) : phone}?text=${msg}`, '_blank');
-  }
-
-  const F = ({ label, name, type='text', options, textarea, disabled: dis }: any) => (
+// ── Top-level FormField component (Prevents focus loss on typing/re-render) ──
+function FormField({
+  label,
+  name,
+  type = 'text',
+  options,
+  textarea,
+  disabled: dis,
+  editing,
+  form,
+  setForm,
+}: {
+  label: string;
+  name: string;
+  type?: string;
+  options?: readonly string[] | string[];
+  textarea?: boolean;
+  disabled?: boolean;
+  editing: boolean;
+  form: Record<string, any>;
+  setForm: React.Dispatch<React.SetStateAction<Record<string, any>>>;
+}) {
+  return (
     <div>
       <label className="label text-xs">{label}</label>
       {!editing || dis ? (
-        <p className="text-sm text-gray-800 py-1">{form[name] || '—'}</p>
+        <p className="text-sm text-gray-800 dark:text-slate-200 py-1">{form[name] || '—'}</p>
       ) : textarea ? (
-        <textarea className="input h-20 resize-none text-sm" value={form[name] || ''}
-          onChange={e => setForm(f => ({...f, [name]: e.target.value}))}/>
+        <textarea
+          className="input h-20 resize-none text-sm"
+          value={form[name] || ''}
+          onChange={e => setForm(f => ({ ...f, [name]: e.target.value }))}
+        />
       ) : options ? (
-        <select className="input text-sm" value={form[name] || ''}
-          onChange={e => setForm(f => ({...f, [name]: e.target.value}))}>
+        <select
+          className="input text-sm"
+          value={form[name] || ''}
+          onChange={e => setForm(f => ({ ...f, [name]: e.target.value }))}
+        >
           <option value="">— Pilih —</option>
-          {options.map((o: any) => <option key={o} value={o}>{o}</option>)}
+          {options.map((o: any) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
         </select>
       ) : (
-        <input type={type} className="input text-sm" value={form[name] || ''}
-          onChange={e => setForm(f => ({...f, [name]: e.target.value}))}/>
+        <input
+          type={type}
+          className="input text-sm"
+          value={form[name] || ''}
+          onChange={e => setForm(f => ({ ...f, [name]: e.target.value }))}
+        />
       )}
     </div>
   );
+}
+
+function openWA(hp: any, pw: any, member: any) {
+  const phone = (hp || '').replace(/\D/g, '');
+  if (!phone) {
+    toast.error('Nomor HP tidak ada');
+    return;
+  }
+  const msg = buildWAMessage(member, pw);
+  window.open(`https://wa.me/${phone.startsWith('0') ? '62' + phone.slice(1) : phone}?text=${msg}`, '_blank');
+}
 
   if (loading) return (
     <div className="space-y-4">{[1,2,3].map(i=><div key={i} className="skeleton h-24 rounded-xl"/>)}</div>
@@ -359,16 +399,16 @@ export default function MemberDetailPage() {
       {tab === 'data' && (
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="card space-y-3">
-            <h3 className="font-semibold text-gray-700">Data Diri</h3>
-            <F label="Nama Lengkap"   name="nama_lengkap"/>
-            <F label="Nama Panggilan" name="nama_panggilan"/>
-            <F label="Tanggal Lahir"  name="tanggal_lahir" type="date" disabled/>
+            <h3 className="font-semibold text-gray-700 dark:text-slate-200">Data Diri</h3>
+            <FormField label="Nama Lengkap" name="nama_lengkap" editing={editing} form={form} setForm={setForm} />
+            <FormField label="Nama Panggilan" name="nama_panggilan" editing={editing} form={form} setForm={setForm} />
+            <FormField label="Tanggal Lahir" name="tanggal_lahir" type="date" disabled editing={editing} form={form} setForm={setForm} />
             <div className="grid grid-cols-2 gap-3">
-              <F label="Pendidikan" name="pendidikan" options={PENDIDIKAN_OPTIONS}/>
+              <FormField label="Pendidikan" name="pendidikan" options={PENDIDIKAN_OPTIONS} editing={editing} form={form} setForm={setForm} />
               <div>
                 <label className="label text-xs">Lingkungan</label>
                 {!editing ? (
-                  <p className="text-sm text-gray-800 py-1">{form.lingkungan || '—'}</p>
+                  <p className="text-sm text-gray-800 dark:text-slate-200 py-1">{form.lingkungan || '—'}</p>
                 ) : (
                   <select className="input text-sm" value={form.lingkungan || ''}
                     onChange={e => {
@@ -381,30 +421,30 @@ export default function MemberDetailPage() {
                 )}
               </div>
             </div>
-            <F label="Sekolah"   name="sekolah"/>
-            <F label="Wilayah"   name="wilayah"/>
-            <F label="Alamat"    name="alamat" textarea/>
-            <F label="No. Data Umat" name="nomor_data_umat"/>
+            <FormField label="Sekolah" name="sekolah" editing={editing} form={form} setForm={setForm} />
+            <FormField label="Wilayah" name="wilayah" editing={editing} form={form} setForm={setForm} />
+            <FormField label="Alamat" name="alamat" textarea editing={editing} form={form} setForm={setForm} />
+            <FormField label="No. Data Umat" name="nomor_data_umat" editing={editing} form={form} setForm={setForm} />
           </div>
 
           <div className="space-y-4">
             <div className="card space-y-3">
-              <h3 className="font-semibold text-gray-700">Kontak</h3>
-              <F label="HP Anak"      name="hp_anak"/>
-              <F label="HP Orang Tua" name="hp_ortu"/>
-              <F label="Nama Ayah"    name="nama_ayah"/>
-              <F label="Nama Ibu"     name="nama_ibu"/>
+              <h3 className="font-semibold text-gray-700 dark:text-slate-200">Kontak</h3>
+              <FormField label="HP Anak" name="hp_anak" editing={editing} form={form} setForm={setForm} />
+              <FormField label="HP Orang Tua" name="hp_ortu" editing={editing} form={form} setForm={setForm} />
+              <FormField label="Nama Ayah" name="nama_ayah" editing={editing} form={form} setForm={setForm} />
+              <FormField label="Nama Ibu" name="nama_ibu" editing={editing} form={form} setForm={setForm} />
             </div>
             <div className="card space-y-3">
-              <h3 className="font-semibold text-gray-700">Motivasi</h3>
-              <F label="Alasan Masuk"  name="alasan_masuk" textarea/>
-              <F label="Sampai Kapan"  name="sampai_kapan"/>
+              <h3 className="font-semibold text-gray-700 dark:text-slate-200">Motivasi</h3>
+              <FormField label="Alasan Masuk" name="alasan_masuk" textarea editing={editing} form={form} setForm={setForm} />
+              <FormField label="Sampai Kapan" name="sampai_kapan" editing={editing} form={form} setForm={setForm} />
             </div>
             {isAdmin && (
-              <div className="card space-y-3 border-brand-100">
-                <h3 className="font-semibold text-brand-800 text-sm">⚙️ Admin</h3>
-                <F label="Role"   name="role"   options={ROLES}/>
-                <F label="Status" name="status" options={['Active','Pending','Retired']}/>
+              <div className="card space-y-3 border-brand-100 dark:border-slate-800">
+                <h3 className="font-semibold text-brand-800 dark:text-amber-400 text-sm">⚙️ Admin</h3>
+                <FormField label="Role" name="role" options={ROLES} editing={editing} form={form} setForm={setForm} />
+                <FormField label="Status" name="status" options={['Active','Pending','Retired']} editing={editing} form={form} setForm={setForm} />
               </div>
             )}
           </div>
@@ -416,10 +456,10 @@ export default function MemberDetailPage() {
         <div className="grid sm:grid-cols-2 gap-4">
           {/* Reset Password */}
           <div className="card space-y-4">
-            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-              <KeyRound size={16} className="text-brand-800"/> Reset Password
+            <h3 className="font-semibold text-gray-800 dark:text-slate-200 flex items-center gap-2">
+              <KeyRound size={16} className="text-brand-800 dark:text-amber-400"/> Reset Password
             </h3>
-            <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 text-xs text-yellow-800">
+            <div className="bg-yellow-50 dark:bg-amber-950/40 border border-yellow-200 dark:border-amber-800/50 rounded-xl p-3 text-xs text-yellow-800 dark:text-amber-300">
               Admin tidak dapat melihat password sekarang. Setelah reset, anggota diwajibkan mengganti password saat login berikutnya.
             </div>
 
@@ -453,7 +493,7 @@ export default function MemberDetailPage() {
             </div>
 
             {newPw && (
-              <div className="bg-gray-50 rounded-xl p-3 font-mono text-sm text-center border border-dashed border-gray-300">
+              <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-3 font-mono text-sm text-center border border-dashed border-gray-300 dark:border-slate-700 text-gray-900 dark:text-slate-100">
                 Password baru: <strong>{newPw}</strong>
               </div>
             )}
@@ -462,13 +502,13 @@ export default function MemberDetailPage() {
           {/* Pengaturan Jadwal — hanya tampil untuk Pengurus/Admin */}
           {['Administrator','Pengurus'].includes(member.role) && (
             <div className="card space-y-3">
-              <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                <CalendarDays size={16} className="text-brand-800"/> Pengaturan Jadwal
+              <h3 className="font-semibold text-gray-800 dark:text-slate-200 flex items-center gap-2">
+                <CalendarDays size={16} className="text-brand-800 dark:text-amber-400"/> Pengaturan Jadwal
               </h3>
-              <label className="flex items-center justify-between gap-4 cursor-pointer select-none p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors">
+              <label className="flex items-center justify-between gap-4 cursor-pointer select-none p-3 rounded-xl bg-gray-50 dark:bg-slate-800/60 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors">
                 <div>
-                  <p className="text-sm font-medium text-gray-800">Dapat jadi PIC Misa Harian</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Jika dimatikan, tidak akan masuk pool PIC saat generate jadwal</p>
+                  <p className="text-sm font-medium text-gray-800 dark:text-slate-200">Dapat jadi PIC Misa Harian</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-400 mt-0.5">Jika dimatikan, tidak akan masuk pool PIC saat generate jadwal</p>
                 </div>
                 <button
                   type="button"
@@ -479,7 +519,7 @@ export default function MemberDetailPage() {
                     setMember((m: any) => ({ ...m, dapat_pic_harian: newVal }));
                     toast.success(newVal ? 'PIC Misa Harian diaktifkan' : 'PIC Misa Harian dinonaktifkan');
                   }}
-                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${(member as any).dapat_pic_harian !== false ? 'bg-brand-800' : 'bg-gray-300'}`}
+                  className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${(member as any).dapat_pic_harian !== false ? 'bg-brand-800 dark:bg-amber-500' : 'bg-gray-300 dark:bg-slate-700'}`}
                 >
                   <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${(member as any).dapat_pic_harian !== false ? 'translate-x-5' : 'translate-x-0'}`}/>
                 </button>
@@ -489,13 +529,13 @@ export default function MemberDetailPage() {
 
           {/* WA Kredensial */}
           <div className="card space-y-4">
-            <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-              <MessageCircle size={16} className="text-green-600"/> Kirim Kredensial via WA
+            <h3 className="font-semibold text-gray-800 dark:text-slate-200 flex items-center gap-2">
+              <MessageCircle size={16} className="text-green-600 dark:text-green-400"/> Kirim Kredensial via WA
             </h3>
 
-            <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-600 leading-relaxed">
-              <p className="font-semibold mb-1">Preview pesan yang akan dikirim:</p>
-              <p className="italic whitespace-pre-line text-gray-500 text-[11px]">{
+            <div className="bg-gray-50 dark:bg-slate-800/60 rounded-xl p-3 text-xs text-gray-600 dark:text-slate-300 leading-relaxed">
+              <p className="font-semibold text-gray-800 dark:text-slate-200 mb-1">Preview pesan yang akan dikirim:</p>
+              <p className="italic whitespace-pre-line text-gray-500 dark:text-slate-400 text-[11px]">{
 `Selamat ${getSalam()} bapak/ibu semua. Berikut adalah username dan password yang akan digunakan untuk sistem penjadwalan SIGMA V. 2.0
 
 username: ${member.nickname}
@@ -507,16 +547,16 @@ Mohon login... (dst)`
             </div>
 
             <div className="space-y-2">
-              <p className="text-xs text-gray-500">Kirim ke nomor:</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">Kirim ke nomor:</p>
               {member.hp_ortu && (
                 <button
                   onClick={() => {
                     const pw = lastPwForWA || newPw;
                     if (!pw) { toast.error('Reset password dulu sebelum kirim WA'); return; }
-                    openWA(member.hp_ortu, pw);
+                    openWA(member.hp_ortu, pw, member);
                   }}
                   className="btn-outline w-full gap-2 text-sm justify-start">
-                  <MessageCircle size={15} className="text-green-600"/>
+                  <MessageCircle size={15} className="text-green-600 dark:text-green-400"/>
                   WA Orang Tua: {member.hp_ortu}
                 </button>
               )}
@@ -525,20 +565,20 @@ Mohon login... (dst)`
                   onClick={() => {
                     const pw = lastPwForWA || newPw;
                     if (!pw) { toast.error('Reset password dulu sebelum kirim WA'); return; }
-                    openWA(member.hp_anak, pw);
+                    openWA(member.hp_anak, pw, member);
                   }}
                   className="btn-outline w-full gap-2 text-sm justify-start">
-                  <MessageCircle size={15} className="text-green-600"/>
+                  <MessageCircle size={15} className="text-green-600 dark:text-green-400"/>
                   WA Anak: {member.hp_anak}
                 </button>
               )}
               {!member.hp_ortu && !member.hp_anak && (
-                <p className="text-xs text-orange-500">⚠️ Tidak ada nomor HP yang terdaftar. Edit data diri dulu.</p>
+                <p className="text-xs text-orange-500 dark:text-orange-400">⚠️ Tidak ada nomor HP yang terdaftar. Edit data diri dulu.</p>
               )}
             </div>
 
             {!lastPwForWA && !newPw && (
-              <p className="text-xs text-gray-400 italic">
+              <p className="text-xs text-gray-400 dark:text-slate-400 italic">
                 💡 Reset password dulu (tab kiri), lalu tombol WA akan berisi password baru secara otomatis.
               </p>
             )}
@@ -547,7 +587,7 @@ Mohon login... (dst)`
       )}
 
       {tab === 'akun' && !isAdmin && (
-        <div className="card text-center py-10 text-gray-400">
+        <div className="card text-center py-10 text-gray-400 dark:text-slate-500">
           <KeyRound size={36} className="mx-auto mb-2 opacity-30"/>
           <p>Hanya Administrator yang dapat mengakses tab ini.</p>
         </div>
