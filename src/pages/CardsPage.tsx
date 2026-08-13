@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import QRCode from 'qrcode';
 import jsPDF from 'jspdf';
 import { supabase as supabaseTyped } from '../lib/supabase';
@@ -195,14 +195,19 @@ export default function CardsPage() {
   const [genLoading, setGenLoading] = useState(false);
   const [bulkProg, setBulkProg] = useState<{ done: number; total: number } | null>(null);
 
+  const initialLoadedRef = useRef(false);
+
   useEffect(() => {
+    if (initialLoadedRef.current) return;
+
     supabase.from('users')
       .select('id, nickname, myid, nama_panggilan, lingkungan, status')
       .in('status', ['Active', 'Pending']).order('nama_panggilan')
       .then(({ data }: { data: any }) => {
         const list = data || [];
         setMembers(list);
-        setSelectedIds(new Set());
+        initialLoadedRef.current = true;
+        
         const params = new URLSearchParams(window.location.search);
         const targetId = params.get('user');
         if (targetId) {
@@ -210,20 +215,21 @@ export default function CardsPage() {
           if (target) {
             setSelected(target);
             setSelectedIds(new Set([target.id]));
+            return;
           }
-          else if (!isPengurus && profile) {
-            const me = list.find((m: any) => m.id === profile.id);
-            if (me) {
-              setSelected(me);
-              setSelectedIds(new Set([me.id]));
-            }
-          }
-        } else if (!isPengurus && profile) {
+        }
+        
+        if (!isPengurus && profile) {
           const me = list.find((m: any) => m.id === profile.id);
           if (me) {
             setSelected(me);
             setSelectedIds(new Set([me.id]));
+            return;
           }
+        }
+        
+        if (isPengurus) {
+            setSelectedIds(new Set(list.map((m: any) => m.id)));
         }
       });
   }, [profile, isPengurus]);
