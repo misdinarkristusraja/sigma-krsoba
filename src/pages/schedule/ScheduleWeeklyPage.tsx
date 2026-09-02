@@ -9,7 +9,8 @@ import { EventCard } from './components/EventCard';
 import { PriorityMonitor } from './components/PriorityMonitor';
 import { EditEventModal, DeleteEventModal } from './components/ScheduleModals';
 import { AddMisaModal } from './components/AddMisaModal';
-import { Zap, FileEdit, Globe, Check, Pencil, Trash2, Plus, X as XIcon, ImageDown } from 'lucide-react';
+import { MajorMassWizardModal } from './components/majorMass/MajorMassWizardModal';
+import { Zap, FileEdit, Globe, Check, Pencil, Trash2, Plus, X as XIcon, ImageDown, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { exportCombinedPNG } from './components/ExportToolbar';
 
@@ -44,6 +45,7 @@ export default function ScheduleWeeklyPage() {
   const [editEvent,  setEditEvent]  = useState<any>(null);
   const [deleteConf, setDeleteConf] = useState<any>(null);
   const [showAddMisa,setShowAddMisa]= useState(false);
+  const [showMajorMassWizard, setShowMajorMassWizard] = useState(false);
   const [picOptions, setPicOptions] = useState<any[]>([]);
   const [editPicEventId, setEditPicEventId] = useState<string | null>(null);
   const [editPicSlots, setEditPicSlots]     = useState<any[]>([]);
@@ -385,6 +387,12 @@ export default function ScheduleWeeklyPage() {
             + Misa Khusus
           </button>
           <button
+            onClick={() => setShowMajorMassWizard(true)}
+            className="btn-outline gap-2 border-amber-400/80 text-amber-900 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-slate-800"
+          >
+            <Sparkles size={16} className="text-amber-600 dark:text-amber-400" /> Wizard Misa Besar
+          </button>
+          <button
             onClick={selectMode ? exitSelectMode : enterSelectMode}
             className={`btn-outline gap-2 ${selectMode ? 'ring-2 ring-brand-500 bg-brand-50' : ''}`}
           >
@@ -489,6 +497,7 @@ export default function ScheduleWeeklyPage() {
           <EditEventModal editEvent={editEvent} setEditEvent={setEditEvent} picOptions={picOptions} loadEvents={loadEvents} saveEditEvent={saveEditEvent}/>
           <DeleteEventModal deleteConf={deleteConf} setDeleteConf={setDeleteConf} deleteEvent={deleteEvent}/>
           <AddMisaModal showAddMisa={showAddMisa} setShowAddMisa={setShowAddMisa} addMisaForm={addMisaForm} setAddMisaForm={setAddMisaForm} addMisaKhusus={addMisaKhusus}/>
+          <MajorMassWizardModal isOpen={showMajorMassWizard} onClose={() => setShowMajorMassWizard(false)} onComplete={loadEvents} />
         </>
       )}
 

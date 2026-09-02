@@ -157,3 +157,5 @@ export interface Database {
     }
   }
 }
+
+export * from './majorMass';
