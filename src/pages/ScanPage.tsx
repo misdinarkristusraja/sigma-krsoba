@@ -4,6 +4,7 @@ import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
 import { parseQRValue } from '../lib/utils';
+import { effectiveDate, slotLabel } from '../lib/swapUtils';
 import {
   CheckCircle, XCircle, AlertTriangle, Camera, QrCode,
   Clock, Shield, Keyboard, User, ChevronDown, CalendarClock,
@@ -58,15 +59,20 @@ function getLatihanMin(ev: any, defaultMin: number): number {
 function getActiveWindows(events: any[], today: string, latihanDefaultMin: number) {
   const activeWindows: string[] = [];
   for (const ev of events) {
-    const isSaturday = ev.tanggal_latihan === today;
-    const isSunday   = ev.tanggal_tugas   === today;
-    if (isSaturday) {
+    const isWeekend  = ev.tipe_event !== 'Misa_Harian' && ev.tipe_event !== 'Misa_Khusus';
+    const isSaturdaySlot1 = isWeekend && effectiveDate(ev.tanggal_tugas, 1, ev.tipe_event) === today;
+    const isLatihanDay    = ev.tanggal_latihan === today;
+    const isSunday        = ev.tanggal_tugas   === today;
+
+    if (isLatihanDay) {
       const lMin = getLatihanMin(ev, latihanDefaultMin);
       const lJamStr = `${String(Math.floor(lMin/60)).padStart(2,'0')}:${String(lMin%60).padStart(2,'0')}`;
-      if (isInTimeWindow(lMin))             activeWindows.push(`Latihan (${lJamStr})`);
+      if (isInTimeWindow(lMin)) activeWindows.push(`Latihan (${lJamStr})`);
+    }
+    if (isSaturdaySlot1) {
       if (isInTimeWindow(SLOT_TIMES_MIN.slot1)) activeWindows.push('Sabtu 17:30');
     }
-    if (isSunday) {
+    if (isSunday && isWeekend) {
       if (isInTimeWindow(SLOT_TIMES_MIN.slot2)) activeWindows.push('Minggu 06:00');
       if (isInTimeWindow(SLOT_TIMES_MIN.slot3)) activeWindows.push('Minggu 08:00');
       if (isInTimeWindow(SLOT_TIMES_MIN.slot4)) activeWindows.push('Minggu 17:30');
@@ -90,10 +96,15 @@ function getNextWindowLabel(events: any[], today: string, latihanDefaultMin: num
   const now = nowMinutesWIB();
   const all: { label: string; min: number }[] = [];
   for (const ev of events) {
+    const isWeekend  = ev.tipe_event !== 'Misa_Harian' && ev.tipe_event !== 'Misa_Khusus';
+    const isSaturdaySlot1 = isWeekend && effectiveDate(ev.tanggal_tugas, 1, ev.tipe_event) === today;
+
     if (ev.tanggal_latihan === today) {
       const lMin = getLatihanMin(ev, latihanDefaultMin);
       const lJamStr = `${String(Math.floor(lMin/60)).padStart(2,'0')}:${String(lMin%60).padStart(2,'0')}`;
       all.push({ label: `Latihan ${lJamStr}`, min: lMin });
+    }
+    if (isSaturdaySlot1) {
       all.push({ label: 'Sabtu 17:30', min: SLOT_TIMES_MIN.slot1 });
     }
     if (ev.tanggal_tugas === today) {
@@ -269,12 +280,16 @@ export default function ScanPage() {
       showResult({ status:'warning', message:`${member.nama_panggilan} sudah discan (${dupe.scan_type}) ${minsAgo} menit lalu.`, member }); return;
     }
 
-    // 3. Cari semua event hari ini (tanggal_tugas atau tanggal_latihan = hari ini)
+    // 3. Cari semua event relevan hari ini (tanggal_tugas, tanggal_latihan hari ini, atau besok untuk Slot 1 Sabtu)
     const today = toLocalISO(new Date());
+    const tomorrowDate = new Date();
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrow = toLocalISO(tomorrowDate);
+
     const { data: todayEvents } = await supabase
       .from('events')
       .select('id, nama_event, tipe_event, tanggal_tugas, tanggal_latihan, perayaan, draft_note, status_event, latihan_times')
-      .or(`tanggal_tugas.eq.${today},tanggal_latihan.eq.${today}`)
+      .or(`tanggal_tugas.eq.${today},tanggal_latihan.eq.${today},tanggal_tugas.eq.${tomorrow}`)
       .in('status_event', ['Akan_Datang','Berlangsung'])
       .not('is_draft', 'eq', true)
       .order('tanggal_tugas', { ascending: true });
@@ -337,9 +352,16 @@ export default function ScanPage() {
     let isSwapReplace = false; // user hadir sebagai pengganti resmi (swap Replaced)
 
     for (const ev of todayEvents) {
-      const { data: asgn } = await supabase.from('assignments')
-        .select('id').eq('user_id', member.id).eq('event_id', ev.id).maybeSingle();
-      if (asgn) { targetEvent = ev; assignmentId = asgn.id; break; }
+      const { data: asgns } = await supabase.from('assignments')
+        .select('id, slot_number').eq('user_id', member.id).eq('event_id', ev.id);
+      if (asgns?.length) {
+        const todayAsgn = asgns.find((a: any) => effectiveDate(ev.tanggal_tugas, a.slot_number, ev.tipe_event) === today);
+        if (todayAsgn) {
+          targetEvent = ev;
+          assignmentId = todayAsgn.id;
+          break;
+        }
+      }
     }
 
     // 7b. Tidak ada di assignments — cek apakah pengganti resmi via swap Replaced
@@ -825,7 +847,7 @@ export default function ScanPage() {
                             <div className="text-[10px] text-gray-400">{m.lingkungan || 'Misdinar'}</div>
                           </div>
                           <span className="text-[10px] bg-purple-900 text-purple-200 px-1.5 py-0.5 rounded font-mono">
-                            Slot {m.slot || 1}
+                            {slotLabel(m.slot, override?.events?.[0]?.tipe_event)}
                           </span>
                         </button>
                       ))}

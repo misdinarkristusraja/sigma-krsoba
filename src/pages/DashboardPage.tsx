@@ -9,6 +9,7 @@ import { useMemberStats } from '../hooks/useMemberStats';
 import { useOptinWindow } from '../hooks/useOptinWindow';
 import { useCountUp } from '../hooks/useCountUp';
 import { formatDate } from '../lib/utils';
+import { effectiveDate, slotLabel } from '../lib/swapUtils';
 import { cardVariants, rowVariants, staggerContainer, fadeIn } from '../lib/motion';
 import { Skeleton } from '../components/ui/Skeleton';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -45,7 +46,7 @@ export default function DashboardPage() {
   const { profile, isPengurus, isPelatih, fetchProfile } = useAuth();
 
   const { data: upcomingEvents, loading: loadingEvents } = useEvents(3);
-  const { data: swapBoard }                              = useSwapRequests({ mode: 'board', limit: 5 });
+  const { data: swapBoard }                              = useSwapRequests({ mode: 'board', limit: 5, userId: profile?.id });
   const { data: mySchedule }                             = useSchedule(profile?.id);
   const { data: stats, loading: loadingStats }           = useMemberStats(profile?.id);
   const { isOpen: optinWindow }                          = useOptinWindow();
@@ -428,7 +429,9 @@ export default function DashboardPage() {
                     <CheckCircle size={16} className="text-brand-800 dark:text-amber-400 flex-shrink-0" />
                     <div>
                       <p className="text-sm font-semibold text-gray-900 dark:text-slate-100">{a.events?.perayaan || a.events?.nama_event}</p>
-                      <p className="text-xs text-gray-500 dark:text-slate-400">{formatDate(a.events?.tanggal_tugas, 'EEEE, dd MMM')} · Misa {a.slot_number}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400">
+                        {formatDate(effectiveDate(a.events?.tanggal_tugas, a.slot_number, a.events?.tipe_event), 'EEEE, dd MMM')} · {slotLabel(a.slot_number, a.events?.tipe_event)}
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -524,7 +527,9 @@ export default function DashboardPage() {
                 {swapBoard.slice(0,3).map((s: any) => (
                   <div key={s.id} className="p-2.5 bg-orange-50 dark:bg-orange-950/40 rounded-lg border border-orange-100 dark:border-orange-900/60">
                     <p className="text-xs font-semibold text-gray-800 dark:text-slate-100">{s.requester?.nama_panggilan}</p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400">{s.assignment?.events?.nama_event} · Misa {s.assignment?.slot_number}</p>
+                    <p className="text-xs text-gray-500 dark:text-slate-400">
+                      {formatDate(effectiveDate(s.assignment?.events?.tanggal_tugas, s.assignment?.slot_number, s.assignment?.events?.tipe_event), 'dd MMM')} · {s.assignment?.events?.perayaan || s.assignment?.events?.nama_event || 'Jadwal Misa'} · {slotLabel(s.assignment?.slot_number, s.assignment?.events?.tipe_event)}
+                    </p>
                   </div>
                 ))}
               </div>

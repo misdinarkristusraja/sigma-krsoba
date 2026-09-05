@@ -13,21 +13,10 @@ import { MajorMassWizardModal } from './components/majorMass/MajorMassWizardModa
 import { Zap, FileEdit, Globe, Check, Pencil, Trash2, Plus, X as XIcon, ImageDown, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { exportCombinedPNG } from './components/ExportToolbar';
+import { parseSlotScheduleUniversal } from '@/lib/swapUtils';
 
 function parseSlotSchedule(draftNote: string | null, fallback: string) {
-  if (!draftNote) return [];
-  const results: { slot: number; jam: string; tanggal: string }[] = [];
-  const re = /Slot\s+(\d+):\s*([\d.]+)\|(\d{4}-\d{2}-\d{2})/gi;
-  for (const m of draftNote.matchAll(re)) {
-    results.push({ slot: Number(m[1]), jam: m[2] || '07.00', tanggal: m[3] || fallback || '' });
-  }
-  if (!results.length) {
-    const re2 = /Slot\s+(\d+):\s*([\d.]+)/gi;
-    for (const m of draftNote.matchAll(re2)) {
-      results.push({ slot: Number(m[1]), jam: m[2] || '07.00', tanggal: fallback || '' });
-    }
-  }
-  return results;
+  return parseSlotScheduleUniversal(draftNote, fallback);
 }
 
 const SLOT_INFO: Record<number, { time: string }> = {
@@ -511,6 +500,14 @@ export default function ScheduleWeeklyPage() {
               const isMK    = ev.tipe_event === 'Misa_Khusus';
               const nSlots  = isMK ? (ev.jumlah_misa || 1) : 4;
               const isEditing = editPicEventId === ev.id;
+              const mkSched = isMK ? parseSlotSchedule(ev.draft_note, ev.tanggal_tugas) : [];
+              function getSlotTitle(slot: number): string {
+                if (isMK) {
+                  const sc = mkSched.find(s => s.slot === slot);
+                  return `Misa ${slot}${sc ? ` · ${sc.jam}` : ''}${sc?.tanggal ? ` (${formatDate(sc.tanggal, 'dd MMM')})` : ''}`;
+                }
+                return SLOT_INFO[slot]?.time || `Misa ${slot}`;
+              }
               return (
                 <div key={ev.id} className={`card border-l-4 ${ev.is_draft ? 'border-yellow-400' : 'border-green-400'}`}>
                   <div className="flex items-center justify-between gap-3 mb-3">
@@ -539,7 +536,7 @@ export default function ScheduleWeeklyPage() {
                         const slotPics = (ev.event_pics || []).filter((p: any) => p.slot === slot).sort((a: any, b: any) => a.urutan - b.urutan);
                         return (
                           <div key={slot} className="p-3 bg-gray-50 dark:bg-slate-800/90 rounded-xl space-y-1 border border-gray-100 dark:border-slate-700">
-                            <p className="text-xs font-bold text-gray-700 dark:text-slate-200">{SLOT_INFO[slot]?.time || `Misa ${slot}`}</p>
+                            <p className="text-xs font-bold text-gray-700 dark:text-slate-200">{getSlotTitle(slot)}</p>
                             {slotPics.length === 0
                               ? <p className="text-[11px] text-red-400 dark:text-red-300">PIC belum diisi</p>
                               : slotPics.map((p: any, i: number) => (
@@ -559,7 +556,7 @@ export default function ScheduleWeeklyPage() {
                         return (
                           <div key={slot} className="p-3 bg-blue-50 dark:bg-slate-800/90 rounded-xl space-y-2 border border-blue-200 dark:border-slate-700">
                             <div className="flex items-center justify-between">
-                              <p className="text-xs font-bold text-gray-700 dark:text-slate-200">{SLOT_INFO[slot]?.time || `Misa ${slot}`}</p>
+                              <p className="text-xs font-bold text-gray-700 dark:text-slate-200">{getSlotTitle(slot)}</p>
                               <button type="button" onClick={() => addPicInline(slot)} className="text-[11px] text-brand-800 dark:text-amber-400 hover:text-brand-600 flex items-center gap-0.5 font-medium">
                                 <Plus size={11}/> Tambah
                               </button>

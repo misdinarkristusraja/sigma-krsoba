@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { effectiveDate } from '@/lib/swapUtils';
 
 interface ScheduleAssignment {
   id: string;
@@ -27,12 +28,16 @@ export function useSchedule(userId?: string) {
       .limit(50);
 
     const filtered = (rows || [])
-      .filter((d: any) =>
-        d.events &&
-        d.events.tipe_event !== 'Misa_Harian' &&
-        d.events.tanggal_tugas >= today
-      )
-      .sort((a: any, b: any) => a.events.tanggal_tugas.localeCompare(b.events.tanggal_tugas))
+      .filter((d: any) => {
+        if (!d.events || d.events.tipe_event === 'Misa_Harian') return false;
+        const eff = effectiveDate(d.events.tanggal_tugas, d.slot_number, d.events.tipe_event);
+        return !!(eff && eff >= today);
+      })
+      .sort((a: any, b: any) => {
+        const effA = effectiveDate(a.events?.tanggal_tugas, a.slot_number, a.events?.tipe_event) || '';
+        const effB = effectiveDate(b.events?.tanggal_tugas, b.slot_number, b.events?.tipe_event) || '';
+        return effA.localeCompare(effB);
+      })
       .slice(0, 6);
     setData(filtered as ScheduleAssignment[]);
     setLoading(false);

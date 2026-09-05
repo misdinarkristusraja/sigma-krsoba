@@ -4,6 +4,7 @@ const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
 import { Calendar, RefreshCw, ChevronDown, ChevronUp, ArrowLeftRight, X, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { buildWALink } from '../lib/utils';
+import { effectiveDate, slotLabel } from '../lib/swapUtils';
 import toast from 'react-hot-toast';
 
 const WARNA_DOT: Record<string, string> = {
@@ -95,10 +96,16 @@ export default function JadwalSayaPage() {
 
       const filtered = (data || [])
         .filter((r: any) => r.event && r.event.tipe_event !== 'Misa_Harian')
-        .filter((r: any) => filter === 'semua' || r.event.tanggal_tugas >= today)
-        .sort((a: any, b: any) =>
-          (a.event?.tanggal_tugas || '').localeCompare(b.event?.tanggal_tugas || '')
-        );
+        .filter((r: any) => {
+          if (filter === 'semua') return true;
+          const eff = effectiveDate(r.event?.tanggal_tugas, r.slot_number, r.event?.tipe_event);
+          return !!(eff && eff >= today);
+        })
+        .sort((a: any, b: any) => {
+          const effA = effectiveDate(a.event?.tanggal_tugas, a.slot_number, a.event?.tipe_event) || '';
+          const effB = effectiveDate(b.event?.tanggal_tugas, b.slot_number, b.event?.tipe_event) || '';
+          return effA.localeCompare(effB);
+        });
 
       setRows(filtered as Row[]);
 
@@ -205,9 +212,11 @@ export default function JadwalSayaPage() {
         if (picUser) {
           picUserId = picUser.id;
           const hp = picUser.hp_anak || picUser.hp_ortu || '';
+          const effDate = effectiveDate(ev.tanggal_tugas, slot, ev.tipe_event) || ev.tanggal_tugas;
+          const labelSlot = slotLabel(slot, ev.tipe_event);
           picWaLink = buildWALink(hp,
             `Halo ${picNick}, saya ${profile?.nama_panggilan} ingin tukar jadwal ` +
-            `${ev.perayaan || ev.nama_event} (${ev.tanggal_tugas}) Misa ${slot}. ` +
+            `${ev.perayaan || ev.nama_event} (${formatTgl(effDate)}) ${labelSlot}. ` +
             `Alasan: ${swapAlasan}. Mohon konfirmasi ya 🙏`
           );
         }
@@ -307,7 +316,8 @@ export default function JadwalSayaPage() {
               {rows.map(row => {
                 const ev = row.event;
                 if (!ev) return null;
-                const isPast    = ev.tanggal_tugas < today;
+                const effDate   = effectiveDate(ev.tanggal_tugas, row.slot_number, ev.tipe_event) || ev.tanggal_tugas;
+                const isPast    = effDate < today;
                 const isExpand  = expanded.has(row.id);
                 const warna     = WARNA_DOT[ev.warna_liturgi] || 'bg-gray-100 text-gray-600';
                 const picName   = getPic(ev, row.slot_number);
@@ -327,7 +337,7 @@ export default function JadwalSayaPage() {
                       {/* Tanggal */}
                       <td className="px-4 py-3 whitespace-nowrap">
                         <p className={`font-medium ${isPast ? 'text-gray-400' : 'text-gray-800'}`}>
-                          {formatTgl(ev.tanggal_tugas)}
+                          {formatTgl(effDate)}
                         </p>
                         {!isPast && (
                           <span className={`inline-block mt-0.5 text-xs px-2 py-0.5 rounded-full font-medium ${warna}`}>
@@ -354,11 +364,11 @@ export default function JadwalSayaPage() {
                       </td>
 
                       {/* Slot */}
-                      <td className="px-4 py-3 text-center">
-                        <span className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                        <span className={`inline-flex items-center justify-center px-2.5 py-1 rounded-full text-xs font-semibold ${
                           isPast ? 'bg-gray-100 text-gray-400' : 'bg-brand-100 text-brand-800'
                         }`}>
-                          {row.slot_number}
+                          {slotLabel(row.slot_number, ev.tipe_event)}
                         </span>
                       </td>
 
@@ -402,7 +412,9 @@ export default function JadwalSayaPage() {
                           <div className="grid sm:grid-cols-2 gap-4 text-sm">
                             {/* PIC slot ini */}
                             <div>
-                              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">PIC Misa {row.slot_number}</p>
+                              <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                                PIC {slotLabel(row.slot_number, ev.tipe_event)}
+                              </p>
                               {picName ? (
                                 <div>
                                   <p className="text-gray-800 font-medium">{picName}</p>
@@ -431,7 +443,7 @@ export default function JadwalSayaPage() {
                                   if (!name) return null;
                                   return (
                                     <p key={s} className="text-xs text-gray-600">
-                                      <span className="font-semibold text-gray-700">Slot {s}:</span> {name}
+                                      <span className="font-semibold text-gray-700">{slotLabel(s, ev.tipe_event)}:</span> {name}
                                     </p>
                                   );
                                 })}
@@ -562,7 +574,7 @@ export default function JadwalSayaPage() {
             <div className="bg-gray-50 rounded-xl p-3 mb-4 text-sm">
               <p className="font-semibold text-gray-800">{swapRow.event.perayaan || swapRow.event.nama_event}</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                {formatTgl(swapRow.event.tanggal_tugas)} · Misa {swapRow.slot_number}
+                {formatTgl(effectiveDate(swapRow.event.tanggal_tugas, swapRow.slot_number, swapRow.event.tipe_event) || swapRow.event.tanggal_tugas)} · {slotLabel(swapRow.slot_number, swapRow.event.tipe_event)}
               </p>
             </div>
             <div>

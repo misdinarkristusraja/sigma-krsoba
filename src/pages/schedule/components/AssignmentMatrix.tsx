@@ -1,6 +1,7 @@
 import React from 'react';
 import { UserCheck, AlertTriangle } from 'lucide-react';
 import { formatDate, tagDuplicateNames, getPicsForSlot } from '@/lib/utils';
+import { effectiveDate, parseSlotScheduleUniversal } from '@/lib/swapUtils';
 
 const SLOT_INFO: Record<number, { time: string; label: string; jam: string }> = {
   1: { time: 'Sabtu 17:30',  label: 'Sabtu Sore',    jam: '17.30' },
@@ -11,13 +12,7 @@ const SLOT_INFO: Record<number, { time: string; label: string; jam: string }> = 
 const PETUGAS_PER_SLOT = 8;
 
 function parseSlotSchedule(draftNote: string | null, fallback: string) {
-  if (!draftNote) return [];
-  const raw = draftNote.replace(/^Jam:\s*/i, '');
-  return raw.split('|').map(part => {
-    const m = part.trim().match(/Slot\s+(\d+):\s*([\d.]+)(?:\|(\d{4}-\d{2}-\d{2}))?/i);
-    if (!m) return null;
-    return { slot: Number(m[1]), jam: m[2] || '07.00', tanggal: m[3] || fallback || '' };
-  }).filter(Boolean) as { slot: number; jam: string; tanggal: string }[];
+  return parseSlotScheduleUniversal(draftNote, fallback);
 }
 
 interface AssignmentMatrixProps {
@@ -50,10 +45,9 @@ export function AssignmentMatrix({ ev }: AssignmentMatrixProps) {
           tglLabel = sc?.tanggal ? formatDate(sc.tanggal, 'dd MMM yyyy') : '';
         } else {
           const info = SLOT_INFO[slot];
-          jamLabel   = info?.label || `Misa ${slot}`;
-          tglLabel   = slot === 1 && ev.tanggal_latihan
-            ? formatDate(ev.tanggal_latihan, 'EEEE, dd MMM')
-            : formatDate(ev.tanggal_tugas, 'EEEE, dd MMM');
+          jamLabel   = info ? `${info.label} (${info.jam})` : `Misa ${slot}`;
+          const effDate = effectiveDate(ev.tanggal_tugas, slot, ev.tipe_event);
+          tglLabel   = effDate ? formatDate(effDate, 'EEEE, dd MMM') : '';
         }
 
         return (

@@ -3,6 +3,7 @@ import { supabase as supabaseTyped } from '../lib/supabase';
 const supabase = supabaseTyped as any;
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate, getLiturgyClass, LITURGY_COLORS } from '../lib/utils';
+import { effectiveDate, parseSlotScheduleUniversal } from '../lib/swapUtils';
 import { getLiturgiByDate, getLiturgiByMonth, HARI_RAYA_NO_HARIAN, getFirstFriday, getSabtuImam } from '../lib/liturgiData2026';
 import { fetchGcatholicMonth, clearGcatholicCache } from '../lib/gcatholicUtils';
 import { LiturgyBadge } from '../components/ui/LiturgyBadge';
@@ -1600,12 +1601,7 @@ const LITURGY_BORDER: Record<string, string> = {
 };
 
 function parseSlotSchedPub(draftNote: string | null, fallback: string) {
-  if (!draftNote) return [];
-  return draftNote.split('|').map(part => {
-    const m = part.trim().match(/Slot\s+(\d+):\s*([\d.]+)(?:\|(\d{4}-\d{2}-\d{2}))?/i);
-    if (!m) return null;
-    return { slot: Number(m[1]), jam: m[2] || '07.00', tanggal: m[3] || fallback };
-  }).filter(Boolean) as { slot: number; jam: string; tanggal: string }[];
+  return parseSlotScheduleUniversal(draftNote, fallback);
 }
 
 export function PublicSchedulePage({ internal = false }: { internal?: boolean }) {
@@ -1682,10 +1678,10 @@ export function PublicSchedulePage({ internal = false }: { internal?: boolean })
               jamLabel = `Misa ${slot} · ${sc?.jam || '07.00'}`;
               tglLabel = sc?.tanggal ? formatDate(sc.tanggal, 'EEEE, dd MMM') : '';
             } else {
-              jamLabel = SLOT_INFO_PUB[slot]?.label || `Misa ${slot}`;
-              tglLabel = slot === 1 && ev.tanggal_latihan
-                ? formatDate(ev.tanggal_latihan, 'EEEE, dd MMM')
-                : formatDate(ev.tanggal_tugas, 'EEEE, dd MMM');
+              const info = SLOT_INFO_PUB[slot];
+              jamLabel = info ? `${info.label} · ${info.jam}` : `Misa ${slot}`;
+              const effDate = effectiveDate(ev.tanggal_tugas, slot, ev.tipe_event);
+              tglLabel = effDate ? formatDate(effDate, 'EEEE, dd MMM') : '';
             }
 
             return (

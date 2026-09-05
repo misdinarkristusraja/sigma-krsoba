@@ -1,6 +1,4 @@
-/**
- * Generate .ics files for Google Calendar / Apple Calendar / Outlook
- */
+import { effectiveDate, slotLabel as getSlotLabel } from './swapUtils';
 
 interface ICSEvent {
   start:       string;
@@ -28,6 +26,7 @@ interface AssignmentForICS {
     perayaan?:         string;
     nama_event?:       string;
     draft_note?:       string;
+    tipe_event?:       string;
   };
 }
 
@@ -98,20 +97,21 @@ export function generateICS(assignments: AssignmentForICS[], userName = ''): str
     const ev       = a.events || {};
     const name     = ev.perayaan || ev.nama_event || 'Misa';
     const slot     = a.slot_number || 1;
-    const slotLabel = ({ 1:'Sabtu 17:30', 2:'Minggu 06:00', 3:'Minggu 08:00', 4:'Minggu 17:30' } as Record<number,string>)[slot] || '';
+    const slotLabelText = getSlotLabel(slot, ev.tipe_event, ev.draft_note, ev.tanggal_tugas);
+    const slotDate = effectiveDate(ev.tanggal_tugas, slot, ev.tipe_event);
 
-    if (ev.tanggal_tugas) {
+    if (slotDate) {
       const timeMap: Record<number, string> = { 1: '17:30', 2: '06:00', 3: '08:00', 4: '17:30' };
       const startTime = timeMap[slot] || '07:00';
       const [sh, sm]  = startTime.split(':').map(Number);
       const endHour   = pad(sh + 2);
-      const dtstart   = toICSDateTime(ev.tanggal_tugas, startTime);
-      const dtend     = toICSDateTime(ev.tanggal_tugas, `${endHour}:${pad(sm)}`);
+      const dtstart   = toICSDateTime(slotDate, startTime);
+      const dtend     = toICSDateTime(slotDate, `${endHour}:${pad(sm)}`);
 
       events.push(icsEvent({
         uid:         `sigma-tugas-${a.event_id}-${slot}-${Date.now()}`,
-        summary:     `⛪ TUGAS MISDINAR — ${name} (${slotLabel})`,
-        description: `Jadwal tugas Misdinar Kristus Raja Solo Baru\nNama: ${userName}\nSlot: ${slotLabel}\nPerayaan: ${name}`,
+        summary:     `⛪ TUGAS MISDINAR — ${name} (${slotLabelText})`,
+        description: `Jadwal tugas Misdinar Kristus Raja Solo Baru\nNama: ${userName}\nSlot: ${slotLabelText}\nPerayaan: ${name}`,
         location:    'Gereja Kristus Raja, Solo Baru',
         dtstart, dtend,
         alarm_minutes: 1440,

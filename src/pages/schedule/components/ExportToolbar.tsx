@@ -5,6 +5,7 @@ import { formatDate } from '@/lib/utils';
 import { supabase as supabaseTyped } from '@/lib/supabase';
 const supabase = supabaseTyped as any;
 import toast from 'react-hot-toast';
+import { effectiveDate, parseSlotScheduleUniversal } from '@/lib/swapUtils';
 
 const SLOT_INFO: Record<number, { time: string; label: string; jam: string }> = {
   1: { time: 'Sabtu 17:30',  label: 'SABTU SORE',      jam: '17.30' },
@@ -29,13 +30,7 @@ const BORDER_SLOT  = '3px solid #111';     // garis tebal pemisah antar-slot
 const BORDER_OUTER = '3.5px solid #111';   // garis luar tabel
 
 function parseSlotSchedule(draftNote: string | null, fallback: string) {
-  if (!draftNote) return [];
-  const raw = draftNote.replace(/^Jam:\s*/i, '');
-  return raw.split('|').map(part => {
-    const m = part.trim().match(/Slot\s+(\d+):\s*([\d.]+)(?:\|(\d{4}-\d{2}-\d{2}))?/i);
-    if (!m) return null;
-    return { slot: Number(m[1]), jam: m[2] || '07.00', tanggal: m[3] || fallback || '' };
-  }).filter(Boolean) as { slot: number; jam: string; tanggal: string }[];
+  return parseSlotScheduleUniversal(draftNote, fallback);
 }
 
 function fmtTglIndo(dateStr: string) {
@@ -90,7 +85,7 @@ function buildExportHTML(ev: any, assignments: any[], pelatihOptions: any[] = []
     const sc      = schedule.find(s => s.slot === slot);
     const tglSlot = isMisaKhusus
       ? fmtTglIndo(sc?.tanggal || ev.tanggal_tugas)
-      : (slot === 1 && ev.tanggal_latihan ? fmtTglIndo(ev.tanggal_latihan) : fmtTglIndo(ev.tanggal_tugas));
+      : fmtTglIndo(effectiveDate(ev.tanggal_tugas, slot, ev.tipe_event) || ev.tanggal_tugas);
     const rowspan = Math.max(people.length, 1);
 
     // Left cell
@@ -254,12 +249,17 @@ function buildWAText(ev: any): string {
     `${formatDate(ev.tanggal_latihan, 'dd')}–${formatDate(ev.tanggal_tugas, 'dd MMMM yyyy')}`,
     '',
   ];
+  const mkSched = isMK ? parseSlotScheduleUniversal(ev.draft_note, ev.tanggal_tugas) : [];
   for (let slot = 1; slot <= nSlots; slot++) {
     const info = SLOT_INFO[slot] || SLOT_INFO[1];
     const pics = slotPics(slot);
     const picNames = pics.map((p: any) => p.nama).join(' & ');
     const hpA  = pics[0]?.hp || '';
-    lines.push(`📍 ${isMK ? `Misa ${slot}` : info.time}`);
+    const sc = mkSched.find(s => s.slot === slot);
+    const slotHeader = isMK
+      ? `Misa ${slot} · Jam ${sc?.jam || '07.00'}${sc?.tanggal ? ` (${formatDate(sc.tanggal, 'dd MMM')})` : ''}`
+      : info.time;
+    lines.push(`📍 ${slotHeader}`);
     if (picNames) lines.push(`PIC: ${picNames}${hpA ? ` (${hpA})` : ''}`);
     const names = bySlot[slot]?.map((a: any) => a.users?.nama_panggilan) || [];
     if (!names.length) for (let i = 1; i <= PETUGAS_PER_SLOT; i++) lines.push(`${i}. (kosong)`);
@@ -383,7 +383,7 @@ function buildCombinedHTML(eventsWithAssignments: Array<{ ev: any; assignments: 
       const sc      = schedule.find(s => s.slot === slot);
       const tglSlot = isMisaKhusus
         ? fmtTglIndo(sc?.tanggal || ev.tanggal_tugas)
-        : (slot === 1 && ev.tanggal_latihan ? fmtTglIndo(ev.tanggal_latihan) : fmtTglIndo(ev.tanggal_tugas));
+        : fmtTglIndo(effectiveDate(ev.tanggal_tugas, slot, ev.tipe_event) || ev.tanggal_tugas);
       const rowspan = Math.max(people.length, 1);
 
       const jamLabel = isMisaKhusus ? `MISA ${slot} (${sc?.jam || '07.00'})` : info.label;

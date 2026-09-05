@@ -13,58 +13,15 @@ import { usePagination } from '../hooks/usePagination';
 import { Pagination } from '../components/ui/Pagination';
 import { Modal } from '../components/ui/Modal';
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  Pending:          { label: 'Menunggu PIC',        color: 'badge-yellow' },
-  Approved_PIC:     { label: 'Disetujui PIC',        color: 'badge-blue'   },
-  Rejected_PIC:     { label: 'Ditolak PIC',          color: 'badge-red'    },
-  Replaced:         { label: 'Tergantikan',           color: 'badge-green'  },
-  Offered:          { label: 'Di Papan Penawaran',    color: 'badge-purple' },
-  Expired:          { label: 'Kadaluarsa',            color: 'badge-gray'   },
-  Tidak_Terganti:   { label: 'Tidak Terganti',        color: 'badge-red'    },
-};
-
-// Offered item yang sudah lewat tanggal tugas = "Tidak Terganti"
-const todayStr = () => {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2,'0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-};
-function getEffectiveStatus(req: any) {
-  if (req.status === 'Offered') {
-    const tgl = req.assignment?.events?.tanggal_tugas?.slice(0, 10);
-    if (tgl && tgl < todayStr()) return 'Tidak_Terganti';
-  }
-  return req.status;
-}
-
-const SLOT_LABELS: Record<number, string> = { 1:'Sabtu 17:30', 2:'Minggu 06:00', 3:'Minggu 08:00', 4:'Minggu 17:30' };
-
-// Fase 2 — Misa Harian tidak punya struktur slot Sabtu/Minggu. Slot apapun ditulis "Misa N".
-// Misa akhir-pekan (Mingguan/Jumper/Sabtu_Imam) tetap pakai SLOT_LABELS.
-function slotLabel(slot: number | null | undefined, tipeEvent?: string | null): string {
-  if (tipeEvent === 'Misa_Harian') return `Misa ${slot || 1}`;
-  return SLOT_LABELS[slot as number] || `Misa ${slot || 1}`;
-}
-
-// Fase 3 — Misa Mingguan menyimpan SATU tanggal_tugas = hari Minggu, tapi slot 1 adalah
-// Misa antisipasi Sabtu (H-1). Nama perayaan tetap nama Minggu, tapi TANGGAL yang
-// ditampilkan harus ikut hari pelaksanaan: slot 1 = Sabtu (tanggal_tugas−1), slot 2-4 = Minggu.
-// Misa Harian / Misa Khusus = satu hari, tidak ada pergeseran.
-function effectiveDate(
-  tanggalTugas: string | null | undefined,
-  slot: number | null | undefined,
-  tipeEvent?: string | null,
-): string | null | undefined {
-  if (!tanggalTugas) return tanggalTugas;
-  const isWeekend = tipeEvent !== 'Misa_Harian' && tipeEvent !== 'Misa_Khusus';
-  if (isWeekend && slot === 1) {
-    const d = new Date(tanggalTugas.slice(0, 10) + 'T00:00:00'); // parse lokal, hindari UTC shift
-    d.setDate(d.getDate() - 1);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  }
-  return tanggalTugas;
-}
+import {
+  STATUS_CONFIG,
+  todayStr,
+  SLOT_LABELS,
+  slotLabel,
+  effectiveDate,
+  getEffectiveStatus,
+  filterAndSortBoardRequests,
+} from '../lib/swapUtils';
 
 export default function SwapPage() {
   const { profile, isPengurus } = useAuth();
@@ -172,12 +129,9 @@ export default function SwapPage() {
       .eq('is_penawaran', true).eq('status','Offered')
       .neq('requester_id', profile?.id)
       .order('created_at', { ascending: false }).limit(50);
-    // Exclude items where event date already passed — those are "Tidak Terganti" virtually,
-    // but still have status='Offered' in DB. Filtering here keeps board and admin table in sync.
-    setBoard((data || []).filter((req: any) => {
-      const tgl = req.assignment?.events?.tanggal_tugas?.slice(0, 10);
-      return !tgl || tgl >= today;
-    }));
+    // Filter hanya tugas mendatang dengan event valid (tidak draft/null/lampau),
+    // dan urutkan berdasarkan jadwal terdekat (effectiveDate asc, slot asc).
+    setBoard(filterAndSortBoardRequests(data || [], today, profile?.id));
   }
 
   async function loadMySchedule() {
@@ -494,11 +448,8 @@ export default function SwapPage() {
       return tgl >= start && tgl <= end;
     };
     const replaced = reqs.filter((r: any) => r.status === 'Replaced' && inWeek(r));
-    // Offered: semua yang aktif di papan, tanggal_tugas >= hari ini (belum lewat)
-    const offered  = offeredItems.filter((r: any) => {
-      const tgl = r.assignment?.events?.tanggal_tugas?.slice(0, 10);
-      return !tgl || tgl >= today;
-    });
+    // Offered: semua yang aktif di papan, tugas mendatang, urut terdekat
+    const offered  = filterAndSortBoardRequests(offeredItems, today, null);
     if (!replaced.length && !offered.length && !weekEvents.length) {
       return `🤝 *INFO TUKAR JADWAL*\nMinggu ${label}\n\nTidak ada pertukaran & penawaran aktif saat ini. Sampai jumbo minggu depan! 🙏`;
     }
@@ -680,10 +631,10 @@ export default function SwapPage() {
               <div key={req.id} className="card border-l-4 border-purple-400">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="font-semibold text-gray-900">{ev?.perayaan||ev?.nama_event}</p>
-                    <p className="text-sm text-gray-500">{formatDate(effectiveDate(ev?.tanggal_tugas, req.assignment?.slot_number, ev?.tipe_event),'EEEE, dd MMM yyyy')} · {slotLabel(req.assignment?.slot_number, ev?.tipe_event)}</p>
-                    <p className="text-xs text-gray-400 mt-1">Dari: <strong>{req.requester?.nama_panggilan || 'Anggota'}</strong> ({req.requester?.lingkungan || '—'})</p>
-                    <p className="text-xs text-gray-400 italic">"{req.alasan}"</p>
+                    <p className="font-semibold text-gray-900 dark:text-slate-100">{ev?.perayaan || ev?.nama_event || 'Jadwal Misa'}</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">{formatDate(effectiveDate(ev?.tanggal_tugas, req.assignment?.slot_number, ev?.tipe_event),'EEEE, dd MMM yyyy')} · {slotLabel(req.assignment?.slot_number, ev?.tipe_event)}</p>
+                    <p className="text-xs text-gray-400 dark:text-slate-400 mt-1">Dari: <strong>{req.requester?.nama_panggilan || 'Anggota'}</strong> ({req.requester?.lingkungan || '—'})</p>
+                    <p className="text-xs text-gray-400 dark:text-slate-400 italic">"{req.alasan}"</p>
                     {isAlreadyAssigned && (
                       <span className="inline-block mt-1 text-xs text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded font-medium">
                         Kamu sudah bertugas di acara ini
