@@ -1,4 +1,5 @@
 import { NatalAnnouncement } from '../types';
+import { formatDate } from './utils';
 
 export interface FormattedNatalMessage {
   title: string;
@@ -22,4 +23,13 @@ export function formatNatalAnnouncementMessage(data: Partial<NatalAnnouncement>)
     headline: `${data.nama_lengkap || ''} anda belum mendapatkan tugas natal Tahun ini! Jangan menyerah dan jangan putus asa untuk melayani Tuhan!`.trim(),
     isAssigned: false,
   };
+}
+
+export function formatNatalTargetTime(isoString: string): string {
+  if (!isoString) return '-';
+  try {
+    return formatDate(isoString, "EEEE, dd MMMM yyyy 'pukul' HH.mm 'WIB'");
+  } catch {
+    return isoString;
+  }
 }

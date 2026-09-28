@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Volume2, VolumeX, Sparkles, AlertCircle, Clock, Zap } from 'lucide-react';
+import { Volume2, VolumeX, Sparkles, AlertCircle, Clock, Zap, Calendar } from 'lucide-react';
 import { CountdownState } from '../../hooks/useNatalCountdown';
 import { soundEffects } from '../../lib/audioEffects';
+import { formatNatalTargetTime } from '../../lib/natalUtils';
 
 interface NatalCountdownDisplayProps {
   countdown: CountdownState;
   title?: string;
+  targetIsoDate?: string;
   isPengurus?: boolean;
   onBypassCountdown?: () => void;
   isBypassed?: boolean;
@@ -15,6 +17,7 @@ interface NatalCountdownDisplayProps {
 export default function NatalCountdownDisplay({
   countdown,
   title = 'Pengumuman Penjadwalan Tugas Natal',
+  targetIsoDate,
   isPengurus = false,
   onBypassCountdown,
   isBypassed = false,
@@ -124,9 +127,20 @@ export default function NatalCountdownDisplay({
         <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-white mb-2">
           {title}
         </h2>
-        <p className="text-xs sm:text-base text-slate-300 max-w-xl mx-auto">
+        <p className="text-xs sm:text-base text-slate-300 max-w-xl mx-auto mb-4">
           Penugasan resmi untuk segenap misdinar yang melayani pada Hari Raya Natal.
         </p>
+
+        {/* Target Day & Date Display */}
+        {targetIsoDate && (
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/90 border border-amber-500/40 text-xs sm:text-sm text-amber-200 shadow-inner">
+            <Calendar className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              Waktu Rilis:{' '}
+              <strong className="text-white font-bold">{formatNatalTargetTime(targetIsoDate)}</strong>
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Urgent Warning Banner (< 5 Min) */}
@@ -187,9 +201,17 @@ export default function NatalCountdownDisplay({
       </div>
 
       {/* Footer Info */}
-      <div className="flex items-center justify-center gap-2 mt-8 text-xs text-slate-400">
-        <Clock className="w-3.5 h-3.5 text-slate-500" />
-        <span>Hasil akan terbuka otomatis saat countdown mencapai 00:00:00</span>
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-2 mt-8 text-xs text-slate-400">
+        <div className="flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-slate-500" />
+          <span>Hasil akan terbuka otomatis saat countdown mencapai 00:00:00</span>
+        </div>
+        {targetIsoDate && (
+          <span className="hidden sm:inline text-slate-600">•</span>
+        )}
+        {targetIsoDate && (
+          <span className="text-amber-400/90 font-medium">Target: {formatNatalTargetTime(targetIsoDate)}</span>
+        )}
       </div>
     </div>
   );

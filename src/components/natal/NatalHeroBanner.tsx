@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Sparkles, Clock, ArrowRight, ShieldAlert, Gift } from 'lucide-react';
 import { useNatalAnnouncement } from '../../hooks/useNatalAnnouncement';
 import { useNatalCountdown } from '../../hooks/useNatalCountdown';
+import { formatNatalTargetTime } from '../../lib/natalUtils';
 
 export default function NatalHeroBanner() {
   const { config, isVisible, loading } = useNatalAnnouncement();
@@ -64,6 +65,14 @@ export default function NatalHeroBanner() {
                 ? 'Waktu pengumuman kurang dari 5 menit! Bersiaplah untuk melihat hasilnya.'
                 : 'Sistem hitungan mundur menuju rilis resmi pembagian misa natal.'}
             </p>
+
+            {/* Target Day & Date of Countdown */}
+            {!countdown.isExpired && config.target_time && (
+              <div className="flex items-center gap-1.5 text-[11px] text-amber-300/90 font-medium mt-1.5">
+                <Clock className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Rilis: <strong className="text-amber-200">{formatNatalTargetTime(config.target_time)}</strong></span>
+              </div>
+            )}
           </div>
         </div>
 

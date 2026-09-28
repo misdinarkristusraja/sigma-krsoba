@@ -5,10 +5,11 @@ import { useNatalAnnouncement } from '../hooks/useNatalAnnouncement';
 import { useNatalCountdown } from '../hooks/useNatalCountdown';
 import NatalCountdownDisplay from '../components/natal/NatalCountdownDisplay';
 import NatalResultCard from '../components/natal/NatalResultCard';
-import { Sparkles, Search, UserCheck, Lock, AlertCircle, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Sparkles, Search, UserCheck, Lock, AlertCircle, ArrowLeft, RefreshCw, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { NatalAnnouncement } from '../types';
+import { formatNatalTargetTime } from '../lib/natalUtils';
 
 export default function NatalAnnouncementPage() {
   const { profile, isPengurus } = useAuth();
@@ -49,18 +50,18 @@ export default function NatalAnnouncementPage() {
     );
   }
 
-  // Access control check for trial / disabled
-  if (!isVisible) {
+  // Access control check: exclusively for Pengurus ke atas (Pengurus, Pendamping, Administrator) during trial
+  if (!isPengurus || !isVisible) {
     return (
       <div className="max-w-xl mx-auto my-12 p-8 rounded-3xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 text-center shadow-lg">
         <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-4">
           <Lock className="w-8 h-8 text-amber-500" />
         </div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Portal Belum Dibuka
+          Portal Khusus Pengurus
         </h2>
         <p className="text-sm text-gray-600 dark:text-slate-400 mb-6">
-          Pengumuman penugasan misa natal sedang dalam tahap persiapan oleh tim penjadwalan. Mohon nantikan pengumuman resmi.
+          Fitur pengumuman penugasan misa natal ini sedang dalam tahap uji coba terbatas dan hanya dapat diakses oleh Pengurus, Pendamping, dan Administrator.
         </p>
         <Link
           to="/dashboard"
@@ -138,6 +139,7 @@ export default function NatalAnnouncementPage() {
           <NatalCountdownDisplay
             countdown={countdown}
             title={config.title}
+            targetIsoDate={config.target_time}
             isPengurus={isPengurus}
             onBypassCountdown={() => setBypassCountdown(!bypassCountdown)}
             isBypassed={bypassCountdown}
@@ -159,9 +161,17 @@ export default function NatalAnnouncementPage() {
           <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mb-2">
             Hasil Penjadwalan Tugas Natal Telah Dibuka
           </h1>
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mb-8 max-w-md mx-auto">
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mb-3 max-w-md mx-auto">
             Silakan cek hasil penugasan Anda untuk melayani pada Hari Raya Natal di Gereja Paroki Kristus Raja.
           </p>
+
+          {/* Release Date info badge */}
+          {config.target_time && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-xs text-amber-700 dark:text-amber-300 font-medium mb-8">
+              <Calendar className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span>Jadwal Resmi Dirilis: <strong>{formatNatalTargetTime(config.target_time)}</strong></span>
+            </div>
+          )}
 
           {/* Quick Check Own Profile Card */}
           <div className="p-6 rounded-2xl bg-gray-50 dark:bg-slate-800/80 border border-gray-100 dark:border-slate-700/60 mb-6 text-left">

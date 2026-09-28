@@ -42,7 +42,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Jadwal',
     icon: CalendarDays,
     items: [
-      { icon: Gift,          label: 'Pengumuman Natal',  path: '/pengumuman-natal', roles: null },
+      { icon: Gift,          label: 'Pengumuman Natal',  path: '/pengumuman-natal', roles: PENG },
       { icon: Globe,          label: 'Cek Jadwal Semua',  path: '/jadwal-misa',     roles: null },
       { icon: ListChecks,     label: 'Cek Jadwal Saya',   path: '/jadwal-saya',     roles: null },
       { icon: CalendarDays,   label: 'Cek Jadwal Harian', path: '/jadwal-harian',   roles: null },

@@ -138,10 +138,8 @@ export function useNatalAnnouncement() {
     }
   };
 
-  // Determine if feature should be visible to current user
-  const isVisible =
-    config.status === 'published' ||
-    (config.status === 'trial' && isPengurus);
+  // Feature exclusively visible to Pengurus ke atas (Pengurus, Pendamping, Administrator)
+  const isVisible = isPengurus && config.status !== 'disabled';
 
   return {
     config,

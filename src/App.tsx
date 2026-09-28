@@ -102,7 +102,7 @@ export default function App() {
               <Route path="/jadwal-mingguan" element={<ErrorBoundary><ScheduleWeekly /></ErrorBoundary>} />
               <Route path="/jadwal-harian"   element={<ErrorBoundary><ScheduleDaily /></ErrorBoundary>} />
               <Route path="/jadwal-misa"     element={<ErrorBoundary><JadwalMisa /></ErrorBoundary>} />
-              <Route path="/pengumuman-natal" element={<ErrorBoundary><NatalAnnouncementPage /></ErrorBoundary>} />
+              <Route path="/pengumuman-natal" element={<ProtectedRoute roles={PENG}><ErrorBoundary><NatalAnnouncementPage /></ErrorBoundary></ProtectedRoute>} />
 
               {/* Attendance & Scan */}
               <Route path="/absensi"         element={<ProtectedRoute roles={STAFF}><ErrorBoundary><AttendancePage /></ErrorBoundary></ProtectedRoute>} />
