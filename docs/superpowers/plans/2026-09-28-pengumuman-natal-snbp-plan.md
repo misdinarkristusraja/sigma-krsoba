@@ -1,6 +1,6 @@
 # Fitur Pengumuman Penjadwalan Natal Ala SNBP Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Membangun portal pengumuman pembagian jadwal tugas Misa Natal ala SNBP dengan hitungan mundur dinamis, getaran/ketegangan visual-audio di bawah 5 menit, form pengecekan nama anggota yang terhubung dengan akun login, sistem kartu hasil ringkas (Selamat vs Tetap Semangat), manajemen input data untuk tim penjadwalan, dan kontrol akses bertahap (Uji Coba Pengurus vs Publik).
 
@@ -30,7 +30,7 @@
 - Consumes: `src/types/index.ts` (`Profile`, `UserRole`)
 - Produces: `NatalAnnouncement`, `NatalConfig`, `NatalStatus` types
 
-- [ ] **Step 1: Tulis tes type and helper validation**
+- [x] **Step 1: Tulis tes type and helper validation**
 
 ```typescript
 // src/lib/__tests__/natalTypes.test.ts
@@ -60,12 +60,12 @@ describe('formatNatalAnnouncementMessage', () => {
 });
 ```
 
-- [ ] **Step 2: Jalankan tes untuk memverifikasi kegagalan**
+- [x] **Step 2: Jalankan tes untuk memverifikasi kegagalan**
 
 Run: `npx vitest run src/lib/__tests__/natalTypes.test.ts`
 Expected: FAIL (module `../natalUtils` not found)
 
-- [ ] **Step 3: Tambahkan definisi tipe di `src/types/index.ts` dan buat migration & `src/lib/natalUtils.ts`**
+- [x] **Step 3: Tambahkan definisi tipe di `src/types/index.ts` dan buat migration & `src/lib/natalUtils.ts`**
 
 Tambahkan ke `src/types/index.ts`:
 ```typescript
@@ -163,12 +163,12 @@ CREATE POLICY "Pengurus and Admin can manage natal announcements"
   );
 ```
 
-- [ ] **Step 4: Jalankan tes unit untuk memverifikasi kelulusan**
+- [x] **Step 4: Jalankan tes unit untuk memverifikasi kelulusan**
 
 Run: `npx vitest run src/lib/__tests__/natalTypes.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/types/index.ts src/lib/natalUtils.ts src/lib/__tests__/natalTypes.test.ts supabase/migrations/00000000000041_natal_announcements.sql
@@ -188,7 +188,7 @@ git commit -m "feat(natal): add data types, helper utils and supabase migration"
 - Consumes: `NatalConfig`
 - Produces: `useNatalCountdown` hook returning `{ timeLeft, isExpired, isUnder5Min, isUnder1Min, isUnder10Sec, tensionLevel }`, `playHeartbeatSFX()`, `playTickSFX()`
 
-- [ ] **Step 1: Tulis tes logic countdown dan kalkulasi tension level**
+- [x] **Step 1: Tulis tes logic countdown dan kalkulasi tension level**
 
 ```typescript
 // src/lib/__tests__/natalCountdown.test.ts
@@ -229,12 +229,12 @@ describe('calculateCountdownState', () => {
 });
 ```
 
-- [ ] **Step 2: Jalankan tes untuk memverifikasi kegagalan**
+- [x] **Step 2: Jalankan tes untuk memverifikasi kegagalan**
 
 Run: `npx vitest run src/lib/__tests__/natalCountdown.test.ts`
 Expected: FAIL (`calculateCountdownState` not defined)
 
-- [ ] **Step 3: Implementasikan Audio Synthesizer di `src/lib/audioEffects.ts` dan Hook di `src/hooks/useNatalCountdown.ts`**
+- [x] **Step 3: Implementasikan Audio Synthesizer di `src/lib/audioEffects.ts` dan Hook di `src/hooks/useNatalCountdown.ts`**
 
 Buat `src/lib/audioEffects.ts`:
 ```typescript
@@ -387,12 +387,12 @@ export function useNatalCountdown(targetIsoDate: string, bypassCountdown: boolea
 }
 ```
 
-- [ ] **Step 4: Jalankan tes unit untuk memverifikasi kelulusan**
+- [x] **Step 4: Jalankan tes unit untuk memverifikasi kelulusan**
 
 Run: `npx vitest run src/lib/__tests__/natalCountdown.test.ts`
 Expected: PASS
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/audioEffects.ts src/hooks/useNatalCountdown.ts src/lib/__tests__/natalCountdown.test.ts
@@ -412,7 +412,7 @@ git commit -m "feat(natal): add audio synthesizer and tension countdown hook"
 - Consumes: `useNatalCountdown`, `soundEffects`
 - Produces: `NatalCountdownDisplay` component with interactive screen shake, audio toggle, and pulse animations
 
-- [ ] **Step 1: Tambahkan animasi CSS di `src/index.css`**
+- [x] **Step 1: Tambahkan animasi CSS di `src/index.css`**
 
 Tambahkan ke `src/index.css`:
 ```css
@@ -448,7 +448,7 @@ Tambahkan ke `src/index.css`:
 }
 ```
 
-- [ ] **Step 2: Buat komponen `src/components/natal/NatalCountdownDisplay.tsx`**
+- [x] **Step 2: Buat komponen `src/components/natal/NatalCountdownDisplay.tsx`**
 
 Implementasikan komponen lengkap:
 - Kotak timer: Hari, Jam, Menit, Detik dengan border gradient.
@@ -456,12 +456,12 @@ Implementasikan komponen lengkap:
 - Indikator peringatan "WAKTU KURANG DARI 5 MENIT - SIAPKAN DIRI ANDA!".
 - Integrasi audio otomatis memicu `soundEffects.playHeartbeat()` setiap detik saat < 1 menit dan tick saat < 10 detik jika tidak di-mute.
 
-- [ ] **Step 3: Verifikasi build & typecheck**
+- [x] **Step 3: Verifikasi build & typecheck**
 
 Run: `npm run lint`
 Expected: PASS tanpa error TypeScript
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/index.css src/components/natal/NatalCountdownDisplay.tsx
@@ -481,7 +481,7 @@ git commit -m "feat(natal): add dynamic countdown display with tension shake and
 - Consumes: `NatalAnnouncement`, `Profile`
 - Produces: `NatalResultCard` (Banner pop-up ringkas & bersih), `NatalSearchModal`
 
-- [ ] **Step 1: Tulis tes logic render data hasil**
+- [x] **Step 1: Tulis tes logic render data hasil**
 
 ```typescript
 // src/lib/__tests__/natalResult.test.ts
@@ -508,12 +508,12 @@ describe('Natal Announcement Card Logic', () => {
 });
 ```
 
-- [ ] **Step 2: Jalankan tes**
+- [x] **Step 2: Jalankan tes**
 
 Run: `npx vitest run src/lib/__tests__/natalResult.test.ts`
 Expected: PASS
 
-- [ ] **Step 3: Buat `src/components/natal/NatalResultCard.tsx`**
+- [x] **Step 3: Buat `src/components/natal/NatalResultCard.tsx`**
 
 Desain ringkas, bersih, dan berwibawa:
 - Header resmi: MISDINAR KRISTUS RAJA SURAKARTA / SOLO BARU
@@ -534,7 +534,7 @@ Desain ringkas, bersih, dan berwibawa:
   - Pesan peneguhan rohani misdinar.
 - Tombol: "Tutup Pengumuman" dan (opsional) "Cari Anggota Lain".
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/components/natal/NatalResultCard.tsx src/lib/__tests__/natalResult.test.ts
@@ -556,11 +556,11 @@ git commit -m "feat(natal): add snbp-style result cards for assigned and unassig
 - Consumes: `useNatalCountdown`, `useAuth`, `NatalAnnouncement`, `NatalConfig`
 - Produces: Integrated Natal Announcement route and dashboard trigger banner
 
-- [ ] **Step 1: Buat hook fetch data pengumuman `src/hooks/useNatalAnnouncement.ts`**
+- [x] **Step 1: Buat hook fetch data pengumuman `src/hooks/useNatalAnnouncement.ts`**
 
 Hook untuk mengambil konfigurasi `system_config` (`natal_announcement_status`, `natal_announcement_target_time`, dll.) dan mencari baris `natal_announcements` untuk user saat ini / pencarian nama.
 
-- [ ] **Step 2: Buat `src/components/natal/NatalHeroBanner.tsx`**
+- [x] **Step 2: Buat `src/components/natal/NatalHeroBanner.tsx`**
 
 Banner mencolok di bagian atas Dashboard SIGMA:
 - Jika status `'disabled'`, return null.
@@ -569,25 +569,25 @@ Banner mencolok di bagian atas Dashboard SIGMA:
 - Jika countdown selesai (atau mode bypass aktif), banner berubah menjadi tombol: **"Buka Pengumuman Natal Anda ✨"**.
 - Tombol mengarahkan ke `/pengumuman-natal`.
 
-- [ ] **Step 3: Buat `src/pages/NatalAnnouncementPage.tsx`**
+- [x] **Step 3: Buat `src/pages/NatalAnnouncementPage.tsx`**
 
 Halaman penuh dengan:
 - Mode Countdown: Timer besar, efek deg-degan, audio heartbeat, dan visual natal.
 - Mode Reveal: Kotak input nama anggota (otomatis terisi nama user yang sedang login), tombol suspense **"Buka Pengumuman"**, dan modal hasil `NatalResultCard`.
 - Tombol simulasi **"⚡ Bypass Countdown (Khusus Pengurus)"** jika user adalah Pengurus/Admin.
 
-- [ ] **Step 4: Pasang rute di `src/App.tsx`, menu di `src/components/layout/Layout.tsx`, dan Hero Banner di `src/pages/DashboardPage.tsx`**
+- [x] **Step 4: Pasang rute di `src/App.tsx`, menu di `src/components/layout/Layout.tsx`, dan Hero Banner di `src/pages/DashboardPage.tsx`**
 
 - Tambahkan route `/pengumuman-natal` di `src/App.tsx`.
 - Tambahkan NavItem "Pengumuman Natal" di grup `jadwal` pada `src/components/layout/Layout.tsx` (dengan kontrol role trial).
 - Tempatkan `<NatalHeroBanner />` di `src/pages/DashboardPage.tsx` di atas greeting/kartu statistik.
 
-- [ ] **Step 5: Verifikasi typecheck dan tes aplikasi**
+- [x] **Step 5: Verifikasi typecheck dan tes aplikasi**
 
 Run: `npm run lint` && `npm test`
 Expected: PASS tanpa error
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/pages/NatalAnnouncementPage.tsx src/components/natal/NatalHeroBanner.tsx src/hooks/useNatalAnnouncement.ts src/pages/DashboardPage.tsx src/components/layout/Layout.tsx src/App.tsx
@@ -607,7 +607,7 @@ git commit -m "feat(natal): integrate natal announcement page, routes, layout na
 - Consumes: Supabase `natal_announcements` & `system_config`
 - Produces: Management UI for scheduling team to input names, mass slots, dates, rehearsal notes, mark unassigned members, and configure countdown timer
 
-- [ ] **Step 1: Buat halaman `src/pages/pengurus/NatalScheduleAdminPage.tsx`**
+- [x] **Step 1: Buat halaman `src/pages/pengurus/NatalScheduleAdminPage.tsx`**
 
 Fitur tim penjadwalan:
 1. **Konfigurasi Rilis**:
@@ -624,16 +624,16 @@ Fitur tim penjadwalan:
    - Tombol **"Generate Status 'Tetap Semangat' untuk Anggota yang Belum Bertugas"**: Secara otomatis memasukkan seluruh misdinar aktif lainnya dengan status `unassigned`.
    - Tombol **"Sinkronisasi dari Modul Misa Besar SIGMA"**: Menarik data otomatis dari penugasan `events` natal jika sudah dibuat.
 
-- [ ] **Step 2: Daftarkan rute `/pengurus/penjadwalan-natal` di `App.tsx` dan Layout**
+- [x] **Step 2: Daftarkan rute `/pengurus/penjadwalan-natal` di `App.tsx` dan Layout**
 
 Tambahkan rute di sub-rute pengurus dan tambahkan di NAV_GROUPS Pengurus Suite: `{ icon: Calendar, label: 'Jadwal Misa Natal', path: '/pengurus/penjadwalan-natal', roles: PENG }`.
 
-- [ ] **Step 3: Jalankan verifikasi linting & tes**
+- [x] **Step 3: Jalankan verifikasi linting & tes**
 
 Run: `npm run lint` && `npm test`
 Expected: PASS tanpa error
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add src/pages/pengurus/NatalScheduleAdminPage.tsx src/App.tsx src/components/layout/Layout.tsx
@@ -648,7 +648,7 @@ git commit -m "feat(natal): add scheduling team management portal for christmas 
 - Test: `src/lib/__tests__/natalFullFlow.test.ts`
 - E2E / Browser check jika dev server berjalan
 
-- [ ] **Step 1: Tulis tes integrasi unit alur verifikasi data**
+- [x] **Step 1: Tulis tes integrasi unit alur verifikasi data**
 
 ```typescript
 // src/lib/__tests__/natalFullFlow.test.ts
@@ -675,17 +675,17 @@ describe('Full Natal Announcement Flow Verification', () => {
 });
 ```
 
-- [ ] **Step 2: Jalankan seluruh suite tes**
+- [x] **Step 2: Jalankan seluruh suite tes**
 
 Run: `npm test`
 Expected: ALL PASS
 
-- [ ] **Step 3: Jalankan build produksi untuk memvalidasi tidak ada syntax/import error**
+- [x] **Step 3: Jalankan build produksi untuk memvalidasi tidak ada syntax/import error**
 
 Run: `npm run build`
 Expected: Vite build succeeds cleanly without bundle or type errors.
 
-- [ ] **Step 4: Commit final**
+- [x] **Step 4: Commit final**
 
 ```bash
 git add src/lib/__tests__/natalFullFlow.test.ts
