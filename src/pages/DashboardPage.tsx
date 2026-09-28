@@ -24,6 +24,7 @@ import {
 import { supabase } from '../lib/supabase';
 import { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
+import NatalHeroBanner from '../components/natal/NatalHeroBanner';
 
 const KONDISI_LABELS: Record<string, { label: string; color: string; icon: string }> = {
   K1:  { label: 'Mengganti + Latihan',        color: 'text-purple-600',  icon: '🌟' },
@@ -196,6 +197,9 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-6">
+      {/* Natal Announcement Hero Banner (if active) */}
+      <NatalHeroBanner />
+
       {/* Majestic Royal Welcome Banner */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-brand-900 via-brand-800 to-amber-700 p-6 sm:p-8 text-white shadow-2xl">
         <div className="absolute -right-10 -bottom-10 opacity-15 pointer-events-none">

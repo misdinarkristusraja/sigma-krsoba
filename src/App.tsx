@@ -32,6 +32,7 @@ const StreakPage         = lazy(() => import('./pages/StreakPage'));
 const JadwalSayaPage     = lazy(() => import('./pages/JadwalSayaPage'));
 const DirectoryPage      = lazy(() => import('./pages/DirectoryPage'));
 const AnalisisPage       = lazy(() => import('./pages/AnalisisPage'));
+const NatalAnnouncementPage = lazy(() => import('./pages/NatalAnnouncementPage'));
 
 const PublicSchedule     = lazy(() => import('./pages/ScheduleDailyPage').then(m => ({ default: m.PublicSchedulePage })));
 const JadwalMisa         = lazy(() => import('./pages/ScheduleDailyPage').then(m => ({ default: m.InternalSchedulePage })));
@@ -100,6 +101,7 @@ export default function App() {
               <Route path="/jadwal-mingguan" element={<ErrorBoundary><ScheduleWeekly /></ErrorBoundary>} />
               <Route path="/jadwal-harian"   element={<ErrorBoundary><ScheduleDaily /></ErrorBoundary>} />
               <Route path="/jadwal-misa"     element={<ErrorBoundary><JadwalMisa /></ErrorBoundary>} />
+              <Route path="/pengumuman-natal" element={<ErrorBoundary><NatalAnnouncementPage /></ErrorBoundary>} />
 
               {/* Attendance & Scan */}
               <Route path="/absensi"         element={<ProtectedRoute roles={STAFF}><ErrorBoundary><AttendancePage /></ErrorBoundary></ProtectedRoute>} />

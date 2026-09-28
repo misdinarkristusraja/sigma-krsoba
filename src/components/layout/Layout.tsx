@@ -11,7 +11,7 @@ import {
   Settings, LogOut, Menu, X, Church, AlertTriangle,
   ClipboardList, RefreshCw, ClipboardCheck, PartyPopper, ListChecks,
   BookUser, Star, Microscope, Globe, ChevronDown, TrendingUp, ShieldCheck,
-  FileText, Wallet, HeartHandshake, Video, Camera, Shirt, Bell,
+  FileText, Wallet, HeartHandshake, Video, Camera, Shirt, Bell, Gift,
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { cn, truncate } from '../../lib/utils';
@@ -42,6 +42,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Jadwal',
     icon: CalendarDays,
     items: [
+      { icon: Gift,          label: 'Pengumuman Natal',  path: '/pengumuman-natal', roles: null },
       { icon: Globe,          label: 'Cek Jadwal Semua',  path: '/jadwal-misa',     roles: null },
       { icon: ListChecks,     label: 'Cek Jadwal Saya',   path: '/jadwal-saya',     roles: null },
       { icon: CalendarDays,   label: 'Cek Jadwal Harian', path: '/jadwal-harian',   roles: null },
