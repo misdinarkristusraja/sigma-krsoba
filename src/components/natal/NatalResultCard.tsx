@@ -111,20 +111,6 @@ export default function NatalResultCard({
           {/* Detail Box (Assigned) */}
           {isAssigned && (
             <div className="bg-white/5 border border-emerald-500/30 rounded-2xl p-4 sm:p-5 text-left space-y-3">
-              {announcement.posisi_tugas && (
-                <div className="flex items-start gap-3">
-                  <Sparkles className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
-                  <div>
-                    <span className="text-[11px] uppercase tracking-wider text-slate-400 font-semibold block">
-                      Posisi Tugas
-                    </span>
-                    <span className="text-sm font-bold text-white">
-                      {announcement.posisi_tugas}
-                    </span>
-                  </div>
-                </div>
-              )}
-
               {announcement.tanggal_tugas && (
                 <div className="flex items-start gap-3">
                   <Calendar className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
@@ -166,6 +152,11 @@ export default function NatalResultCard({
                   </div>
                 </div>
               )}
+
+              <div className="pt-2 border-t border-white/10 text-[11px] text-amber-300/90 flex items-center gap-1.5 italic">
+                <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Posisi penugasan akan dibagikan saat latihan secara langsung.</span>
+              </div>
             </div>
           )}
 

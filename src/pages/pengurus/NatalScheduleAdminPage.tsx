@@ -50,21 +50,6 @@ export const FIXED_NATAL_MISAS: FixedNatalMisa[] = [
   },
 ];
 
-export const POSISI_PRESETS = [
-  'Salib',
-  'Lentera 1',
-  'Lentera 2',
-  'Dupa (Turibulum)',
-  'Navikula (Kapal Dupa)',
-  'Lilin Altar 1',
-  'Lilin Altar 2',
-  'Evangeliarium',
-  'Pembawa Persembahan 1',
-  'Pembawa Persembahan 2',
-  'Lonceng / Bel',
-  'Cadangan (Standby)',
-];
-
 export default function NatalScheduleAdminPage() {
   const { isPengurus } = useAuth();
 
@@ -90,7 +75,6 @@ export default function NatalScheduleAdminPage() {
   // Weekly-style member search & drawer state for the active slot
   const [memberSearchQuery, setMemberSearchQuery] = useState('');
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [defaultPosisi, setDefaultPosisi] = useState(POSISI_PRESETS[0]);
 
   // Per-misa training & notes state
   const [misaLatihanMap, setMisaLatihanMap] = useState<Record<string, string>>({
@@ -262,7 +246,6 @@ export default function NatalScheduleAdminPage() {
           misa_name: currentMisa.name,
           tanggal_tugas: currentMisa.tanggal,
           jam_tugas: currentMisa.jam,
-          posisi_tugas: defaultPosisi,
           jadwal_latihan: misaLatihanMap[currentMisa.id] || null,
           catatan_khusus: misaNotesMap[currentMisa.id] || null,
           tahun: new Date().getFullYear(),
@@ -298,25 +281,6 @@ export default function NatalScheduleAdminPage() {
       toast.success(`${name} dihapus dari penugasan`);
     } catch {
       toast.error('Gagal menghapus');
-    }
-  };
-
-  // Update position / role for an assigned announcement
-  const handleUpdatePosition = async (id: string, newPosisi: string) => {
-    try {
-      const { error } = await (supabase as any)
-        .from('natal_announcements')
-        .update({ posisi_tugas: newPosisi })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setAnnouncements(prev =>
-        prev.map(a => a.id === id ? { ...a, posisi_tugas: newPosisi } : a)
-      );
-      toast.success('Posisi tugas diperbarui');
-    } catch {
-      toast.error('Gagal memperbarui posisi');
     }
   };
 
@@ -364,7 +328,6 @@ export default function NatalScheduleAdminPage() {
         misa_name: currentMisa.name,
         tanggal_tugas: currentMisa.tanggal,
         jam_tugas: currentMisa.jam,
-        posisi_tugas: defaultPosisi,
         jadwal_latihan: misaLatihanMap[currentMisa.id] || null,
         catatan_khusus: misaNotesMap[currentMisa.id] || null,
         tahun: new Date().getFullYear(),
@@ -651,20 +614,6 @@ export default function NatalScheduleAdminPage() {
                 Tanggal: <strong>{currentMisa.tanggal}</strong> • Terisi: <strong>{currentMisaAssigned.length} misdinar</strong>
               </p>
             </div>
-
-            {/* Default position selector when adding */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-500 dark:text-slate-400 font-medium">Posisi Default:</span>
-              <select
-                value={defaultPosisi}
-                onChange={(e) => setDefaultPosisi(e.target.value)}
-                className="text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-gray-800 dark:text-slate-200"
-              >
-                {POSISI_PRESETS.map(pos => (
-                  <option key={pos} value={pos}>{pos}</option>
-                ))}
-              </select>
-            </div>
           </div>
 
           {/* Assigned Members Pill Badges (Weekly Schedule Style) */}
@@ -674,20 +623,20 @@ export default function NatalScheduleAdminPage() {
                 Daftar Petugas Terpilih ({currentMisaAssigned.length})
               </label>
               <span className="text-[11px] text-gray-400">
-                Klik [ × ] pada badge untuk menghapus tugas
+                Klik [ × ] pada badge untuk menghapus tugas (posisi dibagikan saat latihan)
               </span>
             </div>
 
             {currentMisaAssigned.length === 0 ? (
               <div className="p-4 rounded-xl border border-dashed border-gray-300 dark:border-slate-700 text-center text-xs text-gray-400">
-                Belum ada petugas yang ditugaskan di misa ini. Klik tombol "Tambah / Pilih Petugas ▾" di bawah.
+                Belum ada petugas yang ditugaskan di misa ini. Klik tombol "Pilih & Tambah Petugas ▾" di bawah.
               </div>
             ) : (
               <div className="flex flex-wrap gap-2">
                 {currentMisaAssigned.map((a, idx) => (
                   <div
                     key={a.id}
-                    className="group inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-emerald-500/40 text-gray-900 dark:text-slate-100 shadow-sm text-xs font-semibold"
+                    className="group inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white dark:bg-slate-800 border border-emerald-500/40 text-gray-900 dark:text-slate-100 shadow-sm text-xs font-semibold"
                   >
                     <span className="w-4 h-4 rounded-full bg-emerald-500 text-black text-[10px] font-bold flex items-center justify-center shrink-0">
                       {idx + 1}
@@ -695,17 +644,6 @@ export default function NatalScheduleAdminPage() {
                     <span className="font-bold text-emerald-700 dark:text-emerald-400">
                       {a.nama_panggilan || a.nama_lengkap}
                     </span>
-
-                    {/* Position Dropdown inline */}
-                    <select
-                      value={a.posisi_tugas || ''}
-                      onChange={(e) => handleUpdatePosition(a.id, e.target.value)}
-                      className="text-[10px] font-medium bg-gray-100 dark:bg-slate-700 rounded px-1.5 py-0.5 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-slate-300"
-                    >
-                      {POSISI_PRESETS.map(pos => (
-                        <option key={pos} value={pos}>{pos}</option>
-                      ))}
-                    </select>
 
                     <button
                       type="button"
@@ -942,7 +880,6 @@ export default function NatalScheduleAdminPage() {
                 <th className="py-3 px-4">Panggilan</th>
                 <th className="py-3 px-4">Status</th>
                 <th className="py-3 px-4">Misa & Jam</th>
-                <th className="py-3 px-4">Posisi</th>
                 <th className="py-3 px-4">Jadwal Latihan</th>
                 <th className="py-3 px-4 text-right">Aksi</th>
               </tr>
@@ -950,7 +887,7 @@ export default function NatalScheduleAdminPage() {
             <tbody className="divide-y divide-gray-100 dark:divide-slate-800 text-gray-800 dark:text-slate-200 font-medium">
               {filteredTableList.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-gray-400">
+                  <td colSpan={6} className="py-8 text-center text-gray-400">
                     Belum ada data penugasan natal yang cocok.
                   </td>
                 </tr>
@@ -983,9 +920,6 @@ export default function NatalScheduleAdminPage() {
                       ) : (
                         <span className="text-gray-400">-</span>
                       )}
-                    </td>
-                    <td className="py-3 px-4 text-amber-600 dark:text-amber-400 font-semibold">
-                      {row.posisi_tugas || '-'}
                     </td>
                     <td className="py-3 px-4 text-slate-500 dark:text-slate-400">
                       {row.jadwal_latihan || '-'}
