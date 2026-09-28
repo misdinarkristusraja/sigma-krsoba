@@ -159,3 +159,30 @@ export interface Database {
 }
 
 export * from './majorMass';
+
+export type NatalReleaseStatus = 'disabled' | 'trial' | 'published';
+
+export interface NatalAnnouncement {
+  id: string;
+  user_id?: string | null;
+  nama_lengkap: string;
+  nama_panggilan: string;
+  status_tugas: 'assigned' | 'unassigned';
+  misa_name?: string | null;
+  tanggal_tugas?: string | null;
+  jam_tugas?: string | null;
+  lokasi_tugas?: string | null;
+  posisi_tugas?: string | null;
+  jadwal_latihan?: string | null;
+  catatan_khusus?: string | null;
+  tahun: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NatalConfig {
+  status: NatalReleaseStatus;
+  target_time: string;
+  title: string;
+  allow_search_others: boolean;
+}
