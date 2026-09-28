@@ -123,6 +123,8 @@ export interface Database {
       assignments: { Row: Assignment; Insert: Partial<Assignment>; Update: Partial<Assignment> };
       swap_requests: { Row: SwapRequest; Insert: Partial<SwapRequest>; Update: Partial<SwapRequest> };
       scan_records: { Row: ScanRecord; Insert: Partial<ScanRecord>; Update: Partial<ScanRecord> };
+      natal_announcements: { Row: NatalAnnouncement; Insert: Partial<NatalAnnouncement>; Update: Partial<NatalAnnouncement> };
+      system_config: { Row: { key: string; value: string }; Insert: { key: string; value: string }; Update: Partial<{ key: string; value: string }> };
       // and others...
     }
     Views: {

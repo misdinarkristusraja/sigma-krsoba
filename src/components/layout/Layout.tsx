@@ -103,6 +103,7 @@ const NAV_GROUPS: NavGroup[] = [
       { icon: Camera,         label: 'Sakristan (PIC)',    path: '/pengurus/sakristan',  roles: PENG },
       { icon: Shirt,          label: 'Putsankris',         path: '/pengurus/putsankris', roles: PENG },
       { icon: Bell,           label: 'Pusat Notifikasi',   path: '/pengurus/notifikasi', roles: PENG },
+      { icon: Gift,           label: 'Jadwal Misa Natal',  path: '/pengurus/penjadwalan-natal', roles: PENG },
     ],
   },
   {

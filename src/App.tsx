@@ -47,6 +47,7 @@ const MultimediaPage    = lazy(() => import('./pages/pengurus/MultimediaPage'));
 const SakristanPage     = lazy(() => import('./pages/pengurus/SakristanPage'));
 const PutsankrisPage    = lazy(() => import('./pages/pengurus/PutsankrisPage'));
 const NotificationAdminPage = lazy(() => import('./pages/pengurus/NotificationAdminPage'));
+const NatalScheduleAdminPage = lazy(() => import('./pages/pengurus/NatalScheduleAdminPage'));
 
 const ADMIN = ['Administrator'];
 const PENG  = ['Administrator', 'Pengurus', 'Pendamping'];
@@ -136,6 +137,7 @@ export default function App() {
                 <Route path="sekretaris" element={<SekretarisPage />} />
                 <Route path="bendahara" element={<BendaharaPage />} />
                 <Route path="penjadwalan" element={<Navigate to="/jadwal-mingguan" replace />} />
+                <Route path="penjadwalan-natal" element={<NatalScheduleAdminPage />} />
                 <Route path="jasroh" element={<JasrohPage />} />
                 <Route path="multimedia" element={<MultimediaPage />} />
                 <Route path="sakristan" element={<SakristanPage />} />
