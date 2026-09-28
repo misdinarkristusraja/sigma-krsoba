@@ -5,6 +5,7 @@ import { useNatalAnnouncement } from '../hooks/useNatalAnnouncement';
 import { useNatalCountdown } from '../hooks/useNatalCountdown';
 import NatalCountdownDisplay from '../components/natal/NatalCountdownDisplay';
 import NatalResultCard from '../components/natal/NatalResultCard';
+import NatalAdminOfficersList from '../components/natal/NatalAdminOfficersList';
 import { Sparkles, Search, UserCheck, Lock, AlertCircle, ArrowLeft, RefreshCw, Calendar } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -12,7 +13,7 @@ import { NatalAnnouncement } from '../types';
 import { formatNatalTargetTime } from '../lib/natalUtils';
 
 export default function NatalAnnouncementPage() {
-  const { profile, isPengurus } = useAuth();
+  const { profile, isPengurus, isAdmin } = useAuth();
   const {
     config,
     loading,
@@ -147,111 +148,126 @@ export default function NatalAnnouncementPage() {
         </div>
       ) : (
         /* Phase 2: Reveal & Input Form (when countdown is 0 or bypassed) */
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="max-w-2xl mx-auto rounded-3xl p-6 sm:p-10 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-2xl text-center"
-        >
-          {/* Header */}
-          <div className="flex items-center justify-center gap-2 text-xs font-bold tracking-widest uppercase text-brand-600 dark:text-amber-400 mb-2">
-            <Sparkles className="w-4 h-4" />
-            <span>PORTAL RESMI PENGUMUMAN NATAL</span>
-          </div>
-
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mb-2">
-            Hasil Penjadwalan Tugas Natal Telah Dibuka
-          </h1>
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mb-3 max-w-md mx-auto">
-            Silakan cek hasil penugasan Anda untuk melayani pada Hari Raya Natal di Gereja Paroki Kristus Raja.
-          </p>
-
-          {/* Release Date info badge */}
-          {config.target_time && (
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-xs text-amber-700 dark:text-amber-300 font-medium mb-8">
-              <Calendar className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span>Jadwal Resmi Dirilis: <strong>{formatNatalTargetTime(config.target_time)}</strong></span>
-            </div>
-          )}
-
-          {/* Quick Check Own Profile Card */}
-          <div className="p-6 rounded-2xl bg-gray-50 dark:bg-slate-800/80 border border-gray-100 dark:border-slate-700/60 mb-6 text-left">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-brand-500/10 dark:bg-brand-500/20 text-brand-600 dark:text-amber-400 flex items-center justify-center font-bold">
-                <UserCheck className="w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-[11px] font-semibold text-gray-400 dark:text-slate-400 uppercase tracking-wider block">
-                  Akun Terverifikasi
-                </span>
-                <span className="text-base font-bold text-gray-900 dark:text-white">
-                  {profile?.nama_lengkap || profile?.nama_panggilan || 'Nama Tidak Terdaftar'}
-                </span>
-              </div>
+        <div className="space-y-8">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="max-w-2xl mx-auto rounded-3xl p-6 sm:p-10 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-800 shadow-2xl text-center"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-center gap-2 text-xs font-bold tracking-widest uppercase text-brand-600 dark:text-amber-400 mb-2">
+              <Sparkles className="w-4 h-4" />
+              <span>PORTAL RESMI PENGUMUMAN NATAL</span>
             </div>
 
-            <button
-              type="button"
-              onClick={handleOpenMyResult}
-              disabled={isOpeningResult}
-              className="w-full py-3.5 px-6 rounded-xl font-extrabold text-sm sm:text-base bg-brand-600 hover:bg-brand-500 text-white shadow-xl shadow-brand-600/30 transition-all flex items-center justify-center gap-2 transform active:scale-98"
-            >
-              {isOpeningResult ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Membuka Hasil Pengumuman...</span>
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5 text-amber-300 animate-spin" style={{ animationDuration: '6s' }} />
-                  <span>Buka Hasil Pengumuman Saya</span>
-                </>
-              )}
-            </button>
-          </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white mb-2">
+              Hasil Penjadwalan Tugas Natal Telah Dibuka
+            </h1>
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-slate-400 mb-3 max-w-md mx-auto">
+              Silakan cek hasil penugasan Anda untuk melayani pada Hari Raya Natal di Gereja Paroki Kristus Raja.
+            </p>
 
-          {/* Optional: Search other members if allowed */}
-          {config.allow_search_others && (
-            <div className="pt-6 border-t border-gray-100 dark:border-slate-800 text-left">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-3">
-                Cari Jadwal Anggota Lain
-              </h4>
-              <form onSubmit={handleSearch} className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                  <input
-                    type="text"
-                    value={inputNama}
-                    onChange={(e) => setInputNama(e.target.value)}
-                    placeholder="Ketik nama lengkap atau panggilan..."
-                    className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  />
+            {/* Release Date info badge */}
+            {config.target_time && (
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/25 text-xs text-amber-700 dark:text-amber-300 font-medium mb-8">
+                <Calendar className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                <span>Jadwal Resmi Dirilis: <strong>{formatNatalTargetTime(config.target_time)}</strong></span>
+              </div>
+            )}
+
+            {/* Quick Check Own Profile Card */}
+            <div className="p-6 rounded-2xl bg-gray-50 dark:bg-slate-800/80 border border-gray-100 dark:border-slate-700/60 mb-6 text-left">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-brand-500/10 dark:bg-brand-500/20 text-brand-600 dark:text-amber-400 flex items-center justify-center font-bold">
+                  <UserCheck className="w-5 h-5" />
                 </div>
-                <button
-                  type="submit"
-                  disabled={searching}
-                  className="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-black dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-semibold text-xs sm:text-sm transition-colors"
-                >
-                  {searching ? 'Mencari...' : 'Cari'}
-                </button>
-              </form>
-            </div>
-          )}
+                <div>
+                  <span className="text-[11px] font-semibold text-gray-400 dark:text-slate-400 uppercase tracking-wider block">
+                    Akun Terverifikasi
+                  </span>
+                  <span className="text-base font-bold text-gray-900 dark:text-white">
+                    {profile?.nama_lengkap || profile?.nama_panggilan || 'Nama Tidak Terdaftar'}
+                  </span>
+                </div>
+              </div>
 
-          {/* Pengurus Bypass indicator */}
-          {bypassCountdown && isPengurus && (
-            <div className="mt-6 flex items-center justify-center gap-2 text-xs text-amber-500 dark:text-amber-400">
-              <AlertCircle className="w-3.5 h-3.5" />
-              <span>Mode Bypass Aktif: Anda sedang menguji coba tampilan rilis sebelum waktu resmi tiba.</span>
               <button
                 type="button"
-                onClick={() => setBypassCountdown(false)}
-                className="underline hover:text-white"
+                onClick={handleOpenMyResult}
+                disabled={isOpeningResult}
+                className="w-full py-3.5 px-6 rounded-xl font-extrabold text-sm sm:text-base bg-brand-600 hover:bg-brand-500 text-white shadow-xl shadow-brand-600/30 transition-all flex items-center justify-center gap-2 transform active:scale-98"
               >
-                Kembalikan Timer
+                {isOpeningResult ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>Membuka Hasil Pengumuman...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-5 h-5 text-amber-300 animate-spin" style={{ animationDuration: '6s' }} />
+                    <span>Buka Hasil Pengumuman Saya</span>
+                  </>
+                )}
               </button>
             </div>
+
+            {/* Optional: Search other members if allowed */}
+            {config.allow_search_others && (
+              <div className="pt-6 border-t border-gray-100 dark:border-slate-800 text-left">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-400 mb-3">
+                  Cari Jadwal Anggota Lain
+                </h4>
+                <form onSubmit={handleSearch} className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      value={inputNama}
+                      onChange={(e) => setInputNama(e.target.value)}
+                      placeholder="Ketik nama lengkap atau panggilan..."
+                      className="w-full pl-9 pr-4 py-2.5 text-sm rounded-xl border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={searching}
+                    className="px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-black dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-semibold text-xs sm:text-sm transition-colors"
+                  >
+                    {searching ? 'Mencari...' : 'Cari'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Pengurus Bypass indicator */}
+            {bypassCountdown && isPengurus && (
+              <div className="mt-6 flex items-center justify-center gap-2 text-xs text-amber-500 dark:text-amber-400">
+                <AlertCircle className="w-3.5 h-3.5" />
+                <span>Mode Bypass Aktif: Anda sedang menguji coba tampilan rilis sebelum waktu resmi tiba.</span>
+                <button
+                  type="button"
+                  onClick={() => setBypassCountdown(false)}
+                  className="underline hover:text-white"
+                >
+                  Kembalikan Timer
+                </button>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Phase 2b: Administrator Full Duty Officers Roster */}
+          {isAdmin && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+            >
+              <NatalAdminOfficersList
+                onPreviewOfficer={(officer) => setSelectedAnnouncement(officer)}
+              />
+            </motion.div>
           )}
-        </motion.div>
+        </div>
       )}
 
       {/* SNBP Result Modal Popup */}

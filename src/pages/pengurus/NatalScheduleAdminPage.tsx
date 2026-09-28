@@ -9,46 +9,9 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
+import { FIXED_NATAL_MISAS, type FixedNatalMisa } from '../../lib/natalUtils';
 
-// ── 4 Misa Natal Resmi (Sesuai Arahan Revisi) ────────────────────────
-export interface FixedNatalMisa {
-  id: string;
-  name: string;
-  tanggal: string;
-  jam: string;
-  badgeClass: string;
-}
-
-export const FIXED_NATAL_MISAS: FixedNatalMisa[] = [
-  {
-    id: 'malam-natal-1',
-    name: 'Misa Malam Natal I (17.00)',
-    tanggal: '2026-12-24',
-    jam: '17:00',
-    badgeClass: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-  },
-  {
-    id: 'malam-natal-2',
-    name: 'Misa Malam Natal II (20.00)',
-    tanggal: '2026-12-24',
-    jam: '20:00',
-    badgeClass: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/30',
-  },
-  {
-    id: 'natal-lansia',
-    name: 'Misa Natal Lansia (06.00)',
-    tanggal: '2026-12-25',
-    jam: '06:00',
-    badgeClass: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/30',
-  },
-  {
-    id: 'natal-anak',
-    name: 'Misa Natal Anak (09.00)',
-    tanggal: '2026-12-25',
-    jam: '09:00',
-    badgeClass: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30',
-  },
-];
+export { FIXED_NATAL_MISAS, type FixedNatalMisa };
 
 export default function NatalScheduleAdminPage() {
   const { isPengurus } = useAuth();
