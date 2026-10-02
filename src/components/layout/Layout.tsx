@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { cn, truncate } from '../../lib/utils';
+import { isNatalPortalVisible } from '../../lib/natalUtils';
 import toast from 'react-hot-toast';
 
 const STAFF = ['Administrator', 'Pengurus', 'Pendamping', 'Pelatih'];
@@ -42,7 +43,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'Jadwal',
     icon: CalendarDays,
     items: [
-      { icon: Gift,          label: 'Pengumuman Natal',  path: '/pengumuman-natal', roles: PENG },
+      { icon: Gift,          label: 'Pengumuman Natal',  path: '/pengumuman-natal', roles: null },
       { icon: Globe,          label: 'Cek Jadwal Semua',  path: '/jadwal-misa',     roles: null },
       { icon: ListChecks,     label: 'Cek Jadwal Saya',   path: '/jadwal-saya',     roles: null },
       { icon: CalendarDays,   label: 'Cek Jadwal Harian', path: '/jadwal-harian',   roles: null },
@@ -126,11 +127,12 @@ const BOTTOM_TAB_ITEMS = [
 ];
 
 export default function Layout() {
-  const { profile, role, loading: authLoading, signOut } = useAuth();
+  const { profile, role, isPengurus, loading: authLoading, signOut } = useAuth();
   const navigate  = useNavigate();
   const location  = useLocation();
   const [open,       setOpen]      = useState(false);
   const [hiddenKeys, setHiddenKeys]= useState<Record<string, boolean>>({});
+  const [natalStatus, setNatalStatus] = useState<string>('disabled');
   // Default tertutup; auto-buka grup yang mengandung path aktif saat ini
   const [openGroups, setOpenGroups]= useState<Set<string>>(() => {
     const active = new Set<string>();
@@ -145,13 +147,35 @@ export default function Layout() {
     supabase
       .from('system_config')
       .select('key, value')
-      .in('key', ['migration_enabled'])
+      .in('key', ['migration_enabled', 'natal_announcement_status'])
       .then(({ data }) => {
         if (!data) return;
         const map: Record<string, boolean> = {};
-        (data as { key: string; value: string }[]).forEach(row => { map[row.key] = row.value !== 'false'; });
+        (data as { key: string; value: string }[]).forEach(row => {
+          map[row.key] = row.value !== 'false';
+          if (row.key === 'natal_announcement_status') {
+            setNatalStatus(row.value);
+          }
+        });
         setHiddenKeys(map);
       });
+
+    const channel = supabase
+      .channel('layout_system_config_sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'system_config' },
+        (payload: any) => {
+          if (payload.new && payload.new.key === 'natal_announcement_status') {
+            setNatalStatus(payload.new.value);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   async function handleSignOut() {
@@ -161,6 +185,9 @@ export default function Layout() {
   }
 
   function canSeeItem(item: NavItem) {
+    if (item.path === '/pengumuman-natal') {
+      return isNatalPortalVisible(natalStatus, isPengurus);
+    }
     if (item.configKey && hiddenKeys[item.configKey] === false) return false;
     if (!item.roles) return true;
     if (!role) return true;

@@ -51,18 +51,21 @@ export default function NatalAnnouncementPage() {
     );
   }
 
-  // Access control check: exclusively for Pengurus ke atas (Pengurus, Pendamping, Administrator) during trial
-  if (!isPengurus || !isVisible) {
+  // Access control check: If not visible (either disabled, or trial for non-pengurus)
+  if (!isVisible) {
+    const isTrial = config.status === 'trial';
     return (
       <div className="max-w-xl mx-auto my-12 p-8 rounded-3xl bg-white dark:bg-slate-900 border border-gray-100 dark:border-slate-800 text-center shadow-lg">
         <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center mx-auto mb-4">
           <Lock className="w-8 h-8 text-amber-500" />
         </div>
         <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-          Portal Khusus Pengurus
+          {isTrial ? 'Portal Dalam Tahap Uji Coba' : 'Portal Belum Dibuka'}
         </h2>
         <p className="text-sm text-gray-600 dark:text-slate-400 mb-6">
-          Fitur pengumuman penugasan misa natal ini sedang dalam tahap uji coba terbatas dan hanya dapat diakses oleh Pengurus, Pendamping, dan Administrator.
+          {isTrial
+            ? 'Fitur pengumuman penugasan misa natal ini sedang dalam tahap uji coba terbatas dan hanya dapat diakses oleh Pengurus, Pendamping, dan Administrator.'
+            : 'Portal pengumuman penugasan misa natal saat ini sedang dinonaktifkan oleh administrator.'}
         </p>
         <Link
           to="/dashboard"

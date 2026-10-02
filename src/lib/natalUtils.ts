@@ -1,5 +1,15 @@
-import { NatalAnnouncement } from '../types';
+import { NatalAnnouncement, NatalReleaseStatus } from '../types';
 import { formatDate } from './utils';
+
+export function isNatalPortalVisible(status: NatalReleaseStatus | string | undefined, isPengurus: boolean): boolean {
+  if (status === 'published') return true;
+  if (status === 'trial') return Boolean(isPengurus);
+  return false;
+}
+
+export function isNatalAdminVisible(isPengurus: boolean): boolean {
+  return Boolean(isPengurus);
+}
 
 export interface FormattedNatalMessage {
   title: string;

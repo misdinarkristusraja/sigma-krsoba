@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { NatalConfig, NatalAnnouncement } from '../types';
+import { isNatalPortalVisible } from '../lib/natalUtils';
 
 export function useNatalAnnouncement() {
   const { user, profile, isPengurus } = useAuth();
@@ -52,7 +53,7 @@ export function useNatalAnnouncement() {
   const fetchMyAnnouncement = useCallback(async () => {
     if (!profile) return;
     try {
-      // Try matching by user_id first
+      // 1. Try matching by user_id first
       const { data: byId } = await supabase
         .from('natal_announcements')
         .select('*')
@@ -66,7 +67,7 @@ export function useNatalAnnouncement() {
         return;
       }
 
-      // Fallback matching by nama_panggilan / nickname
+      // 2. Fallback matching by nama_panggilan / nickname
       const cleanPanggilan = (profile.nama_panggilan || profile.nickname || '').trim().toLowerCase();
       if (cleanPanggilan) {
         const { data: byName } = await supabase
@@ -79,6 +80,23 @@ export function useNatalAnnouncement() {
 
         if (byName) {
           setMyAnnouncement(byName as NatalAnnouncement);
+          return;
+        }
+      }
+
+      // 3. Fallback matching by nama_lengkap
+      const cleanLengkap = (profile.nama_lengkap || '').trim().toLowerCase();
+      if (cleanLengkap) {
+        const { data: byFullName } = await supabase
+          .from('natal_announcements')
+          .select('*')
+          .ilike('nama_lengkap', cleanLengkap)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (byFullName) {
+          setMyAnnouncement(byFullName as NatalAnnouncement);
           return;
         }
       }
@@ -111,6 +129,21 @@ export function useNatalAnnouncement() {
 
   useEffect(() => {
     loadConfig();
+
+    const channel = supabase
+      .channel('system_config_natal_sync')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'system_config' },
+        () => {
+          loadConfig();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [loadConfig]);
 
   useEffect(() => {
@@ -138,8 +171,15 @@ export function useNatalAnnouncement() {
     }
   };
 
-  // Feature exclusively visible to Pengurus ke atas (Pengurus, Pendamping, Administrator)
-  const isVisible = isPengurus && config.status !== 'disabled';
+  // Visibility: Published = All members; Trial = Pengurus only; Disabled = Hidden
+  const isVisible = isNatalPortalVisible(config.status, isPengurus);
+
+  // Security: only Pengurus can set countdown bypass
+  const handleSetBypassCountdown = (bypass: boolean) => {
+    if (isPengurus) {
+      setBypassCountdown(bypass);
+    }
+  };
 
   return {
     config,
@@ -147,8 +187,8 @@ export function useNatalAnnouncement() {
     isVisible,
     myAnnouncement,
     searchMember,
-    bypassCountdown,
-    setBypassCountdown,
+    bypassCountdown: isPengurus ? bypassCountdown : false,
+    setBypassCountdown: handleSetBypassCountdown,
     refreshConfig: loadConfig,
     refreshMyAnnouncement: fetchMyAnnouncement,
   };
